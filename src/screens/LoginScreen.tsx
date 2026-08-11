@@ -2,7 +2,9 @@ import { useState } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { useAuth } from "../context/AuthContext";
+import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { AuthStackParamList } from "../navigation/RootNavigator";
 
 type LoginNavigationProp = NativeStackNavigationProp<AuthStackParamList, "Login">;
@@ -29,10 +31,11 @@ export function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>FindYourBuddy</Text>
+      <Text style={styles.brand}>FindYourBuddy</Text>
       <TextInput
         style={styles.input}
         placeholder="E-posta"
+        placeholderTextColor={colors.textSecondary}
         autoCapitalize="none"
         keyboardType="email-address"
         value={email}
@@ -41,14 +44,17 @@ export function LoginScreen() {
       <TextInput
         style={styles.input}
         placeholder="Şifre"
+        placeholderTextColor={colors.textSecondary}
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isSubmitting}>
-        <Text style={styles.buttonText}>{isSubmitting ? "Giriş yapılıyor..." : "Giriş Yap"}</Text>
-      </TouchableOpacity>
+      <PrimaryButton
+        label={isSubmitting ? "Giriş yapılıyor..." : "Giriş Yap"}
+        onPress={handleSubmit}
+        loading={isSubmitting}
+      />
       <TouchableOpacity onPress={() => navigation.navigate("Register")}>
         <Text style={styles.link}>Hesabın yok mu? Kayıt ol</Text>
       </TouchableOpacity>
@@ -57,11 +63,38 @@ export function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 24 },
-  title: { fontSize: 28, fontWeight: "700", textAlign: "center", marginBottom: 24 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, marginBottom: 12 },
-  button: { backgroundColor: "#ff5864", borderRadius: 8, padding: 14, alignItems: "center", marginTop: 8 },
-  buttonText: { color: "#fff", fontWeight: "600" },
-  link: { textAlign: "center", marginTop: 16, color: "#ff5864" },
-  error: { color: "#c0392b", textAlign: "center", marginBottom: 8 },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    padding: spacing.xl,
+    gap: spacing.md,
+    backgroundColor: colors.background,
+  },
+  brand: {
+    ...typeScale.display,
+    textAlign: "center",
+    marginBottom: spacing.xl,
+  },
+  input: {
+    fontFamily: fontFamily.body,
+    fontSize: 15,
+    color: colors.textPrimary,
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  link: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 14,
+    color: colors.primary,
+    textAlign: "center",
+    marginTop: spacing.md,
+  },
+  error: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.accentRed,
+    textAlign: "center",
+  },
 });
