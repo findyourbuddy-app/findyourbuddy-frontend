@@ -1,0 +1,16 @@
+import { apiClient } from "./client";
+import type { Event, EventCreate } from "../types";
+
+export function listEvents(category?: string, upcomingOnly = true): Promise<Event[]> {
+  return apiClient
+    .get<Event[]>("/events/", { params: { category, upcoming_only: upcomingOnly } })
+    .then((res) => res.data);
+}
+
+export function getEvent(eventId: number): Promise<Event> {
+  return apiClient.get<Event>(`/events/${eventId}`).then((res) => res.data);
+}
+
+export function createEvent(data: EventCreate): Promise<Event> {
+  return apiClient.post<Event>("/events/", data).then((res) => res.data);
+}
