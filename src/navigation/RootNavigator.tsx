@@ -3,11 +3,14 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useAuth } from "../context/AuthContext";
+import { FloatingTabBar } from "../components/navigation/FloatingTabBar";
+import { colors } from "../theme";
 import { LoginScreen } from "../screens/LoginScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
-import { EventsScreen } from "../screens/EventsScreen";
+import { DiscoverScreen } from "../screens/DiscoverScreen";
 import { SwipeScreen } from "../screens/SwipeScreen";
-import { MatchesScreen } from "../screens/MatchesScreen";
+import { MessagesScreen } from "../screens/MessagesScreen";
+import { ChatScreen } from "../screens/ChatScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 
 export type AuthStackParamList = {
@@ -15,15 +18,18 @@ export type AuthStackParamList = {
   Register: undefined;
 };
 
+export type SwipeParams = { eventId: number; eventTitle: string } | undefined;
+
 export type MainTabParamList = {
-  Events: undefined;
-  Matches: undefined;
-  Profile: undefined;
+  Discover: undefined;
+  Swipe: SwipeParams;
+  Messages: undefined;
 };
 
 export type MainStackParamList = {
   Tabs: undefined;
-  Swipe: { eventId: number; eventTitle: string };
+  Chat: { matchId: number; otherUserName: string };
+  Profile: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -41,10 +47,13 @@ function AuthNavigator() {
 
 function MainTabNavigator() {
   return (
-    <MainTabs.Navigator>
-      <MainTabs.Screen name="Events" component={EventsScreen} options={{ title: "Etkinlikler" }} />
-      <MainTabs.Screen name="Matches" component={MatchesScreen} options={{ title: "Eşleşmeler" }} />
-      <MainTabs.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
+    <MainTabs.Navigator
+      tabBar={(props) => <FloatingTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <MainTabs.Screen name="Discover" component={DiscoverScreen} />
+      <MainTabs.Screen name="Swipe" component={SwipeScreen} />
+      <MainTabs.Screen name="Messages" component={MessagesScreen} />
     </MainTabs.Navigator>
   );
 }
@@ -54,10 +63,11 @@ function MainNavigator() {
     <MainStack.Navigator>
       <MainStack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false }} />
       <MainStack.Screen
-        name="Swipe"
-        component={SwipeScreen}
-        options={({ route }) => ({ title: route.params.eventTitle })}
+        name="Chat"
+        component={ChatScreen}
+        options={({ route }) => ({ title: route.params.otherUserName })}
       />
+      <MainStack.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
     </MainStack.Navigator>
   );
 }
@@ -67,8 +77,8 @@ export function RootNavigator() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator />
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }

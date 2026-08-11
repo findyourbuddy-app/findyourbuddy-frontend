@@ -76,6 +76,25 @@ export interface Swipe {
   created_at: string;
 }
 
+export interface UserPublic {
+  id: number;
+  display_name: string;
+  photo_url: string | null;
+}
+
+export interface Message {
+  id: number;
+  match_id: number;
+  sender_id: number;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface MessageCreate {
+  content: string;
+}
+
 export interface Match {
   id: number;
   event_id: number;
@@ -83,4 +102,6 @@ export interface Match {
   user_b_id: number;
   score: number;
   created_at: string;
+  other_user: UserPublic;
+  last_message: Message | null;
 }
