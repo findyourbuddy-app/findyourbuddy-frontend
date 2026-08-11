@@ -1,10 +1,17 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Avatar } from "../components/ui/Avatar";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { useAuth } from "../context/AuthContext";
+import { getInterestLabel } from "../constants/interests";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
+import type { MainStackParamList } from "../navigation/RootNavigator";
+
+type ProfileNavigationProp = NativeStackNavigationProp<MainStackParamList, "Profile">;
 
 export function ProfileScreen() {
+  const navigation = useNavigation<ProfileNavigationProp>();
   const { user, signOut } = useAuth();
 
   if (!user) {
@@ -32,13 +39,14 @@ export function ProfileScreen() {
           <View style={styles.chipRow}>
             {user.interests.map((interest) => (
               <View key={interest} style={styles.chip}>
-                <Text style={styles.chipText}>{interest}</Text>
+                <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
               </View>
             ))}
           </View>
         </View>
       ) : null}
 
+      <PrimaryButton label="Profili Düzenle" onPress={() => navigation.navigate("EditProfile")} />
       <PrimaryButton label="Çıkış Yap" onPress={signOut} variant="outline" />
     </ScrollView>
   );

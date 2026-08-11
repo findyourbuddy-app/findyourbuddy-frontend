@@ -30,15 +30,16 @@ App.tsx                    Font yükleme (Baloo 2 / Inter) + splash + Auth/Messa
 src/
   theme/                    Renk/tipografi/spacing token'ları — ekranlarda hardcoded stil yok
   constants/categories.ts   Etkinlik kategorisi → ikon + gradient + filtre chip eşlemesi (config-driven)
-  utils/                    Saf yardımcı fonksiyonlar (tarih formatlama, uyum yüzdesi) + Jest testleri
+  constants/interests.ts    Sabit ilgi alanı listesi (slug + label) — profil düzenleme ve etiket gösterimi için
+  utils/                    Saf yardımcı fonksiyonlar (tarih formatlama, uyum yüzdesi, yaş validasyonu) + Jest testleri
   api/                      Backend endpoint'lerine karşılık gelen istek fonksiyonları
-  context/                  AuthContext (oturum/token), MessagesContext (okunmamış mesaj rozeti)
-  navigation/                RootNavigator — Auth stack + (Keşfet/Eşleş/Mesajlar) tab + Chat/Profile stack
+  context/                  AuthContext (oturum/token/güncel kullanıcı), MessagesContext (okunmamış mesaj rozeti)
+  navigation/                RootNavigator — Auth stack + (Keşfet/Eşleş/Mesajlar) tab + Chat/Profile/EditProfile stack
   components/
     ui/                     Chip, Badge, PrimaryButton, Avatar, SectionHeader
     navigation/              FloatingTabBar — özel yüzen tab bar
     cards/                   EventCard, EventListItem, SwipeCandidateCard, MatchPreviewCard, ChatListItem
-  screens/                  Login, Register, Discover, Swipe, Messages, Chat, Profile
+  screens/                  Login, Register, Discover, Swipe, Messages, Chat, Profile, EditProfile
   types/                    Backend Pydantic şemalarına karşılık gelen TS tipleri
 ```
 
@@ -49,7 +50,7 @@ src/
 - Etkinlikler: `GET /events/`, `GET /events/{id}`, `POST /events/`
 - Swipe: `GET /swipes/candidates?event_id=`, `POST /swipes/`
 - Eşleşmeler: `GET /matches/` — yanıt artık `other_user` (karşı kullanıcının adı/fotoğrafı) ve `last_message` (varsa son mesaj) içeriyor
-- Mesajlar: `GET/POST /matches/{id}/messages/`
+- Mesajlar: `GET/POST /matches/{id}/messages/`. Backend'de mesajları okundu işaretleyen `PATCH /matches/{id}/messages/read` da var ama frontend henüz çağırmıyor — okunmamış rozeti hâlâ `last_message.is_read`'den best-effort hesaplanıyor (bkz. aşağıdaki sapmalar).
 
 ## Mockup'tan bilinçli sapmalar
 
@@ -61,6 +62,14 @@ src/
 - **Mesajlar sekmesindeki okunmamış kırmızı nokta best-effort'tur.** Backend'de mesajı "okundu" işaretleyen bir endpoint henüz yok (bilinçli ertelenmiş karar, bkz. backend `docs/tech-kararlari.md`) — nokta, son çekilen `last_message.is_read` alanından hesaplanıyor; bir sohbeti açmak sunucu tarafında okundu işaretlemiyor.
 - **Bookmark (kaydet) ikonu sadece ekran içi local state** — kalıcı değil, sayfa yenilenince sıfırlanır, backend'e dokunulmadı.
 - **`ChatScreen` mockup'ta yok**, mevcut tema diliyle (krem zemin, mor/beyaz konuşma balonları) tutarlı olarak tasarlandı.
+- **Kayıt sonrası profil tamamlama zorunlu değil.** Backend'de age/bio/interests/location alanlarının hiçbiri zorunlu değil; `signUp` sonrası kullanıcı bir kerelik `EditProfile`'a düşer ama "Şimdi değil" ile atlayıp normal akışa (Discover) geçebilir. Daha sonra `Profil → Profili Düzenle`'den her zaman tamamlanabilir.
+- **İlgi alanları sabit bir frontend listesinden seçiliyor** (`src/constants/interests.ts`), backend'de bir enum/validasyon yok (serbest `list[str]`). Listede olmayan (ör. eski/elle girilmiş) bir ilgi alanı varsa ekranlarda olduğu gibi (slug) gösterilir.
+
+## Yeni bağımlılıklar (profil düzenleme)
+
+- `expo-location`: "Konumumu Kullan" — tek seferlik ön plan konum izni + `getCurrentPositionAsync`, arka plan izni istenmiyor.
+- `expo-image-picker`: profil fotoğrafı için galeriden seçim (kamera kullanılmıyor).
+- İkisi de izin reddedilirse `Alert` ile anlaşılır bir mesaj gösterir, uygulamayı çökertmez.
 
 ## Not
 
