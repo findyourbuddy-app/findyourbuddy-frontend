@@ -12,6 +12,7 @@ import { SwipeScreen } from "../screens/SwipeScreen";
 import { MessagesScreen } from "../screens/MessagesScreen";
 import { ChatScreen } from "../screens/ChatScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
+import { EditProfileScreen } from "../screens/EditProfileScreen";
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -30,6 +31,7 @@ export type MainStackParamList = {
   Tabs: undefined;
   Chat: { matchId: number; otherUserName: string };
   Profile: undefined;
+  EditProfile: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -59,8 +61,10 @@ function MainTabNavigator() {
 }
 
 function MainNavigator() {
+  const { justRegistered } = useAuth();
+
   return (
-    <MainStack.Navigator>
+    <MainStack.Navigator initialRouteName={justRegistered ? "EditProfile" : "Tabs"}>
       <MainStack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false }} />
       <MainStack.Screen
         name="Chat"
@@ -68,6 +72,11 @@ function MainNavigator() {
         options={({ route }) => ({ title: route.params.otherUserName })}
       />
       <MainStack.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
+      <MainStack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ title: "Profili Düzenle" }}
+      />
     </MainStack.Navigator>
   );
 }

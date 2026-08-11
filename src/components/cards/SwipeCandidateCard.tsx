@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet, Text, View } from "react-native";
+import { getInterestLabel } from "../../constants/interests";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 import type { User } from "../../types";
 
@@ -37,7 +38,7 @@ export function SwipeCandidateCard({ candidate }: SwipeCandidateCardProps) {
           <View style={styles.chipRow}>
             {candidate.interests.slice(0, 3).map((interest) => (
               <View key={interest} style={styles.chip}>
-                <Text style={styles.chipText}>{interest}</Text>
+                <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
               </View>
             ))}
           </View>

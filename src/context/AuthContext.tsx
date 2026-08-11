@@ -1,18 +1,21 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import * as SecureStore from "expo-secure-store";
 import { setAuthToken } from "../api/client";
 import { login as loginRequest, register as registerRequest } from "../api/auth";
 import { getCurrentUser } from "../api/users";
 import { AUTH_TOKEN_STORAGE_KEY } from "../constants/config";
+import { deleteToken, getToken, setToken } from "../utils/tokenStorage";
 import type { LoginPayload, RegisterPayload, User } from "../types";
 
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
+  justRegistered: boolean;
   signIn: (payload: LoginPayload) => Promise<void>;
   signUp: (payload: RegisterPayload) => Promise<void>;
   signOut: () => Promise<void>;
+  updateUser: (user: User) => void;
+  clearJustRegistered: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -20,19 +23,20 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [justRegistered, setJustRegistered] = useState(false);
 
   useEffect(() => {
     restoreSession();
   }, []);
 
   async function restoreSession(): Promise<void> {
-    const token = await SecureStore.getItemAsync(AUTH_TOKEN_STORAGE_KEY);
+    const token = await getToken(AUTH_TOKEN_STORAGE_KEY);
     if (token) {
       setAuthToken(token);
       try {
         setUser(await getCurrentUser());
       } catch {
-        await SecureStore.deleteItemAsync(AUTH_TOKEN_STORAGE_KEY);
+        await deleteToken(AUTH_TOKEN_STORAGE_KEY);
         setAuthToken(null);
       }
     }
@@ -41,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(payload: LoginPayload): Promise<void> {
     const token = await loginRequest(payload);
-    await SecureStore.setItemAsync(AUTH_TOKEN_STORAGE_KEY, token.access_token);
+    await setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token);
     setAuthToken(token.access_token);
     setUser(await getCurrentUser());
   }
@@ -49,17 +53,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signUp(payload: RegisterPayload): Promise<void> {
     await registerRequest(payload);
     await signIn({ email: payload.email, password: payload.password });
+    setJustRegistered(true);
   }
 
   async function signOut(): Promise<void> {
-    await SecureStore.deleteItemAsync(AUTH_TOKEN_STORAGE_KEY);
+    await deleteToken(AUTH_TOKEN_STORAGE_KEY);
     setAuthToken(null);
     setUser(null);
+    setJustRegistered(false);
+  }
+
+  function updateUser(nextUser: User): void {
+    setUser(nextUser);
+  }
+
+  function clearJustRegistered(): void {
+    setJustRegistered(false);
   }
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isLoading, signIn, signUp, signOut }),
-    [user, isLoading]
+    () => ({ user, isLoading, justRegistered, signIn, signUp, signOut, updateUser, clearJustRegistered }),
+    [user, isLoading, justRegistered]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

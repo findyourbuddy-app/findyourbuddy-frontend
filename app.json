@@ -32,6 +32,18 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 160
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Profil fotoğrafı seçebilmek için galeriye erişim izni gerekiyor."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Sana yakın etkinlikleri gösterebilmek için konumuna erişim izni gerekiyor."
+        }
       ]
     ]
   }
