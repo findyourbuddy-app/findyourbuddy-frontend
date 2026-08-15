@@ -52,6 +52,7 @@ export function MessagesScreen() {
       matchId: match.id,
       otherUserId: match.other_user.id,
       otherUserName: match.other_user.display_name,
+      needsFeedback: match.needs_feedback,
     });
   }
 

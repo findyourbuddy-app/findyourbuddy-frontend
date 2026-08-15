@@ -21,6 +21,9 @@ import { BlockedUsersScreen } from "../screens/BlockedUsersScreen";
 import { CreateEventScreen } from "../screens/CreateEventScreen";
 import { EventDetailScreen } from "../screens/EventDetailScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
+import { LikesReceivedScreen } from "../screens/LikesReceivedScreen";
+import { CandidateProfileScreen } from "../screens/CandidateProfileScreen";
+import type { User } from "../types";
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -39,7 +42,7 @@ export type MainTabParamList = {
 
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<MainTabParamList> | undefined;
-  Chat: { matchId: number; otherUserId: number; otherUserName: string };
+  Chat: { matchId: number; otherUserId: number; otherUserName: string; needsFeedback?: boolean };
   Profile: undefined;
   EditProfile: undefined;
   Settings: undefined;
@@ -47,6 +50,13 @@ export type MainStackParamList = {
   CreateEvent: undefined;
   EventDetail: { eventId: number };
   Notifications: undefined;
+  LikesReceived: undefined;
+  CandidateProfile: {
+    candidate: User;
+    onSwipeLeft: () => void;
+    onSwipeRight: () => void;
+    onSwipeUp: () => void;
+  };
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -125,6 +135,16 @@ function MainNavigator() {
         name="Notifications"
         component={NotificationsScreen}
         options={{ title: "Bildirimler" }}
+      />
+      <MainStack.Screen
+        name="LikesReceived"
+        component={LikesReceivedScreen}
+        options={{ title: "Seni Beğenenler" }}
+      />
+      <MainStack.Screen
+        name="CandidateProfile"
+        component={CandidateProfileScreen}
+        options={({ route }) => ({ title: route.params.candidate.display_name })}
       />
     </MainStack.Navigator>
   );

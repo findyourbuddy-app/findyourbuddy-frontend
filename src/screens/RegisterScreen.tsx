@@ -21,6 +21,19 @@ export function RegisterScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(): Promise<void> {
+    if (!displayName.trim()) {
+      setError("Lütfen adınızı ve soyadınızı girin.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError("Lütfen geçerli bir e-posta adresi girin.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Şifreniz en az 6 karakter olmalıdır.");
+      return;
+    }
     if (!acceptedTerms) {
       setError("Devam etmek için Kullanım Şartları ve Gizlilik Politikası'nı kabul etmelisin.");
       return;

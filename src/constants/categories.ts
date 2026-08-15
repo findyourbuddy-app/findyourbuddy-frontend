@@ -28,6 +28,10 @@ export const CATEGORIES: CategoryMeta[] = [
   { slug: "boardgames", label: "Kutu Oyunu", icon: "square", gradient: ["#F7A6C4", "#D9427F"] },
   { slug: "football", label: "Futbol", icon: "circle", gradient: ["#8FE28C", "#2F9E4F"] },
   { slug: "party", label: "Parti", icon: "star", gradient: ["#FFC93C", "#FF8A3C"] },
+  { slug: "theatre", label: "Tiyatro & Gösteri", icon: "video", gradient: ["#C9A0DC", "#7B4397"] },
+  { slug: "art", label: "Sanat & Kültür", icon: "image", gradient: ["#FFB6C1", "#E0607E"] },
+  { slug: "workshop", label: "Atölye", icon: "tool", gradient: ["#F6C177", "#D98324"] },
+  { slug: "hobby", label: "Hobi & Yaşam Tarzı", icon: "smile", gradient: ["#A8DADC", "#457B9D"] },
   OTHER_CATEGORY,
 ];
 

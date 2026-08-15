@@ -1,5 +1,18 @@
+import { Platform } from "react-native";
 import { apiClient } from "./client";
 import type { User, UserPhoto, UserUpdate } from "../types";
+
+// RN's FormData polyfill understands { uri, name, type } on native, but on
+// web FormData is the real browser API and needs an actual Blob/File --
+// passing the RN-style object there silently produces an empty upload.
+async function toUploadFile(uri: string, fileName: string): Promise<Blob> {
+  if (Platform.OS === "web") {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return new File([blob], fileName, { type: blob.type || "image/jpeg" });
+  }
+  return { uri, name: fileName, type: "image/jpeg" } as unknown as Blob;
+}
 
 export function getCurrentUser(): Promise<User> {
   return apiClient.get<User>("/users/me").then((res) => res.data);
@@ -13,13 +26,9 @@ export function deleteCurrentUser(): Promise<void> {
   return apiClient.delete("/users/me").then(() => undefined);
 }
 
-export function uploadProfilePhoto(uri: string, fileName: string): Promise<User> {
+export async function uploadProfilePhoto(uri: string, fileName: string): Promise<User> {
   const formData = new FormData();
-  formData.append("file", {
-    uri,
-    name: fileName,
-    type: "image/jpeg",
-  } as unknown as Blob);
+  formData.append("file", await toUploadFile(uri, fileName));
 
   return apiClient
     .post<User>("/users/me/photo", formData, {
@@ -32,13 +41,9 @@ export function listMyPhotos(): Promise<UserPhoto[]> {
   return apiClient.get<UserPhoto[]>("/users/me/photos").then((res) => res.data);
 }
 
-export function uploadGalleryPhoto(uri: string, fileName: string): Promise<UserPhoto> {
+export async function uploadGalleryPhoto(uri: string, fileName: string): Promise<UserPhoto> {
   const formData = new FormData();
-  formData.append("file", {
-    uri,
-    name: fileName,
-    type: "image/jpeg",
-  } as unknown as Blob);
+  formData.append("file", await toUploadFile(uri, fileName));
 
   return apiClient
     .post<UserPhoto>("/users/me/photos", formData, {

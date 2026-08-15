@@ -3,23 +3,21 @@ import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Avatar } from "../components/ui/Avatar";
-import { Badge } from "../components/ui/Badge";
-import { PrimaryButton } from "../components/ui/PrimaryButton";
-import { useAuth } from "../context/AuthContext";
 import { getInterestLabel } from "../constants/interests";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 
-type ProfileNavigationProp = NativeStackNavigationProp<MainStackParamList, "Profile">;
+type Props = NativeStackScreenProps<MainStackParamList, "CandidateProfile">;
 
-export function ProfileScreen() {
-  const navigation = useNavigation<ProfileNavigationProp>();
-  const { user, signOut, isPremium } = useAuth();
+export function CandidateProfileScreen({ route }: Props) {
+  const { candidate, onSwipeLeft, onSwipeRight, onSwipeUp } = route.params;
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
 
-  if (!user) {
-    return null;
+  function act(action: () => void): void {
+    action();
+    navigation.goBack();
   }
 
   return (
@@ -30,23 +28,26 @@ export function ProfileScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.heroCard}
       >
-        <View style={styles.avatarRing}>
-          <Avatar name={user.display_name} photoUrl={user.photo_url} size={88} />
-        </View>
-        <Text style={styles.heroName}>{user.display_name}</Text>
-        <Text style={styles.heroEmail}>{user.email}</Text>
-        {isPremium ? (
-          <View style={styles.heroBadge}>
-            <Badge label="Premium Üye" variant="yellow" icon="⭐" />
+        <Avatar name={candidate.display_name} photoUrl={candidate.photo_url} size={96} />
+        <Text style={styles.heroName}>
+          {candidate.display_name}
+          {candidate.age ? `, ${candidate.age}` : ""}
+        </Text>
+        {candidate.trust_score > 0 ? (
+          <View style={styles.trustBadge}>
+            <Feather name="check-circle" size={13} color={colors.surface} />
+            <Text style={styles.trustText}>
+              {candidate.trust_score} kişi gerçekten buluştuğunu onayladı
+            </Text>
           </View>
         ) : null}
       </LinearGradient>
 
-      {user.photos.length > 0 ? (
+      {candidate.photos.length > 0 ? (
         <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Fotoğraflarım</Text>
+          <Text style={typeScale.eyebrow}>Fotoğraflar</Text>
           <FlatList
-            data={user.photos}
+            data={candidate.photos}
             keyExtractor={(photo) => String(photo.id)}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -58,18 +59,18 @@ export function ProfileScreen() {
         </View>
       ) : null}
 
-      {user.bio ? (
+      {candidate.bio ? (
         <View style={styles.card}>
           <Text style={typeScale.eyebrow}>Hakkında</Text>
-          <Text style={styles.bio}>{user.bio}</Text>
+          <Text style={styles.bio}>{candidate.bio}</Text>
         </View>
       ) : null}
 
-      {user.interests.length > 0 ? (
+      {candidate.interests.length > 0 ? (
         <View style={styles.card}>
           <Text style={typeScale.eyebrow}>İlgi Alanları</Text>
           <View style={styles.chipRow}>
-            {user.interests.map((interest) => (
+            {candidate.interests.map((interest) => (
               <View key={interest} style={styles.chip}>
                 <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
               </View>
@@ -78,34 +79,30 @@ export function ProfileScreen() {
         </View>
       ) : null}
 
-      <View style={styles.actionsCard}>
-        <PrimaryButton label="Profili Düzenle" onPress={() => navigation.navigate("EditProfile")} />
+      <View style={styles.actionRow}>
         <Pressable
-          style={styles.actionRow}
-          onPress={() => navigation.navigate("Settings")}
+          style={[styles.actionButton, styles.passButton]}
+          onPress={() => act(onSwipeLeft)}
           accessibilityRole="button"
-          accessibilityLabel="Ayarlar"
+          accessibilityLabel="Geç"
         >
-          <View style={styles.actionRowLeft}>
-            <View style={styles.actionIcon}>
-              <Feather name="settings" size={16} color={colors.primary} />
-            </View>
-            <Text style={styles.actionLabel}>Ayarlar</Text>
-          </View>
-          <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+          <Feather name="x" size={22} color={colors.textSecondary} />
         </Pressable>
         <Pressable
-          style={styles.actionRow}
-          onPress={signOut}
+          style={[styles.actionButton, styles.superButton]}
+          onPress={() => act(onSwipeUp)}
           accessibilityRole="button"
-          accessibilityLabel="Çıkış Yap"
+          accessibilityLabel="Süper beğen"
         >
-          <View style={styles.actionRowLeft}>
-            <View style={[styles.actionIcon, styles.actionIconDanger]}>
-              <Feather name="log-out" size={16} color={colors.accentRed} />
-            </View>
-            <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Çıkış Yap</Text>
-          </View>
+          <Feather name="star" size={20} color={colors.surface} />
+        </Pressable>
+        <Pressable
+          style={[styles.actionButton, styles.likeButton]}
+          onPress={() => act(onSwipeRight)}
+          accessibilityRole="button"
+          accessibilityLabel="Beğen"
+        >
+          <Feather name="heart" size={22} color={colors.surface} />
         </Pressable>
       </View>
     </ScrollView>
@@ -120,6 +117,7 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.xl,
     gap: spacing.lg,
+    paddingBottom: 60,
   },
   heroCard: {
     alignItems: "center",
@@ -129,24 +127,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     ...shadows.card,
   },
-  avatarRing: {
-    padding: 4,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.35)",
-    marginBottom: spacing.sm,
-  },
   heroName: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 22,
     color: colors.surface,
-  },
-  heroEmail: {
-    fontFamily: fontFamily.body,
-    fontSize: 14,
-    color: "rgba(255,255,255,0.85)",
-  },
-  heroBadge: {
     marginTop: spacing.sm,
+  },
+  trustBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    marginTop: spacing.xs,
+  },
+  trustText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 12,
+    color: colors.surface,
   },
   card: {
     backgroundColor: colors.surface,
@@ -156,8 +156,8 @@ const styles = StyleSheet.create({
     ...shadows.soft,
   },
   galleryImage: {
-    width: 96,
-    height: 96,
+    width: 120,
+    height: 120,
     borderRadius: radius.sm,
   },
   bio: {
@@ -181,41 +181,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.primary,
   },
-  actionsCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadows.soft,
-  },
   actionRow: {
     flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: spacing.sm,
+    gap: spacing.lg,
+    marginTop: spacing.md,
   },
-  actionRowLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  actionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primaryMuted,
+  actionButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
+    ...shadows.soft,
   },
-  actionIconDanger: {
-    backgroundColor: "#FFE5E8",
+  passButton: {
+    backgroundColor: colors.surface,
   },
-  actionLabel: {
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 15,
-    color: colors.textPrimary,
+  superButton: {
+    backgroundColor: "#2E7FC9",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
-  actionLabelDanger: {
-    color: colors.accentRed,
+  likeButton: {
+    backgroundColor: colors.primary,
   },
 });

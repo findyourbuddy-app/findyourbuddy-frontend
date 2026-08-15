@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import axios from "axios";
-import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import type { CompositeNavigationProp, RouteProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
@@ -14,6 +13,7 @@ import { SwipeFiltersModal } from "../components/overlays/SwipeFiltersModal";
 import { listEvents } from "../api/events";
 import { createSwipe, getSwipeCandidates } from "../api/swipes";
 import type { SwipeCandidateFilters } from "../api/swipes";
+import { useAuth } from "../context/AuthContext";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { User, UserPublic } from "../types";
@@ -31,6 +31,7 @@ type SwipeNavigationProp = CompositeNavigationProp<
 export function SwipeScreen() {
   const navigation = useNavigation<SwipeNavigationProp>();
   const route = useRoute<RouteProp<MainTabParamList, "Swipe">>();
+  const { isPremium } = useAuth();
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
   const [candidates, setCandidates] = useState<User[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -84,7 +85,7 @@ export function SwipeScreen() {
     setFiltersVisible(false);
   }
 
-  async function handleSwipe(direction: "like" | "pass"): Promise<void> {
+  async function handleSwipe(direction: "like" | "pass" | "super_like"): Promise<void> {
     const target = candidates[currentIndex];
     if (!activeEvent || !target) {
       return;
@@ -97,7 +98,15 @@ export function SwipeScreen() {
       setCurrentIndex((index) => index + 1);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 429) {
-        Alert.alert("Günlük limit doldu", "Bugünlük swipe hakkın bitti, yarın tekrar dene.");
+        const detail = error.response.data?.detail as string | undefined;
+        if (detail === "Daily super like limit reached") {
+          Alert.alert(
+            "Süper beğeni hakkın bitti",
+            "Bugünlük süper beğeni hakkın doldu, yarın tekrar dene ya da Premium'a geç."
+          );
+        } else {
+          Alert.alert("Günlük limit doldu", "Bugünlük swipe hakkın bitti, yarın tekrar dene.");
+        }
       } else {
         Alert.alert("Bir sorun oluştu", "Swipe kaydedilemedi. Lütfen tekrar dene.");
       }
@@ -123,12 +132,18 @@ export function SwipeScreen() {
         <View style={styles.headerActions}>
           <Pressable
             style={styles.iconButton}
-            onPress={() => handleSwipe("pass")}
-            disabled={!activeEvent || isLoading}
+            onPress={() => navigation.navigate("LikesReceived")}
+            accessibilityRole="button"
+            accessibilityLabel="Seni beğenenler"
           >
-            <Feather name="x" size={16} color={colors.textSecondary} />
+            <Feather name="heart" size={16} color={colors.primary} />
           </Pressable>
-          <Pressable style={styles.iconButton} onPress={() => setFiltersVisible(true)}>
+          <Pressable
+            style={styles.iconButton}
+            onPress={() => setFiltersVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Filtreler"
+          >
             <Feather name="sliders" size={16} color={colors.textPrimary} />
           </Pressable>
         </View>
@@ -153,7 +168,20 @@ export function SwipeScreen() {
             </Text>
           </View>
         ) : candidates[currentIndex] ? (
-          <SwipeCandidateCard candidate={candidates[currentIndex]} />
+          <SwipeCandidateCard
+            candidate={candidates[currentIndex]}
+            onSwipeLeft={() => handleSwipe("pass")}
+            onSwipeRight={() => handleSwipe("like")}
+            onSwipeUp={() => handleSwipe("super_like")}
+            onPressProfile={() =>
+              navigation.navigate("CandidateProfile", {
+                candidate: candidates[currentIndex],
+                onSwipeLeft: () => handleSwipe("pass"),
+                onSwipeRight: () => handleSwipe("like"),
+                onSwipeUp: () => handleSwipe("super_like"),
+              })
+            }
+          />
         ) : (
           <View style={styles.center}>
             <Text style={styles.emptyText}>Bu etkinlik için başka aday kalmadı.</Text>
@@ -162,13 +190,32 @@ export function SwipeScreen() {
       </View>
 
       {activeEvent && candidates[currentIndex] ? (
-        <LinearGradient colors={[colors.accentYellow, "#FFB23C"]} style={styles.ctaWrapper}>
-          <Pressable onPress={() => handleSwipe("like")} style={styles.ctaButton}>
-            <Text style={styles.ctaText}>
-              📍 {activeEvent.title} için {candidates[currentIndex].display_name} ile buluşmak istiyor
-            </Text>
+        <View style={styles.actionRow}>
+          <Pressable
+            style={[styles.actionButton, styles.passButton]}
+            onPress={() => handleSwipe("pass")}
+            accessibilityRole="button"
+            accessibilityLabel="Geç"
+          >
+            <Feather name="x" size={24} color={colors.textSecondary} />
           </Pressable>
-        </LinearGradient>
+          <Pressable
+            style={[styles.actionButton, styles.superLikeButton]}
+            onPress={() => handleSwipe("super_like")}
+            accessibilityRole="button"
+            accessibilityLabel="Süper beğen"
+          >
+            <Feather name="star" size={20} color={colors.surface} />
+          </Pressable>
+          <Pressable
+            style={[styles.actionButton, styles.likeButton]}
+            onPress={() => handleSwipe("like")}
+            accessibilityRole="button"
+            accessibilityLabel="Beğen"
+          >
+            <Feather name="heart" size={24} color={colors.surface} />
+          </Pressable>
+        </View>
       ) : null}
 
       <MatchCelebrationModal
@@ -180,6 +227,7 @@ export function SwipeScreen() {
       <SwipeFiltersModal
         visible={filtersVisible}
         initialFilters={filters}
+        isPremium={isPremium}
         onApply={handleApplyFilters}
         onDismiss={() => setFiltersVisible(false)}
       />
@@ -243,17 +291,38 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: "center",
   },
-  ctaWrapper: {
-    borderRadius: radius.card,
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.lg,
+    paddingVertical: spacing.sm,
   },
-  ctaButton: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+  actionButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  ctaText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 14,
-    color: colors.textPrimary,
-    textAlign: "center",
+  passButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surface,
+  },
+  superLikeButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#2E7FC9",
+  },
+  likeButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary,
   },
 });

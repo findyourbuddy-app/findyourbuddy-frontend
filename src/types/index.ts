@@ -18,6 +18,7 @@ export interface User {
   photo_url: string | null;
   accepted_terms_at: string | null;
   photos: UserPhoto[];
+  trust_score: number;
 }
 
 export interface UserUpdate {
@@ -61,6 +62,7 @@ export interface Event {
   source_url: string | null;
   image_url: string | null;
   created_at: string;
+  attendee_count: number;
 }
 
 export interface EventCreate {
@@ -73,7 +75,7 @@ export interface EventCreate {
   starts_at: string;
 }
 
-export type SwipeDirection = "like" | "pass";
+export type SwipeDirection = "like" | "pass" | "super_like";
 
 export interface SwipeCreate {
   target_id: number;
@@ -96,6 +98,7 @@ export interface UserPublic {
   id: number;
   display_name: string;
   photo_url: string | null;
+  trust_score: number;
 }
 
 export interface Message {
@@ -146,6 +149,11 @@ export interface Bookmark {
   created_at: string;
 }
 
+export interface SubscriptionStatus {
+  is_premium: boolean;
+  expires_at: string | null;
+}
+
 export interface Match {
   id: number;
   event_id: number;
@@ -155,4 +163,5 @@ export interface Match {
   created_at: string;
   other_user: UserPublic;
   last_message: Message | null;
+  needs_feedback: boolean;
 }

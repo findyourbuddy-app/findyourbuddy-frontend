@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import axios from "axios";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { listMessages, markMessagesAsRead, sendMessage } from "../api/messages";
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
+import { db } from "../config/firebase";
+import { markMessagesAsRead, sendMessage } from "../api/messages";
+import { submitMatchFeedback } from "../api/matches";
 import { blockUser, reportUser } from "../api/safety";
 import { useAuth } from "../context/AuthContext";
 import { useMessagesContext } from "../context/MessagesContext";
@@ -24,7 +26,7 @@ const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
 ];
 
 export function ChatScreen({ route }: Props) {
-  const { matchId, otherUserId, otherUserName } = route.params;
+  const { matchId, otherUserId, otherUserName, needsFeedback } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
@@ -32,6 +34,14 @@ export function ChatScreen({ route }: Props) {
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
+
+  function answerFeedback(metInPerson: boolean | null): void {
+    setShowFeedbackBanner(false);
+    submitMatchFeedback(matchId, metInPerson).catch(() => {
+      // Best-effort; this is a lightweight prompt, not a critical flow.
+    });
+  }
 
   function confirmBlock(): void {
     Alert.alert(
@@ -95,20 +105,57 @@ export function ChatScreen({ route }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otherUserId, otherUserName]);
 
-  const loadMessages = useCallback(async () => {
-    try {
-      setMessages(await listMessages(matchId));
-      await markMessagesAsRead(matchId);
-      await refreshUnread();
-    } catch {
-      setErrorText("Mesajlar yüklenemedi. Lütfen tekrar dene.");
-    }
-  }, [matchId, refreshUnread]);
+  // Real-time Firestore message listener
+  useEffect(() => {
+    if (!user) return;
+    
+    setErrorText(null);
+    const messagesRef = collection(db, "matches", String(matchId), "messages");
+    const q = query(messagesRef, orderBy("created_at", "asc"));
+    
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list: Message[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          list.push({
+            id: docSnap.id as any,
+            sender_id: data.sender_id,
+            content: data.content,
+            created_at: data.created_at?.toDate()?.toISOString() || new Date().toISOString(),
+            is_read: data.is_read || false,
+          });
 
+          // Mark incoming unread messages as read in Firestore
+          if (data.sender_id !== user.id && !data.is_read) {
+            const docRef = doc(db, "matches", String(matchId), "messages", docSnap.id);
+            updateDoc(docRef, { is_read: true }).catch(() => {});
+          }
+        });
+        setMessages(list);
+      },
+      () => {
+        setErrorText("Gerçek zamanlı sohbet bağlantı hatası.");
+      }
+    );
+
+    return () => unsubscribe();
+  }, [matchId, user]);
+
+  // Sync read status to PostgreSQL backend on screen focus
   useFocusEffect(
     useCallback(() => {
-      loadMessages();
-    }, [loadMessages])
+      async function syncReadStatus() {
+        try {
+          await markMessagesAsRead(matchId);
+          await refreshUnread();
+        } catch {
+          // Non-blocking; Postgres sync error
+        }
+      }
+      syncReadStatus();
+    }, [matchId, refreshUnread])
   );
 
   async function handleSend(): Promise<void> {
@@ -118,16 +165,25 @@ export function ChatScreen({ route }: Props) {
     }
     setErrorText(null);
     setIsSending(true);
+    setDraft("");
+
     try {
-      const sent = await sendMessage(matchId, { content });
-      setMessages((current) => [...current, sent]);
-      setDraft("");
+      // 1. Add to Firestore for real-time delivery
+      const messagesRef = collection(db, "matches", String(matchId), "messages");
+      await addDoc(messagesRef, {
+        sender_id: user.id,
+        content: content,
+        created_at: serverTimestamp(),
+        is_read: false,
+      });
+
+      // 2. Sync to Postgres and trigger Push Notifications in background
+      sendMessage(matchId, { content }).catch(() => {
+        // Silently catch sync failures (offline mode support)
+      });
+
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 422) {
-        setErrorText("Bu mesaj gönderilemedi, lütfen farklı bir şekilde ifade et.");
-      } else {
-        setErrorText("Mesaj gönderilirken bir sorun oluştu. Tekrar dene.");
-      }
+      setErrorText("Mesaj gönderilemedi. Lütfen tekrar dene.");
     } finally {
       setIsSending(false);
     }
@@ -143,6 +199,29 @@ export function ChatScreen({ route }: Props) {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={80}
     >
+      {showFeedbackBanner ? (
+        <View style={styles.feedbackBanner}>
+          <Text style={styles.feedbackText}>{otherUserName} ile buluştun mu?</Text>
+          <View style={styles.feedbackActions}>
+            <Pressable
+              style={[styles.feedbackButton, styles.feedbackButtonYes]}
+              onPress={() => answerFeedback(true)}
+            >
+              <Text style={styles.feedbackButtonText}>Evet 👍</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.feedbackButton, styles.feedbackButtonNo]}
+              onPress={() => answerFeedback(false)}
+            >
+              <Text style={styles.feedbackButtonTextNo}>Hayır</Text>
+            </Pressable>
+            <Pressable style={styles.feedbackDismiss} onPress={() => answerFeedback(null)}>
+              <Feather name="x" size={16} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       <FlatList
         contentContainerStyle={styles.messageList}
         data={messages}
@@ -201,6 +280,52 @@ const styles = StyleSheet.create({
   messageList: {
     padding: spacing.lg,
     gap: spacing.sm,
+  },
+  feedbackBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.primaryMuted,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.card,
+    gap: spacing.sm,
+  },
+  feedbackText: {
+    flex: 1,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  feedbackActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  feedbackButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+  },
+  feedbackButtonYes: {
+    backgroundColor: colors.primary,
+  },
+  feedbackButtonNo: {
+    backgroundColor: colors.surface,
+  },
+  feedbackButtonText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.surface,
+  },
+  feedbackButtonTextNo: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.textPrimary,
+  },
+  feedbackDismiss: {
+    padding: spacing.xs,
   },
   bubbleRow: {
     flexDirection: "row",

@@ -27,8 +27,13 @@ export function createSwipe(data: SwipeCreate): Promise<Swipe> {
   return apiClient.post<Swipe>("/swipes/", data).then((res) => res.data);
 }
 
-export function getIncomingLikes(eventId: number): Promise<User[]> {
+export interface LikerResponse {
+  user: User;
+  event_id: number;
+}
+
+export function getIncomingLikes(eventId?: number): Promise<LikerResponse[]> {
   return apiClient
-    .get<User[]>("/swipes/likes-received", { params: { event_id: eventId } })
+    .get<LikerResponse[]>("/swipes/likes-received", { params: { event_id: eventId } })
     .then((res) => res.data);
 }

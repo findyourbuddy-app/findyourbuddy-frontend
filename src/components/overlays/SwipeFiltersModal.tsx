@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal, StyleSheet, Text, TextInput, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { colors, fontFamily, radius, spacing, typeScale } from "../../theme";
 import type { SwipeCandidateFilters } from "../../api/swipes";
@@ -7,6 +8,7 @@ import type { SwipeCandidateFilters } from "../../api/swipes";
 interface SwipeFiltersModalProps {
   visible: boolean;
   initialFilters: SwipeCandidateFilters;
+  isPremium: boolean;
   onApply: (filters: SwipeCandidateFilters) => void;
   onDismiss: () => void;
 }
@@ -25,6 +27,7 @@ function toNumber(text: string): number | undefined {
 export function SwipeFiltersModal({
   visible,
   initialFilters,
+  isPremium,
   onApply,
   onDismiss,
 }: SwipeFiltersModalProps) {
@@ -53,6 +56,26 @@ export function SwipeFiltersModal({
     setMaxAge("");
     setMaxDistanceKm("");
     onApply({});
+  }
+
+  if (!isPremium) {
+    return (
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
+        <View style={styles.backdrop}>
+          <View style={styles.card}>
+            <Feather name="lock" size={28} color={colors.primary} />
+            <Text style={typeScale.h1}>Gelişmiş Filtreler</Text>
+            <Text style={styles.upsellText}>
+              Yaş aralığı ve mesafe filtreleriyle sana en uygun kişileri bulmak Premium
+              üyelere özel.
+            </Text>
+            <View style={styles.actions}>
+              <PrimaryButton label="Kapat" variant="outline" onPress={onDismiss} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
   }
 
   return (
@@ -146,5 +169,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: spacing.sm,
+  },
+  upsellText: {
+    fontFamily: fontFamily.body,
+    fontSize: 14,
+    color: colors.textSecondary,
   },
 });

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -11,7 +11,7 @@ import { createBookmark, deleteBookmark, listMyBookmarks } from "../api/bookmark
 import { getEvent } from "../api/events";
 import { getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
-import { formatRelativeTimestamp } from "../utils/date";
+import { formatEventDate } from "../utils/date";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
 
@@ -63,6 +63,20 @@ export function EventDetailScreen({ route }: Props) {
     }
   }
 
+  const handleOpenMap = () => {
+    if (!event) return;
+    const scheme = Platform.select({ ios: "maps:0,0?q=", android: "geo:0,0?q=" });
+    const latLng = `${event.latitude},${event.longitude}`;
+    const label = event.location_name;
+    const url = Platform.select({
+      ios: `${scheme}${label}@${latLng}`,
+      android: `${scheme}${latLng}(${label})`,
+      default: `https://www.google.com/maps/search/?api=1&query=${latLng}`
+    });
+    
+    Linking.openURL(url);
+  };
+
   function goToSwipe(): void {
     if (!event) return;
     navigation.navigate("Tabs", {
@@ -107,16 +121,26 @@ export function EventDetailScreen({ route }: Props) {
 
         <View style={styles.metaRow}>
           <Feather name="clock" size={16} color={colors.textSecondary} />
-          <Text style={styles.metaText}>{formatRelativeTimestamp(event.starts_at)}</Text>
+          <Text style={styles.metaText}>{formatEventDate(event.starts_at)}</Text>
         </View>
-        <View style={styles.metaRow}>
-          <Feather name="map-pin" size={16} color={colors.textSecondary} />
-          <Text style={styles.metaText}>{event.location_name}</Text>
-        </View>
+        <Pressable style={styles.metaRow} onPress={handleOpenMap}>
+          <Feather name="map-pin" size={16} color={colors.primary} />
+          <Text style={[styles.metaText, { color: colors.primary, textDecorationLine: "underline" }]}>
+            {event.location_name} (Haritada Göster)
+          </Text>
+        </Pressable>
         <View style={styles.metaRow}>
           <Feather name={category.icon} size={16} color={colors.textSecondary} />
           <Text style={styles.metaText}>{category.label}</Text>
         </View>
+        {event.attendee_count > 0 ? (
+          <View style={styles.metaRow}>
+            <Feather name="users" size={16} color={colors.primary} />
+            <Text style={styles.attendeeText}>
+              {event.attendee_count} kişi bu etkinliğe ilgi gösteriyor
+            </Text>
+          </View>
+        ) : null}
 
         {event.description ? <Text style={styles.description}>{event.description}</Text> : null}
 
@@ -172,6 +196,11 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  attendeeText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 14,
+    color: colors.primary,
   },
   description: {
     fontFamily: fontFamily.body,

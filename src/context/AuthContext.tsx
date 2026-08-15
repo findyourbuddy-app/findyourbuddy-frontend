@@ -4,10 +4,19 @@ import { setAuthToken } from "../api/client";
 import { login as loginRequest, register as registerRequest } from "../api/auth";
 import { getCurrentUser } from "../api/users";
 import { registerDeviceToken, unregisterDeviceToken } from "../api/notifications";
+import { getMySubscription } from "../api/subscriptions";
 import { AUTH_TOKEN_STORAGE_KEY } from "../constants/config";
 import { deleteToken, getToken, setToken } from "../utils/tokenStorage";
 import { getExpoPushToken } from "../utils/pushNotifications";
-import type { LoginPayload, RegisterPayload, User } from "../types";
+import type { LoginPayload, RegisterPayload, SubscriptionStatus, User } from "../types";
+
+async function fetchSubscription(): Promise<SubscriptionStatus> {
+  try {
+    return await getMySubscription();
+  } catch {
+    return { is_premium: false, expires_at: null };
+  }
+}
 
 async function syncPushToken(): Promise<void> {
   try {
@@ -24,6 +33,9 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   justRegistered: boolean;
+  isPremium: boolean;
+  premiumExpiresAt: string | null;
+  refreshSubscription: () => Promise<void>;
   signIn: (payload: LoginPayload) => Promise<void>;
   signUp: (payload: RegisterPayload) => Promise<void>;
   signOut: () => Promise<void>;
@@ -37,6 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [justRegistered, setJustRegistered] = useState(false);
+  const [subscription, setSubscription] = useState<SubscriptionStatus>({
+    is_premium: false,
+    expires_at: null,
+  });
 
   useEffect(() => {
     restoreSession();
@@ -49,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setUser(await getCurrentUser());
         syncPushToken();
+        setSubscription(await fetchSubscription());
       } catch {
         await deleteToken(AUTH_TOKEN_STORAGE_KEY);
         setAuthToken(null);
@@ -63,6 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(token.access_token);
     setUser(await getCurrentUser());
     syncPushToken();
+    setSubscription(await fetchSubscription());
+  }
+
+  async function refreshSubscription(): Promise<void> {
+    setSubscription(await fetchSubscription());
   }
 
   async function signUp(payload: RegisterPayload): Promise<void> {
@@ -84,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(null);
     setUser(null);
     setJustRegistered(false);
+    setSubscription({ is_premium: false, expires_at: null });
   }
 
   function updateUser(nextUser: User): void {
@@ -95,8 +118,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isLoading, justRegistered, signIn, signUp, signOut, updateUser, clearJustRegistered }),
-    [user, isLoading, justRegistered]
+    () => ({
+      user,
+      isLoading,
+      justRegistered,
+      isPremium: subscription.is_premium,
+      premiumExpiresAt: subscription.expires_at,
+      refreshSubscription,
+      signIn,
+      signUp,
+      signOut,
+      updateUser,
+      clearJustRegistered,
+    }),
+    [user, isLoading, justRegistered, subscription]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

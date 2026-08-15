@@ -6,7 +6,7 @@ import { Badge } from "../ui/Badge";
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { getCategoryMeta } from "../../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../../theme";
-import { formatRelativeTimestamp, isToday } from "../../utils/date";
+import { formatEventDate, isToday } from "../../utils/date";
 import type { Event } from "../../types";
 
 interface EventCardProps {
@@ -15,13 +15,12 @@ interface EventCardProps {
   onToggleBookmark: () => void;
   onPressJoin: () => void;
   onPress?: () => void;
+  distanceLabel?: string;
 }
 
-export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, onPress }: EventCardProps) {
+export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, onPress, distanceLabel }: EventCardProps) {
   const category = getCategoryMeta(event.category);
-  const startLabel = isToday(event.starts_at)
-    ? `Bugün · ${formatRelativeTimestamp(event.starts_at)}`
-    : formatRelativeTimestamp(event.starts_at);
+  const startLabel = formatEventDate(event.starts_at);
 
   return (
     <Pressable style={styles.card} onPress={onPress} disabled={!onPress}>
@@ -54,9 +53,26 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
         <View style={styles.metaRow}>
           <Feather name="clock" size={14} color={colors.textSecondary} />
           <Text style={styles.metaText}>{startLabel}</Text>
-          <Feather name="map-pin" size={14} color={colors.textSecondary} style={styles.metaIconSpacer} />
-          <Text style={styles.metaText}>{event.location_name}</Text>
+          {distanceLabel ? (
+            <>
+              <Feather name="navigation" size={14} color={colors.primary} style={styles.metaIconSpacer} />
+              <Text style={[styles.metaText, { color: colors.primary, fontFamily: fontFamily.bodySemiBold }]}>{distanceLabel}</Text>
+            </>
+          ) : (
+            <>
+              <Feather name="map-pin" size={14} color={colors.textSecondary} style={styles.metaIconSpacer} />
+              <Text style={styles.metaText}>{event.location_name}</Text>
+            </>
+          )}
         </View>
+        {event.attendee_count > 0 ? (
+          <View style={styles.metaRow}>
+            <Feather name="users" size={14} color={colors.primary} />
+            <Text style={styles.attendeeText}>
+              {event.attendee_count} kişi bu etkinliğe ilgi gösteriyor
+            </Text>
+          </View>
+        ) : null}
         <PrimaryButton label="Kankaları Gör" onPress={onPressJoin} />
       </View>
     </Pressable>
@@ -114,5 +130,10 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  attendeeText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.primary,
   },
 });

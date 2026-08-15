@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { getCategoryMeta } from "../../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../../theme";
-import { formatRelativeTimestamp } from "../../utils/date";
+import { formatEventDate } from "../../utils/date";
 import type { Event } from "../../types";
 
 interface EventListItemProps {
@@ -12,9 +12,10 @@ interface EventListItemProps {
   bookmarked: boolean;
   onToggleBookmark: () => void;
   onPress: () => void;
+  distanceLabel?: string;
 }
 
-export function EventListItem({ event, bookmarked, onToggleBookmark, onPress }: EventListItemProps) {
+export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, distanceLabel }: EventListItemProps) {
   const category = getCategoryMeta(event.category);
 
   return (
@@ -22,7 +23,7 @@ export function EventListItem({ event, bookmarked, onToggleBookmark, onPress }: 
       style={styles.container}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${event.title}, ${formatRelativeTimestamp(event.starts_at)}`}
+      accessibilityLabel={`${event.title}, ${formatEventDate(event.starts_at)}`}
     >
       <View style={styles.thumbnail}>
         {event.image_url ? (
@@ -47,7 +48,14 @@ export function EventListItem({ event, bookmarked, onToggleBookmark, onPress }: 
         </Pressable>
       </View>
       <View style={styles.textColumn}>
-        <Text style={styles.meta}>{formatRelativeTimestamp(event.starts_at)}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+          <Text style={styles.meta}>{formatEventDate(event.starts_at)}</Text>
+          {distanceLabel && (
+            <Text style={[styles.meta, { color: colors.primary, fontFamily: fontFamily.bodySemiBold }]}>
+              {"  ·  "}{distanceLabel}
+            </Text>
+          )}
+        </View>
         <Text style={typeScale.h2}>{event.title}</Text>
       </View>
     </Pressable>

@@ -1,9 +1,9 @@
 import { apiClient } from "./client";
 import type { Event, EventCreate } from "../types";
 
-export function listEvents(category?: string, upcomingOnly = true): Promise<Event[]> {
+export function listEvents(category?: string, upcomingOnly = true, skip = 0, limit = 20): Promise<Event[]> {
   return apiClient
-    .get<Event[]>("/events/", { params: { category, upcoming_only: upcomingOnly } })
+    .get<Event[]>("/events/", { params: { category, upcoming_only: upcomingOnly, skip, limit } })
     .then((res) => res.data);
 }
 
