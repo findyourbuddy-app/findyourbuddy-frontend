@@ -19,6 +19,15 @@ export function LoginScreen() {
 
   async function handleSubmit(): Promise<void> {
     setError(null);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError("Lütfen geçerli bir e-posta adresi girin.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Şifreniz en az 6 karakter olmalıdır.");
+      return;
+    }
     setIsSubmitting(true);
     try {
       await signIn({ email, password });
@@ -57,6 +66,9 @@ export function LoginScreen() {
       />
       <TouchableOpacity onPress={() => navigation.navigate("Register")}>
         <Text style={styles.link}>Hesabın yok mu? Kayıt ol</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
+        <Text style={styles.link}>Şifremi unuttum</Text>
       </TouchableOpacity>
     </View>
   );

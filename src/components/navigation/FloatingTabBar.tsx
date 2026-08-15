@@ -36,7 +36,14 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
         }
 
         return (
-          <Pressable key={route.key} onPress={handlePress} style={styles.tab}>
+          <Pressable
+            key={route.key}
+            onPress={handlePress}
+            style={styles.tab}
+            accessibilityRole="tab"
+            accessibilityLabel={TAB_LABEL[route.name] ?? route.name}
+            accessibilityState={{ selected: isFocused }}
+          >
             <View style={[styles.iconWrapper, isFocused && styles.iconWrapperActive]}>
               <Feather name={icon} size={20} color={isFocused ? colors.surface : colors.textSecondary} />
               {route.name === "Messages" && hasUnreadMessages ? <View style={styles.unreadDot} /> : null}

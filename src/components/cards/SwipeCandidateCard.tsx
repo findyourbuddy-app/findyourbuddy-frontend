@@ -1,22 +1,146 @@
+import { useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet, Text, View } from "react-native";
+import { Animated, PanResponder, StyleSheet, Text, View } from "react-native";
+import type { LayoutChangeEvent } from "react-native";
 import { getInterestLabel } from "../../constants/interests";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 import type { User } from "../../types";
 
 interface SwipeCandidateCardProps {
   candidate: User;
+  onSwipeLeft: () => void;
+  onSwipeRight: () => void;
+  onSwipeUp: () => void;
+  onPressProfile: () => void;
 }
 
 const FALLBACK_GRADIENT: [string, string] = ["#B8AEE8", "#6C4CF1"];
+const DRAG_THRESHOLD_X = 100;
+const DRAG_THRESHOLD_Y = 120;
+const TAP_MOVE_THRESHOLD = 6;
 
-export function SwipeCandidateCard({ candidate }: SwipeCandidateCardProps) {
+function candidatePhotoUrls(candidate: User): string[] {
+  const urls = [
+    candidate.photo_url,
+    ...candidate.photos.map((photo) => photo.photo_url),
+  ].filter((url): url is string => Boolean(url));
+  return Array.from(new Set(urls));
+}
+
+export function SwipeCandidateCard({
+  candidate,
+  onSwipeLeft,
+  onSwipeRight,
+  onSwipeUp,
+  onPressProfile,
+}: SwipeCandidateCardProps) {
+  const photoUrls = candidatePhotoUrls(candidate);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [cardWidth, setCardWidth] = useState(0);
+  const [cardHeight, setCardHeight] = useState(0);
+  const position = useRef(new Animated.ValueXY()).current;
+
+  function handleLayout(event: LayoutChangeEvent): void {
+    setCardWidth(event.nativeEvent.layout.width);
+    setCardHeight(event.nativeEvent.layout.height);
+  }
+
+  function resetPosition(): void {
+    Animated.spring(position, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
+  }
+
+  function flingOut(direction: "left" | "right" | "up", onComplete: () => void): void {
+    const target =
+      direction === "up"
+        ? { x: 0, y: -800 }
+        : { x: direction === "right" ? 600 : -600, y: -60 };
+    Animated.timing(position, { toValue: target, duration: 220, useNativeDriver: false }).start(() => {
+      position.setValue({ x: 0, y: 0 });
+      onComplete();
+    });
+  }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_evt, gesture) => {
+        position.setValue({ x: gesture.dx, y: gesture.dy });
+      },
+      onPanResponderRelease: (evt, gesture) => {
+        const movedEnough =
+          Math.abs(gesture.dx) > TAP_MOVE_THRESHOLD || Math.abs(gesture.dy) > TAP_MOVE_THRESHOLD;
+        if (!movedEnough) {
+          const tapX = evt.nativeEvent.locationX;
+          if (photoUrls.length > 1 && cardWidth > 0 && tapX < cardWidth * 0.3) {
+            goToPhoto(-1);
+          } else if (photoUrls.length > 1 && cardWidth > 0 && tapX > cardWidth * 0.7) {
+            goToPhoto(1);
+          } else {
+            onPressProfile();
+          }
+          return;
+        }
+        if (gesture.dy < -DRAG_THRESHOLD_Y && Math.abs(gesture.dy) > Math.abs(gesture.dx)) {
+          flingOut("up", onSwipeUp);
+        } else if (gesture.dx > DRAG_THRESHOLD_X) {
+          flingOut("right", onSwipeRight);
+        } else if (gesture.dx < -DRAG_THRESHOLD_X) {
+          flingOut("left", onSwipeLeft);
+        } else {
+          resetPosition();
+        }
+      },
+    })
+  ).current;
+
+  function goToPhoto(delta: number): void {
+    setActiveIndex((current) => {
+      const next = current + delta;
+      if (next < 0 || next >= photoUrls.length) return current;
+      return next;
+    });
+  }
+
+  const rotate = position.x.interpolate({
+    inputRange: [-300, 0, 300],
+    outputRange: ["-12deg", "0deg", "12deg"],
+  });
+  const likeOpacity = position.x.interpolate({
+    inputRange: [20, DRAG_THRESHOLD_X],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+  const passOpacity = position.x.interpolate({
+    inputRange: [-DRAG_THRESHOLD_X, -20],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+  const superOpacity = position.y.interpolate({
+    inputRange: [-DRAG_THRESHOLD_Y, -20],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
   return (
-    <View style={styles.card}>
-      {candidate.photo_url ? (
-        <Image source={{ uri: candidate.photo_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+    <Animated.View
+      style={[
+        styles.card,
+        {
+          transform: [{ translateX: position.x }, { translateY: position.y }, { rotate }],
+        },
+      ]}
+      onLayout={handleLayout}
+      {...panResponder.panHandlers}
+    >
+      {photoUrls.length > 0 && cardWidth > 0 && cardHeight > 0 ? (
+        <Image
+          source={{ uri: photoUrls[activeIndex] }}
+          style={[styles.photo, { width: cardWidth, height: cardHeight }]}
+          contentFit="cover"
+        />
       ) : (
         <LinearGradient colors={FALLBACK_GRADIENT} style={StyleSheet.absoluteFill}>
           <View style={styles.placeholderIcon}>
@@ -25,9 +149,31 @@ export function SwipeCandidateCard({ candidate }: SwipeCandidateCardProps) {
         </LinearGradient>
       )}
 
+      {photoUrls.length > 1 ? (
+        <View style={styles.dotsRow} pointerEvents="none">
+          {photoUrls.map((url, index) => (
+            <View
+              key={url}
+              style={[styles.dot, index === activeIndex && styles.dotActive]}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]} pointerEvents="none">
+        <Text style={styles.stampText}>BEĞEN</Text>
+      </Animated.View>
+      <Animated.View style={[styles.stamp, styles.stampPass, { opacity: passOpacity }]} pointerEvents="none">
+        <Text style={styles.stampText}>GEÇ</Text>
+      </Animated.View>
+      <Animated.View style={[styles.stamp, styles.stampSuper, { opacity: superOpacity }]} pointerEvents="none">
+        <Text style={styles.stampText}>SÜPER</Text>
+      </Animated.View>
+
       <LinearGradient
         colors={["transparent", "rgba(15,10,40,0.9)"]}
         style={styles.overlay}
+        pointerEvents="none"
       >
         <Text style={styles.name}>
           {candidate.display_name}
@@ -44,7 +190,7 @@ export function SwipeCandidateCard({ candidate }: SwipeCandidateCardProps) {
           </View>
         ) : null}
       </LinearGradient>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -55,10 +201,58 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: colors.primaryMuted,
   },
+  photo: {},
   placeholderIcon: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  dotsRow: {
+    position: "absolute",
+    top: spacing.md,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: spacing.xs,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.4)",
+  },
+  dotActive: {
+    backgroundColor: colors.surface,
+  },
+  stamp: {
+    position: "absolute",
+    top: spacing.xxl,
+    borderWidth: 3,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  stampLike: {
+    left: spacing.lg,
+    borderColor: colors.accentGreen,
+    transform: [{ rotate: "-12deg" }],
+  },
+  stampPass: {
+    right: spacing.lg,
+    borderColor: colors.accentRed,
+    transform: [{ rotate: "12deg" }],
+  },
+  stampSuper: {
+    alignSelf: "center",
+    left: "50%",
+    marginLeft: -60,
+    borderColor: "#2E7FC9",
+  },
+  stampText: {
+    fontFamily: fontFamily.displayBold,
+    fontSize: 24,
+    color: colors.surface,
   },
   overlay: {
     position: "absolute",

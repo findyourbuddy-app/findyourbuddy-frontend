@@ -1,11 +1,13 @@
 import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { colors, fontFamily } from "../../theme";
 
 interface AvatarProps {
   name: string;
   photoUrl?: string | null;
   size?: number;
+  blurRadius?: number;
 }
 
 const FALLBACK_COLORS = ["#6C4CF1", "#FF6A6A", "#2FA88B", "#D9427F", "#2E7FC9", "#FF8A3C"];
@@ -26,16 +28,27 @@ function initialsForName(name: string): string {
   return (first + second).toUpperCase();
 }
 
-export function Avatar({ name, photoUrl, size = 48 }: AvatarProps) {
+export function Avatar({ name, photoUrl, size = 48, blurRadius }: AvatarProps) {
   const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
 
   if (photoUrl) {
-    return <Image source={{ uri: photoUrl }} style={dimensionStyle} contentFit="cover" />;
+    return (
+      <Image
+        source={{ uri: photoUrl }}
+        style={dimensionStyle}
+        contentFit="cover"
+        blurRadius={blurRadius}
+      />
+    );
   }
 
   return (
     <View style={[styles.fallback, dimensionStyle, { backgroundColor: colorForName(name) }]}>
-      <Text style={[styles.initials, { fontSize: size * 0.4 }]}>{initialsForName(name)}</Text>
+      {blurRadius && blurRadius > 0 ? (
+        <Feather name="lock" size={size * 0.4} color={colors.surface} />
+      ) : (
+        <Text style={[styles.initials, { fontSize: size * 0.4 }]}>{initialsForName(name)}</Text>
+      )}
     </View>
   );
 }

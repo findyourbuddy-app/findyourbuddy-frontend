@@ -34,6 +34,8 @@ export function MessagesScreen() {
     try {
       setMatches(await listMyMatches());
       await refreshUnread();
+    } catch {
+      Alert.alert("Bir sorun oluştu", "Eşleşmeler yüklenemedi. Lütfen tekrar dene.");
     } finally {
       setIsRefreshing(false);
     }
@@ -46,7 +48,12 @@ export function MessagesScreen() {
   );
 
   function openChat(match: Match): void {
-    navigation.navigate("Chat", { matchId: match.id, otherUserName: match.other_user.display_name });
+    navigation.navigate("Chat", {
+      matchId: match.id,
+      otherUserId: match.other_user.id,
+      otherUserName: match.other_user.display_name,
+      needsFeedback: match.needs_feedback,
+    });
   }
 
   const filtered = matches.filter((match) =>
@@ -73,12 +80,6 @@ export function MessagesScreen() {
               <Text style={typeScale.eyebrow}>Sohbete Devam Et</Text>
               <Text style={typeScale.h1}>Mesajlar</Text>
             </View>
-            <Pressable
-              style={styles.composeButton}
-              onPress={() => Alert.alert("Yakında", "Yeni sohbet başlatma yakında burada olacak.")}
-            >
-              <Feather name="edit-2" size={16} color={colors.surface} />
-            </Pressable>
           </View>
 
           <View style={styles.searchBar}>
@@ -111,7 +112,12 @@ export function MessagesScreen() {
       }
       renderItem={({ item }) => (
         <View style={styles.chatItemWrapper}>
-          <ChatListItem match={item} currentUserId={user.id} onPress={() => openChat(item)} />
+          <ChatListItem
+            match={item}
+            currentUserId={user.id}
+            onPress={() => openChat(item)}
+            onBlocked={loadMatches}
+          />
         </View>
       )}
     />
@@ -135,14 +141,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-  },
-  composeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
   },
   searchBar: {
     flexDirection: "row",
