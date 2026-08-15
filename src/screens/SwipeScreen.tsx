@@ -1,28 +1,43 @@
 import { useCallback, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect, useRoute } from "@react-navigation/native";
-import type { RouteProp } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import type { CompositeNavigationProp, RouteProp } from "@react-navigation/native";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ActivityIndicator } from "react-native";
 import { SwipeCandidateCard } from "../components/cards/SwipeCandidateCard";
+import { MatchCelebrationModal } from "../components/overlays/MatchCelebrationModal";
+import { SwipeFiltersModal } from "../components/overlays/SwipeFiltersModal";
 import { listEvents } from "../api/events";
 import { createSwipe, getSwipeCandidates } from "../api/swipes";
+import type { SwipeCandidateFilters } from "../api/swipes";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
-import type { MainTabParamList } from "../navigation/RootNavigator";
-import type { User } from "../types";
+import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
+import type { User, UserPublic } from "../types";
 
 interface ActiveEvent {
   id: number;
   title: string;
 }
 
+type SwipeNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, "Swipe">,
+  NativeStackNavigationProp<MainStackParamList>
+>;
+
 export function SwipeScreen() {
+  const navigation = useNavigation<SwipeNavigationProp>();
   const route = useRoute<RouteProp<MainTabParamList, "Swipe">>();
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
   const [candidates, setCandidates] = useState<User[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [match, setMatch] = useState<{ id: number; user: UserPublic } | null>(null);
+  const [filters, setFilters] = useState<SwipeCandidateFilters>({});
+  const [filtersVisible, setFiltersVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -37,32 +52,65 @@ export function SwipeScreen() {
       }
 
       setIsLoading(true);
-      resolveActiveEvent().then(async (event) => {
-        if (cancelled) return;
-        setActiveEvent(event);
-        setCurrentIndex(0);
-        if (event) {
-          const list = await getSwipeCandidates(event.id);
-          if (!cancelled) setCandidates(list);
-        } else {
-          setCandidates([]);
-        }
-        if (!cancelled) setIsLoading(false);
-      });
+      resolveActiveEvent()
+        .then(async (event) => {
+          if (cancelled) return;
+          setActiveEvent(event);
+          setCurrentIndex(0);
+          if (event) {
+            const list = await getSwipeCandidates(event.id, filters);
+            if (!cancelled) setCandidates(list);
+          } else {
+            setCandidates([]);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            Alert.alert("Bir sorun oluştu", "Etkinlik ve adaylar yüklenemedi. Lütfen tekrar dene.");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoading(false);
+        });
 
       return () => {
         cancelled = true;
       };
-    }, [route.params])
+    }, [route.params, filters])
   );
+
+  function handleApplyFilters(nextFilters: SwipeCandidateFilters): void {
+    setFilters(nextFilters);
+    setFiltersVisible(false);
+  }
 
   async function handleSwipe(direction: "like" | "pass"): Promise<void> {
     const target = candidates[currentIndex];
     if (!activeEvent || !target) {
       return;
     }
-    await createSwipe({ target_id: target.id, event_id: activeEvent.id, direction });
-    setCurrentIndex((index) => index + 1);
+    try {
+      const result = await createSwipe({ target_id: target.id, event_id: activeEvent.id, direction });
+      if (result.match_id !== null && result.matched_user !== null) {
+        setMatch({ id: result.match_id, user: result.matched_user });
+      }
+      setCurrentIndex((index) => index + 1);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 429) {
+        Alert.alert("Günlük limit doldu", "Bugünlük swipe hakkın bitti, yarın tekrar dene.");
+      } else {
+        Alert.alert("Bir sorun oluştu", "Swipe kaydedilemedi. Lütfen tekrar dene.");
+      }
+    }
+  }
+
+  function goToMatchChat(): void {
+    if (!match) return;
+    const matchId = match.id;
+    const otherUserId = match.user.id;
+    const otherUserName = match.user.display_name;
+    setMatch(null);
+    navigation.navigate("Chat", { matchId, otherUserId, otherUserName });
   }
 
   return (
@@ -80,10 +128,7 @@ export function SwipeScreen() {
           >
             <Feather name="x" size={16} color={colors.textSecondary} />
           </Pressable>
-          <Pressable
-            style={styles.iconButton}
-            onPress={() => Alert.alert("Yakında", "Filtreler yakında burada olacak.")}
-          >
+          <Pressable style={styles.iconButton} onPress={() => setFiltersVisible(true)}>
             <Feather name="sliders" size={16} color={colors.textPrimary} />
           </Pressable>
         </View>
@@ -125,6 +170,19 @@ export function SwipeScreen() {
           </Pressable>
         </LinearGradient>
       ) : null}
+
+      <MatchCelebrationModal
+        matchedUser={match?.user ?? null}
+        onSendMessage={goToMatchChat}
+        onDismiss={() => setMatch(null)}
+      />
+
+      <SwipeFiltersModal
+        visible={filtersVisible}
+        initialFilters={filters}
+        onApply={handleApplyFilters}
+        onDismiss={() => setFiltersVisible(false)}
+      />
     </View>
   );
 }

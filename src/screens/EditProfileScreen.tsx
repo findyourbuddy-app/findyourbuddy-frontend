@@ -1,20 +1,29 @@
-import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Avatar } from "../components/ui/Avatar";
 import { Chip } from "../components/ui/Chip";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
-import { updateCurrentUser, uploadProfilePhoto } from "../api/users";
+import {
+  deleteGalleryPhoto,
+  listMyPhotos,
+  updateCurrentUser,
+  uploadGalleryPhoto,
+  uploadProfilePhoto,
+} from "../api/users";
 import { useAuth } from "../context/AuthContext";
 import { INTERESTS } from "../constants/interests";
 import { MAX_AGE, MAX_BIO_LENGTH, MIN_AGE, isValidAge } from "../utils/profile";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
+import type { UserPhoto } from "../types";
+
+const MAX_GALLERY_PHOTOS = 6;
 
 type EditProfileNavigationProp = NativeStackNavigationProp<MainStackParamList, "EditProfile">;
 
@@ -36,6 +45,19 @@ export function EditProfileScreen() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<UserPhoto[]>([]);
+  const [isUploadingGalleryPhoto, setIsUploadingGalleryPhoto] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      listMyPhotos()
+        .then(setPhotos)
+        .catch(() => {
+          // Gallery is a non-critical enhancement; failing to load it shouldn't
+          // block the rest of the profile screen.
+        });
+    }, [])
+  );
 
   if (!user) {
     return null;
@@ -113,6 +135,50 @@ export function EditProfileScreen() {
     }
   }
 
+  async function handleAddGalleryPhoto(): Promise<void> {
+    if (photos.length >= MAX_GALLERY_PHOTOS) {
+      Alert.alert("Fotoğraf limiti doldu", `En fazla ${MAX_GALLERY_PHOTOS} fotoğraf ekleyebilirsin.`);
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== "granted") {
+      Alert.alert("Galeri izni gerekli", "Fotoğraf seçebilmek için galeri iznini açman gerekiyor.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+    });
+    const asset = result.assets?.[0];
+    if (result.canceled || !asset) {
+      return;
+    }
+
+    setIsUploadingGalleryPhoto(true);
+    try {
+      const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "photo.jpg";
+      const uploaded = await uploadGalleryPhoto(asset.uri, fileName);
+      setPhotos((current) => [...current, uploaded]);
+    } catch {
+      Alert.alert("Bir sorun oluştu", "Fotoğraf yüklenemedi. Lütfen tekrar dene.");
+    } finally {
+      setIsUploadingGalleryPhoto(false);
+    }
+  }
+
+  async function handleDeleteGalleryPhoto(photo: UserPhoto): Promise<void> {
+    const previous = photos;
+    setPhotos((current) => current.filter((p) => p.id !== photo.id));
+    try {
+      await deleteGalleryPhoto(photo.id);
+    } catch {
+      setPhotos(previous);
+      Alert.alert("Bir sorun oluştu", "Fotoğraf silinemedi. Lütfen tekrar dene.");
+    }
+  }
+
   async function handleSave(): Promise<void> {
     setError(null);
 
@@ -144,9 +210,16 @@ export function EditProfileScreen() {
   return (
     <ScrollView style={styles.background} contentContainerStyle={styles.content}>
       {justRegistered ? (
-        <Pressable onPress={leaveScreen} style={styles.skipLink}>
-          <Text style={styles.skipText}>Şimdi değil, sonra tamamlarım</Text>
-        </Pressable>
+        <View style={styles.welcomeHeader}>
+          <Text style={typeScale.h1}>Hoş geldin, {user.display_name}! 👋</Text>
+          <Text style={styles.welcomeSubtitle}>
+            Sana en uygun etkinlikleri ve kankaları önerebilmemiz için birkaç bilgiye
+            ihtiyacımız var. 1 dakikanı alır.
+          </Text>
+          <Pressable onPress={leaveScreen} style={styles.skipLink}>
+            <Text style={styles.skipText}>Şimdi değil, sonra tamamlarım</Text>
+          </Pressable>
+        </View>
       ) : null}
 
       <View style={styles.avatarSection}>
@@ -156,6 +229,36 @@ export function EditProfileScreen() {
             <Feather name={isUploadingPhoto ? "loader" : "camera"} size={14} color={colors.surface} />
           </View>
         </Pressable>
+      </View>
+
+      <View style={styles.field}>
+        <Text style={typeScale.eyebrow}>Fotoğraflar</Text>
+        <View style={styles.galleryGrid}>
+          {photos.map((photo) => (
+            <View key={photo.id} style={styles.galleryTile}>
+              <Image source={{ uri: photo.photo_url }} style={styles.galleryImage} />
+              <Pressable
+                style={styles.galleryRemove}
+                onPress={() => handleDeleteGalleryPhoto(photo)}
+              >
+                <Feather name="x" size={12} color={colors.surface} />
+              </Pressable>
+            </View>
+          ))}
+          {photos.length < MAX_GALLERY_PHOTOS ? (
+            <Pressable
+              style={[styles.galleryTile, styles.galleryAddTile]}
+              onPress={handleAddGalleryPhoto}
+              disabled={isUploadingGalleryPhoto}
+            >
+              <Feather
+                name={isUploadingGalleryPhoto ? "loader" : "plus"}
+                size={20}
+                color={colors.textSecondary}
+              />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       <View style={styles.field}>
@@ -229,6 +332,14 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.lg,
   },
+  welcomeHeader: {
+    gap: spacing.sm,
+  },
+  welcomeSubtitle: {
+    fontFamily: fontFamily.body,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
   skipLink: {
     alignSelf: "flex-end",
   },
@@ -255,6 +366,40 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: spacing.sm,
+  },
+  galleryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  galleryTile: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.sm,
+    overflow: "hidden",
+  },
+  galleryImage: {
+    width: "100%",
+    height: "100%",
+  },
+  galleryRemove: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryAddTile: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
   },
   bioHeader: {
     flexDirection: "row",

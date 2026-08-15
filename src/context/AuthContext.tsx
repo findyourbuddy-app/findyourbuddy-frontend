@@ -3,9 +3,22 @@ import type { ReactNode } from "react";
 import { setAuthToken } from "../api/client";
 import { login as loginRequest, register as registerRequest } from "../api/auth";
 import { getCurrentUser } from "../api/users";
+import { registerDeviceToken, unregisterDeviceToken } from "../api/notifications";
 import { AUTH_TOKEN_STORAGE_KEY } from "../constants/config";
 import { deleteToken, getToken, setToken } from "../utils/tokenStorage";
+import { getExpoPushToken } from "../utils/pushNotifications";
 import type { LoginPayload, RegisterPayload, User } from "../types";
+
+async function syncPushToken(): Promise<void> {
+  try {
+    const token = await getExpoPushToken();
+    if (token) {
+      await registerDeviceToken(token);
+    }
+  } catch {
+    // Push registration is best-effort; auth flow must not fail because of it.
+  }
+}
 
 interface AuthContextValue {
   user: User | null;
@@ -35,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthToken(token);
       try {
         setUser(await getCurrentUser());
+        syncPushToken();
       } catch {
         await deleteToken(AUTH_TOKEN_STORAGE_KEY);
         setAuthToken(null);
@@ -48,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token);
     setAuthToken(token.access_token);
     setUser(await getCurrentUser());
+    syncPushToken();
   }
 
   async function signUp(payload: RegisterPayload): Promise<void> {
@@ -57,6 +72,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut(): Promise<void> {
+    try {
+      const token = await getExpoPushToken();
+      if (token) {
+        await unregisterDeviceToken(token);
+      }
+    } catch {
+      // Best-effort cleanup; sign-out must proceed regardless.
+    }
     await deleteToken(AUTH_TOKEN_STORAGE_KEY);
     setAuthToken(null);
     setUser(null);

@@ -10,3 +10,9 @@ export function sendMessage(matchId: number, data: MessageCreate): Promise<Messa
     .post<Message>(`/matches/${matchId}/messages/`, data)
     .then((res) => res.data);
 }
+
+export function markMessagesAsRead(matchId: number): Promise<{ count: number }> {
+  return apiClient
+    .patch<{ count: number }>(`/matches/${matchId}/messages/read`)
+    .then((res) => res.data);
+}

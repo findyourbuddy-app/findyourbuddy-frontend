@@ -58,6 +58,9 @@ export function LoginScreen() {
       <TouchableOpacity onPress={() => navigation.navigate("Register")}>
         <Text style={styles.link}>Hesabın yok mu? Kayıt ol</Text>
       </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
+        <Text style={styles.link}>Şifremi unuttum</Text>
+      </TouchableOpacity>
     </View>
   );
 }

@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Badge } from "../ui/Badge";
@@ -13,18 +14,27 @@ interface EventCardProps {
   bookmarked: boolean;
   onToggleBookmark: () => void;
   onPressJoin: () => void;
+  onPress?: () => void;
 }
 
-export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin }: EventCardProps) {
+export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, onPress }: EventCardProps) {
   const category = getCategoryMeta(event.category);
   const startLabel = isToday(event.starts_at)
     ? `Bugün · ${formatRelativeTimestamp(event.starts_at)}`
     : formatRelativeTimestamp(event.starts_at);
 
   return (
-    <View style={styles.card}>
-      <LinearGradient colors={category.gradient} style={styles.banner}>
-        <Feather name={category.icon} size={40} color={colors.surface} />
+    <Pressable style={styles.card} onPress={onPress} disabled={!onPress}>
+      <View style={styles.banner}>
+        {event.image_url ? (
+          <Image source={{ uri: event.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : (
+          <LinearGradient colors={category.gradient} style={StyleSheet.absoluteFill}>
+            <View style={styles.bannerIcon}>
+              <Feather name={category.icon} size={40} color={colors.surface} />
+            </View>
+          </LinearGradient>
+        )}
         {isToday(event.starts_at) ? (
           <View style={styles.badgeSlot}>
             <Badge label="Bu akşam" variant="yellow" icon="⚡" />
@@ -37,7 +47,7 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin }: 
             color={bookmarked ? colors.accentYellow : colors.surface}
           />
         </Pressable>
-      </LinearGradient>
+      </View>
 
       <View style={styles.content}>
         <Text style={typeScale.h1}>{event.title}</Text>
@@ -49,7 +59,7 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin }: 
         </View>
         <PrimaryButton label="Kankaları Gör" onPress={onPressJoin} />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -66,6 +76,9 @@ const styles = StyleSheet.create({
   },
   banner: {
     height: 160,
+  },
+  bannerIcon: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },

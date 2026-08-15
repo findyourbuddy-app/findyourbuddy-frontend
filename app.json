@@ -1,15 +1,17 @@
 {
   "expo": {
-    "name": "findyourbuddy-frontend",
+    "name": "FindYourBuddy",
     "slug": "findyourbuddy-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.findyourbuddy.app"
     },
     "android": {
+      "package": "com.findyourbuddy.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -44,7 +46,8 @@
         {
           "locationWhenInUsePermission": "Sana yakın etkinlikleri gösterebilmek için konumuna erişim izni gerekiyor."
         }
-      ]
+      ],
+      "expo-notifications"
     ]
   }
 }

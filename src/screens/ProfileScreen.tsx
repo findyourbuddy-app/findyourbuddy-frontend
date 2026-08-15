@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Avatar } from "../components/ui/Avatar";
@@ -26,6 +27,22 @@ export function ProfileScreen() {
         <Text style={styles.email}>{user.email}</Text>
       </View>
 
+      {user.photos.length > 0 ? (
+        <View style={styles.card}>
+          <Text style={typeScale.eyebrow}>Fotoğraflarım</Text>
+          <FlatList
+            data={user.photos}
+            keyExtractor={(photo) => String(photo.id)}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <Image source={{ uri: item.photo_url }} style={styles.galleryImage} />
+            )}
+            ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
+          />
+        </View>
+      ) : null}
+
       {user.bio ? (
         <View style={styles.card}>
           <Text style={typeScale.eyebrow}>Hakkında</Text>
@@ -47,6 +64,7 @@ export function ProfileScreen() {
       ) : null}
 
       <PrimaryButton label="Profili Düzenle" onPress={() => navigation.navigate("EditProfile")} />
+      <PrimaryButton label="Ayarlar" onPress={() => navigation.navigate("Settings")} variant="outline" />
       <PrimaryButton label="Çıkış Yap" onPress={signOut} variant="outline" />
     </ScrollView>
   );
@@ -76,6 +94,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     padding: spacing.lg,
     gap: spacing.sm,
+  },
+  galleryImage: {
+    width: 96,
+    height: 96,
+    borderRadius: radius.sm,
   },
   bio: {
     fontFamily: fontFamily.body,

@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { getCategoryMeta } from "../../constants/categories";
@@ -17,17 +18,34 @@ export function EventListItem({ event, bookmarked, onToggleBookmark, onPress }: 
   const category = getCategoryMeta(event.category);
 
   return (
-    <Pressable style={styles.container} onPress={onPress}>
-      <LinearGradient colors={category.gradient} style={styles.thumbnail}>
-        <Feather name={category.icon} size={22} color={colors.surface} />
-        <Pressable style={styles.bookmark} onPress={onToggleBookmark}>
+    <Pressable
+      style={styles.container}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${event.title}, ${formatRelativeTimestamp(event.starts_at)}`}
+    >
+      <View style={styles.thumbnail}>
+        {event.image_url ? (
+          <Image source={{ uri: event.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : (
+          <LinearGradient colors={category.gradient} style={styles.thumbnailIcon}>
+            <Feather name={category.icon} size={22} color={colors.surface} />
+          </LinearGradient>
+        )}
+        <Pressable
+          style={styles.bookmark}
+          onPress={onToggleBookmark}
+          accessibilityRole="button"
+          accessibilityLabel={bookmarked ? "Kaydedilenlerden çıkar" : "Kaydet"}
+          accessibilityState={{ selected: bookmarked }}
+        >
           <Feather
             name="bookmark"
             size={14}
             color={bookmarked ? colors.accentYellow : colors.surface}
           />
         </Pressable>
-      </LinearGradient>
+      </View>
       <View style={styles.textColumn}>
         <Text style={styles.meta}>{formatRelativeTimestamp(event.starts_at)}</Text>
         <Text style={typeScale.h2}>{event.title}</Text>
@@ -49,6 +67,10 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: radius.sm,
+    overflow: "hidden",
+  },
+  thumbnailIcon: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -8,3 +8,13 @@ export function login(payload: LoginPayload): Promise<Token> {
 export function register(payload: RegisterPayload): Promise<User> {
   return apiClient.post<User>("/auth/register", payload).then((res) => res.data);
 }
+
+export function requestPasswordReset(email: string): Promise<void> {
+  return apiClient.post("/auth/password-reset/request", { email }).then(() => undefined);
+}
+
+export function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+  return apiClient
+    .post("/auth/password-reset/confirm", { token, new_password: newPassword })
+    .then(() => undefined);
+}

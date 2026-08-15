@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet, Text, View } from "react-native";
+import { Dimensions, FlatList, StyleSheet, Text, View } from "react-native";
+import type { NativeSyntheticEvent, NativeScrollEvent } from "react-native";
 import { getInterestLabel } from "../../constants/interests";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 import type { User } from "../../types";
@@ -11,12 +13,41 @@ interface SwipeCandidateCardProps {
 }
 
 const FALLBACK_GRADIENT: [string, string] = ["#B8AEE8", "#6C4CF1"];
+const CARD_WIDTH = Dimensions.get("window").width - spacing.lg * 2;
+
+function candidatePhotoUrls(candidate: User): string[] {
+  const urls = [
+    candidate.photo_url,
+    ...candidate.photos.map((photo) => photo.photo_url),
+  ].filter((url): url is string => Boolean(url));
+  return Array.from(new Set(urls));
+}
 
 export function SwipeCandidateCard({ candidate }: SwipeCandidateCardProps) {
+  const photoUrls = candidatePhotoUrls(candidate);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>): void {
+    const index = Math.round(event.nativeEvent.contentOffset.x / CARD_WIDTH);
+    setActiveIndex(index);
+  }
+
   return (
     <View style={styles.card}>
-      {candidate.photo_url ? (
-        <Image source={{ uri: candidate.photo_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      {photoUrls.length > 0 ? (
+        <FlatList
+          data={photoUrls}
+          keyExtractor={(url) => url}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          style={StyleSheet.absoluteFill}
+          renderItem={({ item }) => (
+            <Image source={{ uri: item }} style={styles.photo} contentFit="cover" />
+          )}
+        />
       ) : (
         <LinearGradient colors={FALLBACK_GRADIENT} style={StyleSheet.absoluteFill}>
           <View style={styles.placeholderIcon}>
@@ -24,6 +55,17 @@ export function SwipeCandidateCard({ candidate }: SwipeCandidateCardProps) {
           </View>
         </LinearGradient>
       )}
+
+      {photoUrls.length > 1 ? (
+        <View style={styles.dotsRow}>
+          {photoUrls.map((url, index) => (
+            <View
+              key={url}
+              style={[styles.dot, index === activeIndex && styles.dotActive]}
+            />
+          ))}
+        </View>
+      ) : null}
 
       <LinearGradient
         colors={["transparent", "rgba(15,10,40,0.9)"]}
@@ -55,10 +97,32 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: colors.primaryMuted,
   },
+  photo: {
+    width: CARD_WIDTH,
+    height: "100%",
+  },
   placeholderIcon: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  dotsRow: {
+    position: "absolute",
+    top: spacing.md,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: spacing.xs,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.4)",
+  },
+  dotActive: {
+    backgroundColor: colors.surface,
   },
   overlay: {
     position: "absolute",

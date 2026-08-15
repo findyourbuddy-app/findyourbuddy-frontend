@@ -34,6 +34,8 @@ export function MessagesScreen() {
     try {
       setMatches(await listMyMatches());
       await refreshUnread();
+    } catch {
+      Alert.alert("Bir sorun oluştu", "Eşleşmeler yüklenemedi. Lütfen tekrar dene.");
     } finally {
       setIsRefreshing(false);
     }
@@ -46,7 +48,11 @@ export function MessagesScreen() {
   );
 
   function openChat(match: Match): void {
-    navigation.navigate("Chat", { matchId: match.id, otherUserName: match.other_user.display_name });
+    navigation.navigate("Chat", {
+      matchId: match.id,
+      otherUserId: match.other_user.id,
+      otherUserName: match.other_user.display_name,
+    });
   }
 
   const filtered = matches.filter((match) =>

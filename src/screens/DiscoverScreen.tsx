@@ -10,10 +10,11 @@ import { Chip } from "../components/ui/Chip";
 import { SectionHeader } from "../components/ui/SectionHeader";
 import { EventCard } from "../components/cards/EventCard";
 import { EventListItem } from "../components/cards/EventListItem";
+import { createBookmark, deleteBookmark, listMyBookmarks } from "../api/bookmarks";
 import { listEvents } from "../api/events";
 import { useAuth } from "../context/AuthContext";
 import { CATEGORIES } from "../constants/categories";
-import { colors, spacing, typeScale } from "../theme";
+import { colors, fontFamily, spacing, typeScale } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
 
@@ -34,17 +35,30 @@ export function DiscoverScreen() {
     setIsRefreshing(true);
     try {
       setEvents(await listEvents(category ?? undefined));
+    } catch {
+      Alert.alert("Bir sorun oluştu", "Etkinlikler yüklenemedi. Lütfen tekrar dene.");
     } finally {
       setIsRefreshing(false);
+    }
+  }, []);
+
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const bookmarks = await listMyBookmarks();
+      setBookmarkedIds(new Set(bookmarks.map((bookmark) => bookmark.event.id)));
+    } catch {
+      // Bookmarks are a non-critical enhancement; failing to load them shouldn't
+      // block the events list itself.
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadEvents(selectedCategory);
+      loadBookmarks();
       // selectedCategory intentionally omitted: chip taps already trigger their own reload
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loadEvents])
+    }, [loadEvents, loadBookmarks])
   );
 
   function handleSelectCategory(slug: string): void {
@@ -53,20 +67,44 @@ export function DiscoverScreen() {
     loadEvents(next);
   }
 
-  function toggleBookmark(eventId: number): void {
+  async function toggleBookmark(eventId: number): Promise<void> {
+    const wasBookmarked = bookmarkedIds.has(eventId);
     setBookmarkedIds((current) => {
       const next = new Set(current);
-      if (next.has(eventId)) {
+      if (wasBookmarked) {
         next.delete(eventId);
       } else {
         next.add(eventId);
       }
       return next;
     });
+
+    try {
+      if (wasBookmarked) {
+        await deleteBookmark(eventId);
+      } else {
+        await createBookmark(eventId);
+      }
+    } catch {
+      setBookmarkedIds((current) => {
+        const next = new Set(current);
+        if (wasBookmarked) {
+          next.add(eventId);
+        } else {
+          next.delete(eventId);
+        }
+        return next;
+      });
+      Alert.alert("Bir sorun oluştu", "Kaydetme işlemi tamamlanamadı. Lütfen tekrar dene.");
+    }
   }
 
   function goToSwipe(event: Event): void {
     navigation.navigate("Swipe", { eventId: event.id, eventTitle: event.title });
+  }
+
+  function goToDetail(event: Event): void {
+    navigation.navigate("EventDetail", { eventId: event.id });
   }
 
   const [featured, ...rest] = events;
@@ -91,11 +129,25 @@ export function DiscoverScreen() {
             <View style={styles.headerActions}>
               <Pressable
                 style={styles.iconButton}
-                onPress={() => Alert.alert("Yakında", "Bildirimler yakında burada olacak.")}
+                onPress={() => navigation.navigate("CreateEvent")}
+                accessibilityRole="button"
+                accessibilityLabel="Etkinlik oluştur"
+              >
+                <Feather name="plus" size={18} color={colors.textPrimary} />
+              </Pressable>
+              <Pressable
+                style={styles.iconButton}
+                onPress={() => navigation.navigate("Notifications")}
+                accessibilityRole="button"
+                accessibilityLabel="Bildirimler"
               >
                 <Feather name="bell" size={18} color={colors.textPrimary} />
               </Pressable>
-              <Pressable onPress={() => navigation.navigate("Profile")}>
+              <Pressable
+                onPress={() => navigation.navigate("Profile")}
+                accessibilityRole="button"
+                accessibilityLabel="Profilim"
+              >
                 <Avatar name={user?.display_name ?? "?"} photoUrl={user?.photo_url} size={36} />
               </Pressable>
             </View>
@@ -127,6 +179,7 @@ export function DiscoverScreen() {
                 bookmarked={bookmarkedIds.has(featured.id)}
                 onToggleBookmark={() => toggleBookmark(featured.id)}
                 onPressJoin={() => goToSwipe(featured)}
+                onPress={() => goToDetail(featured)}
               />
             </View>
           ) : null}
@@ -136,13 +189,20 @@ export function DiscoverScreen() {
           ) : null}
         </View>
       }
+      ListEmptyComponent={
+        events.length === 0 && !isRefreshing ? (
+          <Text style={styles.emptyText}>
+            Şu an gösterilecek etkinlik yok. Daha sonra tekrar kontrol et!
+          </Text>
+        ) : null
+      }
       renderItem={({ item }) => (
         <View style={styles.listItemWrapper}>
           <EventListItem
             event={item}
             bookmarked={bookmarkedIds.has(item.id)}
             onToggleBookmark={() => toggleBookmark(item.id)}
-            onPress={() => goToSwipe(item)}
+            onPress={() => goToDetail(item)}
           />
         </View>
       )}
@@ -205,5 +265,12 @@ const styles = StyleSheet.create({
   },
   listItemWrapper: {
     marginBottom: spacing.md,
+  },
+  emptyText: {
+    fontFamily: fontFamily.body,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginTop: spacing.xl,
   },
 });
