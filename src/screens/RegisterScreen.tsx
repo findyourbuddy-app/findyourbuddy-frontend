@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
@@ -10,11 +11,14 @@ import type { AuthStackParamList } from "../navigation/RootNavigator";
 
 type RegisterNavigationProp = NativeStackNavigationProp<AuthStackParamList, "Register">;
 
+const PHONE_REGEX = /^\+?\d{10,15}$/;
+
 export function RegisterScreen() {
   const navigation = useNavigation<RegisterNavigationProp>();
   const { signUp } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +34,11 @@ export function RegisterScreen() {
       setError("Lütfen geçerli bir e-posta adresi girin.");
       return;
     }
+    const normalizedPhone = phoneNumber.trim().replace(/[\s()-]/g, "");
+    if (!PHONE_REGEX.test(normalizedPhone)) {
+      setError("Lütfen geçerli bir telefon numarası girin (örn. 05XXXXXXXXX).");
+      return;
+    }
     if (password.length < 6) {
       setError("Şifreniz en az 6 karakter olmalıdır.");
       return;
@@ -41,9 +50,24 @@ export function RegisterScreen() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await signUp({ display_name: displayName, email, password, accepted_terms: acceptedTerms });
-    } catch {
-      setError("Kayıt oluşturulamadı. Bilgileri kontrol edip tekrar dene.");
+      await signUp({
+        display_name: displayName,
+        email,
+        password,
+        accepted_terms: acceptedTerms,
+        phone_number: normalizedPhone,
+      });
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        const detail = err.response.data?.detail as string | undefined;
+        if (detail?.toLowerCase().includes("phone")) {
+          setError("Bu telefon numarası sistemde zaten kayıtlı. Farklı bir numara dener misin?");
+        } else {
+          setError("Bu e-posta adresi zaten kayıtlı.");
+        }
+      } else {
+        setError("Kayıt oluşturulamadı. Bilgileri kontrol edip tekrar dene.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -67,6 +91,14 @@ export function RegisterScreen() {
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Telefon Numarası (örn. 05XXXXXXXXX)"
+        placeholderTextColor={colors.textSecondary}
+        keyboardType="phone-pad"
+        value={phoneNumber}
+        onChangeText={setPhoneNumber}
       />
       <TextInput
         style={styles.input}

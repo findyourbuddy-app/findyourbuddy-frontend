@@ -5,7 +5,7 @@ import type { User, UserPhoto, UserUpdate } from "../types";
 // RN's FormData polyfill understands { uri, name, type } on native, but on
 // web FormData is the real browser API and needs an actual Blob/File --
 // passing the RN-style object there silently produces an empty upload.
-async function toUploadFile(uri: string, fileName: string): Promise<Blob> {
+export async function toUploadFile(uri: string, fileName: string): Promise<Blob> {
   if (Platform.OS === "web") {
     const response = await fetch(uri);
     const blob = await response.blob();
@@ -58,4 +58,12 @@ export function deleteGalleryPhoto(photoId: number): Promise<void> {
 
 export function exportMyData(): Promise<unknown> {
   return apiClient.get("/users/me/export").then((res) => res.data);
+}
+
+export function activateBoost(): Promise<User> {
+  return apiClient.post<User>("/users/me/boost").then((res) => res.data);
+}
+
+export function purchaseItems(itemType: "boost" | "super_likes" | "swipes", quantity: number): Promise<User> {
+  return apiClient.post<User>("/users/me/purchase", { item_type: itemType, quantity }).then((res) => res.data);
 }

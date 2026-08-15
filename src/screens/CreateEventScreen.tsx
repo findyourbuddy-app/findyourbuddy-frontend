@@ -1,11 +1,13 @@
-import { useEffect, useState, useMemo } from "react";
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import * as Location from "expo-location";
+import { useState, useMemo } from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { Chip } from "../components/ui/Chip";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
+import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
+import type { GeocodingResult } from "../api/geocoding";
 import { createEvent } from "../api/events";
 import { CATEGORIES } from "../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
@@ -50,11 +52,14 @@ export function CreateEventScreen() {
   const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(
     null
   );
-  const [isLocating, setIsLocating] = useState(false);
+  const [isLocationPickerVisible, setIsLocationPickerVisible] = useState(false);
   const [dateText, setDateText] = useState("");
   const [timeText, setTimeText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGroupEvent, setIsGroupEvent] = useState(false);
+  const [maxAttendees, setMaxAttendees] = useState("10");
+  const [isPaid, setIsPaid] = useState(false);
 
   // Picker States
   const [isCalendarVisible, setIsCalendarVisible] = useState(false);
@@ -121,50 +126,11 @@ export function CreateEventScreen() {
 
   const minuteOptions = ["00", "15", "30", "45"];
 
-  async function handleUseLocation(silent = false): Promise<void> {
-    setIsLocating(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        if (!silent) {
-          Alert.alert("Konum izni gerekli", "Etkinlik konumunu almak için izin vermen gerekiyor.");
-        }
-        return;
-      }
-      const position = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = position.coords;
-      setCoordinates({ latitude, longitude });
-
-      // Reverse geocoding has no web implementation in expo-location; skip
-      // there and let the user type the location name manually instead.
-      if (Platform.OS !== "web") {
-        try {
-          const [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
-          if (place) {
-            const readable = [place.name, place.street, place.district ?? place.subregion, place.city]
-              .filter(Boolean)
-              .join(", ");
-            if (readable) {
-              setLocationName((current) => (current.trim() ? current : readable));
-            }
-          }
-        } catch {
-          // Best-effort; manual entry still works if reverse geocoding fails.
-        }
-      }
-    } catch {
-      if (!silent) {
-        Alert.alert("Konum alınamadı", "Bir sorun oluştu, tekrar dener misin?");
-      }
-    } finally {
-      setIsLocating(false);
-    }
+  function handleLocationSelect(result: GeocodingResult): void {
+    setCoordinates({ latitude: result.latitude, longitude: result.longitude });
+    setLocationName((current) => (current.trim() ? current : result.display_name));
+    setIsLocationPickerVisible(false);
   }
-
-  useEffect(() => {
-    handleUseLocation(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function handleSave(): Promise<void> {
     setError(null);
@@ -201,10 +167,17 @@ export function CreateEventScreen() {
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
         starts_at: startsAt.toISOString().replace("Z", ""),
+        is_group_event: isGroupEvent,
+        max_attendees: isGroupEvent && maxAttendees.trim() ? parseInt(maxAttendees, 10) : null,
+        is_paid: isPaid,
       });
       navigation.goBack();
-    } catch {
-      setError("Etkinlik oluşturulamadı. Bilgileri kontrol edip tekrar dene.");
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 429) {
+        setError("Günlük etkinlik oluşturma limitine ulaştın. Premium ile sınırsız etkinlik oluşturabilirsin.");
+      } else {
+        setError("Etkinlik oluşturulamadı. Bilgileri kontrol edip tekrar dene.");
+      }
     } finally {
       setIsSaving(false);
     }
@@ -250,6 +223,49 @@ export function CreateEventScreen() {
       </View>
 
       <View style={styles.field}>
+        <Text style={typeScale.eyebrow}>Katılım Türü</Text>
+        <View style={styles.chipGrid}>
+          <Chip
+            label="Birebir Kanka Eşleşmesi"
+            active={!isGroupEvent}
+            onPress={() => setIsGroupEvent(false)}
+          />
+          <Chip
+            label="Grup Etkinliği (Onaylı Katılım)"
+            active={isGroupEvent}
+            onPress={() => setIsGroupEvent(true)}
+          />
+        </View>
+      </View>
+
+      <View style={styles.field}>
+        <Text style={typeScale.eyebrow}>Bilet</Text>
+        <View style={styles.chipGrid}>
+          <Chip label="Ücretsiz" active={!isPaid} onPress={() => setIsPaid(false)} />
+          <Chip label="Ücretli (Biletli)" active={isPaid} onPress={() => setIsPaid(true)} />
+        </View>
+        {isPaid ? (
+          <Text style={styles.helperText}>
+            Ücretli etkinliklerde katılım, konuma yakınlık yerine bilet QR kodu yüklenerek doğrulanır.
+          </Text>
+        ) : null}
+      </View>
+
+      {isGroupEvent && (
+        <View style={styles.field}>
+          <Text style={typeScale.eyebrow}>Maksimum Katılımcı Sayısı</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="number-pad"
+            placeholder="Maksimum kişi sayısı örn. 15 (Sınırsız için boş bırakın)"
+            placeholderTextColor={colors.textSecondary}
+            value={maxAttendees}
+            onChangeText={setMaxAttendees}
+          />
+        </View>
+      )}
+
+      <View style={styles.field}>
         <Text style={typeScale.eyebrow}>Konum Adı</Text>
         <TextInput
           style={styles.input}
@@ -261,12 +277,11 @@ export function CreateEventScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>Koordinatlar</Text>
+        <Text style={typeScale.eyebrow}>Harita Konumu</Text>
         <PrimaryButton
-          label={coordinates ? "Konum Alındı ✓" : "Mevcut Konumumu Kullan"}
-          onPress={() => handleUseLocation(false)}
+          label={coordinates ? "Konum Seçildi ✓" : "Haritadan Konum Seç"}
+          onPress={() => setIsLocationPickerVisible(true)}
           variant="outline"
-          loading={isLocating}
         />
       </View>
 
@@ -294,6 +309,12 @@ export function CreateEventScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <PrimaryButton label="Etkinliği Oluştur" onPress={handleSave} loading={isSaving} />
+
+      <LocationPickerModal
+        visible={isLocationPickerVisible}
+        onSelect={handleLocationSelect}
+        onDismiss={() => setIsLocationPickerVisible(false)}
+      />
 
       {/* CUSTOM CALENDAR MODAL */}
       <Modal visible={isCalendarVisible} transparent animationType="fade">
@@ -498,6 +519,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.accentRed,
     textAlign: "center",
+  },
+  helperText: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   modalOverlay: {
     flex: 1,

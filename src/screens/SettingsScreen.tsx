@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from "react-native";
 import * as Notifications from "expo-notifications";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -12,8 +12,10 @@ import { deleteCurrentUser, exportMyData } from "../api/users";
 import { createCheckoutSession } from "../api/subscriptions";
 import { useAuth } from "../context/AuthContext";
 import { getExpoPushToken } from "../utils/pushNotifications";
+import { apiClient } from "../api/client";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
+import type { User } from "../types";
 
 type PermissionStatus = "granted" | "denied" | "undetermined";
 
@@ -30,11 +32,39 @@ function formatExpiryDate(iso: string): string {
 
 export function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const { signOut, isPremium, premiumExpiresAt } = useAuth();
+  const { user, updateUser, signOut, isPremium, premiumExpiresAt } = useAuth();
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>("undetermined");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isUpgrading, setIsUpgrading] = useState(false);
+
+  const [verificationModalVisible, setVerificationModalVisible] = useState(false);
+  const [isRequestingVerify, setIsRequestingVerify] = useState(false);
+
+  const handleVerifyPress = () => {
+    if (!user) return;
+    if (user.verification_status === "verified") {
+      Alert.alert("Profil Doğrulanmış", "Profilin zaten doğrulanmış. Mavi tikin keyfini çıkar!");
+    } else if (user.verification_status === "pending") {
+      Alert.alert("Talebin İnceleniyor", "Profil doğrulama talebin alındı ve onay sürecinde. En kısa sürede onaylanacaktır.");
+    } else {
+      setVerificationModalVisible(true);
+    }
+  };
+
+  const handleSendVerificationRequest = async () => {
+    setIsRequestingVerify(true);
+    try {
+      const res = await apiClient.post<User>("/users/me/verify");
+      updateUser(res.data);
+      setVerificationModalVisible(false);
+      Alert.alert("Talep Gönderildi", "Profil doğrulama talebiniz başarıyla alındı.");
+    } catch {
+      Alert.alert("Hata", "Talep gönderilirken bir sorun oluştu.");
+    } finally {
+      setIsRequestingVerify(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -207,7 +237,37 @@ export function SettingsScreen() {
       </View>
 
       <View style={styles.card}>
+        <Text style={typeScale.eyebrow}>Profil ve Kurallar</Text>
+        <SettingsRow
+          icon="eye"
+          label="Profilimi Görüntüle"
+          onPress={() => navigation.navigate("ViewProfile")}
+        />
+        <SettingsRow
+          icon="check-circle"
+          label={
+            user?.verification_status === "verified"
+              ? "Profil Doğrulanmış ✓"
+              : user?.verification_status === "pending"
+                ? "Doğrulama Bekleniyor ⏳"
+                : "Profilini Doğrula"
+          }
+          onPress={handleVerifyPress}
+        />
+        <SettingsRow
+          icon="book-open"
+          label="Topluluk Kuralları"
+          onPress={() => navigation.navigate("CommunityGuidelines")}
+        />
+      </View>
+
+      <View style={styles.card}>
         <Text style={typeScale.eyebrow}>Hesap</Text>
+        <SettingsRow
+          icon="user"
+          label="Profilimi Görüntüle"
+          onPress={() => navigation.navigate("ViewProfile")}
+        />
         <SettingsRow
           icon="image"
           label="Fotoğraflarım"
@@ -217,6 +277,11 @@ export function SettingsScreen() {
           icon="lock"
           label="Şifre Değiştir"
           onPress={() => navigation.navigate("ChangePassword")}
+        />
+        <SettingsRow
+          icon="bookmark"
+          label="Kaydedilenler"
+          onPress={() => navigation.navigate("SavedEvents")}
         />
         <SettingsRow
           icon="shield"
@@ -231,6 +296,38 @@ export function SettingsScreen() {
         />
         <SettingsRow icon="trash-2" label="Hesabımı Sil" onPress={confirmDeleteAccount} danger />
       </View>
+
+      <Modal
+        visible={verificationModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setVerificationModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={[styles.modalIconWrapper, { backgroundColor: `${colors.primary}20` }]}>
+              <Feather name="check-circle" size={32} color={colors.primary} />
+            </View>
+            <Text style={typeScale.h1}>Profilini Doğrula</Text>
+            <Text style={styles.modalBodyText}>
+              Profilini doğrulayarak topluluktaki güvenilirliğini artırabilir, daha fazla kişiyle eşleşebilir ve öncelikli görünürlük kazanabilirsin!
+            </Text>
+            <View style={styles.modalActions}>
+              <PrimaryButton
+                label={isRequestingVerify ? "İstek Gönderiliyor..." : "Doğrulama Talebi Gönder"}
+                onPress={handleSendVerificationRequest}
+                loading={isRequestingVerify}
+              />
+              <PrimaryButton
+                label="Vazgeç"
+                variant="outline"
+                onPress={() => setVerificationModalVisible(false)}
+                disabled={isRequestingVerify}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -348,5 +445,46 @@ const styles = StyleSheet.create({
   },
   actionIconDanger: {
     backgroundColor: "#FFE5E8",
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15,10,40,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: spacing.xl,
+    alignItems: "center",
+    gap: spacing.md,
+    width: "100%",
+    maxWidth: 340,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 5,
+  },
+  modalIconWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.xs,
+  },
+  modalBodyText: {
+    fontFamily: fontFamily.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginBottom: spacing.md,
+  },
+  modalActions: {
+    width: "100%",
+    gap: spacing.sm,
   },
 });

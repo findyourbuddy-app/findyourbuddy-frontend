@@ -27,3 +27,11 @@ export function changePassword(currentPassword: string, newPassword: string): Pr
     })
     .then(() => undefined);
 }
+
+export function verifyPhoneCode(code: string): Promise<void> {
+  return apiClient.post("/auth/phone/verify", { code }).then(() => undefined);
+}
+
+export function resendPhoneCode(): Promise<void> {
+  return apiClient.post("/auth/phone/resend").then(() => undefined);
+}

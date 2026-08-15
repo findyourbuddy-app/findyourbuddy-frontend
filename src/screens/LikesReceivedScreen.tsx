@@ -11,6 +11,12 @@ import { createCheckoutSession } from "../api/subscriptions";
 import { useAuth } from "../context/AuthContext";
 import { colors, fontFamily, radius, spacing } from "../theme";
 
+function maskName(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return trimmed;
+  return `${trimmed[0]}${"•".repeat(Math.max(3, Math.min(trimmed.length - 1, 6)))}`;
+}
+
 export function LikesReceivedScreen() {
   const { isPremium } = useAuth();
   const [likers, setLikers] = useState<LikerResponse[]>([]);
@@ -178,7 +184,9 @@ export function LikesReceivedScreen() {
             blurRadius={isPremium ? undefined : 15}
           />
           <View style={styles.userInfo}>
-            <Text style={styles.name}>{item.user.display_name}</Text>
+            <Text style={styles.name}>
+              {isPremium ? item.user.display_name : maskName(item.user.display_name)}
+            </Text>
             {!isPremium && (
               <View style={styles.lockRow}>
                 <Feather name="lock" size={12} color={colors.textSecondary} style={{ marginRight: 2 }} />

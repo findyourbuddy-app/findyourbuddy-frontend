@@ -2,6 +2,7 @@ import { useCallback, useState, useMemo } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import * as Location from "expo-location";
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
@@ -11,11 +12,12 @@ import { Chip } from "../components/ui/Chip";
 import { SectionHeader } from "../components/ui/SectionHeader";
 import { EventCard } from "../components/cards/EventCard";
 import { EventListItem } from "../components/cards/EventListItem";
+import { OptionPickerModal } from "../components/overlays/OptionPickerModal";
 import { createBookmark, deleteBookmark, listMyBookmarks } from "../api/bookmarks";
 import { listEvents } from "../api/events";
 import { useAuth } from "../context/AuthContext";
 import { CATEGORIES } from "../constants/categories";
-import { colors, fontFamily, spacing, typeScale } from "../theme";
+import { colors, fontFamily, spacing, typeScale, radius, shadows } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
 
@@ -37,9 +39,12 @@ export function DiscoverScreen() {
   const [hasMore, setHasMore] = useState(true);
 
   // Sorting and Location States
-  const [sortBy, setSortBy] = useState<"date" | "distance" | "popularity">("date");
+  const [sortBy, setSortBy] = useState<"date" | "distance" | "popularity" | undefined>(undefined);
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [sortPickerVisible, setSortPickerVisible] = useState(false);
+  const [isMapView, setIsMapView] = useState(false);
+  const [selectedMapEvent, setSelectedMapEvent] = useState<Event | null>(null);
 
   const getDistanceInKm = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; // Radius of the earth in km
@@ -74,13 +79,35 @@ export function DiscoverScreen() {
   }, []);
 
   function openSortPicker(): void {
-    Alert.alert("Nasıl sıralansın?", undefined, [
-      { text: "Tarih ve Saat", onPress: () => setSortBy("date") },
-      { text: "En Yakın (Konuma Göre)", onPress: () => requestDistanceSort() },
-      { text: "Popülerlik (Katılımcı Sayısı)", onPress: () => setSortBy("popularity") },
-      { text: "Vazgeç", style: "cancel" },
-    ]);
+    setSortPickerVisible(true);
   }
+
+  const sortOptions = [
+    {
+      key: "date",
+      label: "Tarih ve Saat",
+      icon: "clock" as const,
+      onPress: () => setSortBy(sortBy === "date" ? undefined : "date")
+    },
+    {
+      key: "distance",
+      label: "En Yakın (Konuma Göre)",
+      icon: "navigation" as const,
+      onPress: () => {
+        if (sortBy === "distance") {
+          setSortBy(undefined);
+        } else {
+          requestDistanceSort();
+        }
+      }
+    },
+    {
+      key: "popularity",
+      label: "Popülerlik (Katılımcı Sayısı)",
+      icon: "trending-up" as const,
+      onPress: () => setSortBy(sortBy === "popularity" ? undefined : "popularity"),
+    },
+  ];
 
   const sortedEvents = useMemo(() => {
     if (events.length === 0) return [];
@@ -212,18 +239,80 @@ export function DiscoverScreen() {
   }, [sortBy, userCoords, getDistanceInKm]);
 
   return (
+    <>
     <FlatList
       style={styles.background}
       contentContainerStyle={styles.list}
-      data={rest}
+      data={isMapView ? [] : rest}
       keyExtractor={(event) => String(event.id)}
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={() => loadEvents(selectedCategory)} />
       }
-      onEndReached={loadMoreEvents}
+      onEndReached={isMapView ? undefined : loadMoreEvents}
       onEndReachedThreshold={0.4}
       ListFooterComponent={
-        isLoadingMore ? (
+        isMapView ? (
+          <View style={styles.mapCanvasContainer}>
+            <Text style={styles.mapCanvasTitle}>📍 Etkinlik Haritası</Text>
+            <View style={styles.mapCanvas}>
+              {/* Radar pulse in center representing user */}
+              <View style={styles.userPulseOuter}>
+                <View style={styles.userPulseInner} />
+              </View>
+              {/* Event pins */}
+              {events.map((event) => {
+                const centerLat = userCoords?.latitude ?? 41.0082;
+                const centerLng = userCoords?.longitude ?? 28.9784;
+                
+                const latDiff = event.latitude - centerLat;
+                const lngDiff = event.longitude - centerLng;
+                
+                const leftOffset = 150 + lngDiff * 1200;
+                const topOffset = 140 - latDiff * 1200;
+                
+                const x = Math.max(10, Math.min(290, leftOffset));
+                const y = Math.max(10, Math.min(270, topOffset));
+
+                return (
+                  <Pressable
+                    key={event.id}
+                    style={[
+                      styles.mapPin,
+                      { left: x, top: y },
+                      selectedMapEvent?.id === event.id && styles.mapPinSelected
+                    ]}
+                    onPress={() => setSelectedMapEvent(event)}
+                  >
+                    <Feather
+                      name="map-pin"
+                      size={20}
+                      color={selectedMapEvent?.id === event.id ? colors.accentYellow : colors.primary}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Selected Event Card Overlay */}
+            {selectedMapEvent && (
+              <View style={styles.mapCallout}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.calloutTitle}>{selectedMapEvent.title}</Text>
+                  <Text style={styles.calloutText} numberOfLines={1}>{selectedMapEvent.location_name}</Text>
+                  <Text style={styles.calloutText}>{getEventDistanceLabel(selectedMapEvent) || "Mesafe hesaplanamadı"}</Text>
+                </View>
+                <View style={{ gap: spacing.xs }}>
+                  <Pressable style={styles.calloutDetailBtn} onPress={() => goToDetail(selectedMapEvent)}>
+                    <Text style={styles.calloutDetailBtnText}>Detay</Text>
+                  </Pressable>
+                  <Pressable style={styles.calloutCloseBtn} onPress={() => setSelectedMapEvent(null)}>
+                    <Text style={styles.calloutCloseBtnText}>Kapat</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          </View>
+        ) : isLoadingMore ? (
           <View style={styles.footerLoader}>
             <ActivityIndicator color={colors.primary} />
           </View>
@@ -252,6 +341,13 @@ export function DiscoverScreen() {
                     </Text>
                   </>
                 )}
+              </Pressable>
+              <Pressable
+                style={[styles.sortPill, isMapView && { backgroundColor: colors.primaryMuted }]}
+                onPress={() => setIsMapView(!isMapView)}
+              >
+                <Feather name={isMapView ? "list" : "map"} size={12} color={colors.primary} />
+                <Text style={styles.sortText}>{isMapView ? "Liste" : "Harita"}</Text>
               </Pressable>
             </View>
             <View style={styles.headerActions}>
@@ -300,6 +396,27 @@ export function DiscoverScreen() {
             style={styles.chipList}
           />
 
+          <Pressable
+            style={styles.aiMatchingBanner}
+            onPress={() => navigation.navigate("AIRecommendations")}
+          >
+            <LinearGradient
+              colors={["#2D1B6B", "#6C5CE7"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.aiMatchingBannerGradient}
+            >
+              <View style={styles.aiMatchingTextCol}>
+                <Text style={styles.aiMatchingTitle}>✨ AI Kanka Eşleştirici</Text>
+                <Text style={styles.aiMatchingDesc}>Zodyak element ve ilgi alanı uyumunu hesapla!</Text>
+              </View>
+              <View style={styles.aiMatchingBadge}>
+                <Text style={styles.aiMatchingBadgeText}>Hesapla</Text>
+                <Feather name="chevron-right" size={14} color={colors.primary} />
+              </View>
+            </LinearGradient>
+          </Pressable>
+
           {featured ? (
             <View style={styles.featuredWrapper}>
               <EventCard
@@ -342,6 +459,14 @@ export function DiscoverScreen() {
         </View>
       )}
     />
+    <OptionPickerModal
+      visible={sortPickerVisible}
+      title="Nasıl sıralansın?"
+      options={sortOptions}
+      onDismiss={() => setSortPickerVisible(false)}
+      selectedKey={sortBy || undefined}
+    />
+    </>
   );
 }
 
@@ -428,5 +553,139 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: "center",
     justifyContent: "center",
+  },
+  mapCanvasContainer: {
+    marginTop: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  mapCanvasTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  mapCanvas: {
+    width: "100%",
+    height: 300,
+    backgroundColor: "#0F0B26",
+    borderRadius: radius.sm,
+    position: "relative",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  userPulseOuter: {
+    position: "absolute",
+    left: 150,
+    top: 140,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(108, 92, 231, 0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  userPulseInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  mapPin: {
+    position: "absolute",
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mapPinSelected: {
+    transform: [{ scale: 1.2 }],
+  },
+  mapCallout: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    padding: spacing.md,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    gap: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  calloutTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  calloutText: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  calloutDetailBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    alignItems: "center",
+  },
+  calloutDetailBtnText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.surface,
+  },
+  calloutCloseBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    alignItems: "center",
+  },
+  calloutCloseBtnText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  aiMatchingBanner: {
+    marginTop: spacing.md,
+    borderRadius: radius.card,
+    overflow: "hidden",
+    ...shadows.card,
+  },
+  aiMatchingBannerGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  aiMatchingTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  aiMatchingTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 15,
+    color: colors.surface,
+  },
+  aiMatchingDesc: {
+    fontFamily: fontFamily.body,
+    fontSize: 11,
+    color: "rgba(255, 255, 255, 0.75)",
+  },
+  aiMatchingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    gap: 2,
+  },
+  aiMatchingBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
   },
 });

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Modal, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Modal, StyleSheet, Text, TextInput, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { PrimaryButton } from "../ui/PrimaryButton";
+import { createCheckoutSession } from "../../api/subscriptions";
 import { colors, fontFamily, radius, spacing, typeScale } from "../../theme";
 import type { SwipeCandidateFilters } from "../../api/swipes";
 
@@ -58,19 +59,47 @@ export function SwipeFiltersModal({
     onApply({});
   }
 
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
+  const handleUpgrade = async () => {
+    setIsUpgrading(true);
+    try {
+      const { checkout_url } = await createCheckoutSession();
+      if (checkout_url) {
+        Linking.openURL(checkout_url);
+      } else {
+        Alert.alert("Ödeme Hatası", "Ödeme linki alınamadı.");
+      }
+    } catch {
+      Alert.alert(
+        "Ödeme Hatası",
+        "Ödeme sayfası başlatılamadı. Lütfen sunucunun açık olduğundan emin ol."
+      );
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
+
   if (!isPremium) {
     return (
       <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
         <View style={styles.backdrop}>
           <View style={styles.card}>
-            <Feather name="lock" size={28} color={colors.primary} />
-            <Text style={typeScale.h1}>Gelişmiş Filtreler</Text>
-            <Text style={styles.upsellText}>
-              Yaş aralığı ve mesafe filtreleriyle sana en uygun kişileri bulmak Premium
-              üyelere özel.
-            </Text>
+            <View style={{ alignItems: "center", gap: spacing.sm, marginVertical: spacing.sm }}>
+              <Feather name="lock" size={32} color={colors.primary} />
+              <Text style={typeScale.h1}>Gelişmiş Filtreler</Text>
+              <Text style={[styles.upsellText, { textAlign: "center", lineHeight: 20 }]}>
+                Yaş aralığı ve mesafe filtreleriyle sana en uygun kişileri filtrelemek Premium üyelere özeldir. Hemen Premium'a geç, kankanı bul!
+              </Text>
+            </View>
             <View style={styles.actions}>
-              <PrimaryButton label="Kapat" variant="outline" onPress={onDismiss} />
+              <PrimaryButton
+                label={isUpgrading ? "Yükleniyor..." : "Premium'a Yükselt"}
+                variant="accent"
+                onPress={handleUpgrade}
+                loading={isUpgrading}
+              />
+              <PrimaryButton label="Kapat" variant="outline" onPress={onDismiss} disabled={isUpgrading} />
             </View>
           </View>
         </View>
