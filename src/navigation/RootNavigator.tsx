@@ -23,6 +23,7 @@ import { EventDetailScreen } from "../screens/EventDetailScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
 import { LikesReceivedScreen } from "../screens/LikesReceivedScreen";
 import { CandidateProfileScreen } from "../screens/CandidateProfileScreen";
+import { ChangePasswordScreen } from "../screens/ChangePasswordScreen";
 import type { User } from "../types";
 
 export type AuthStackParamList = {
@@ -46,6 +47,7 @@ export type MainStackParamList = {
   Profile: undefined;
   EditProfile: undefined;
   Settings: undefined;
+  ChangePassword: undefined;
   BlockedUsers: undefined;
   CreateEvent: undefined;
   EventDetail: { eventId: number };
@@ -116,6 +118,11 @@ function MainNavigator() {
         options={{ title: "Profili Düzenle" }}
       />
       <MainStack.Screen name="Settings" component={SettingsScreen} options={{ title: "Ayarlar" }} />
+      <MainStack.Screen
+        name="ChangePassword"
+        component={ChangePasswordScreen}
+        options={{ title: "Şifre Değiştir" }}
+      />
       <MainStack.Screen
         name="BlockedUsers"
         component={BlockedUsersScreen}

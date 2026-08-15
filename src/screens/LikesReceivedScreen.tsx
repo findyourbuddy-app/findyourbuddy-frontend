@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   },
   countNumber: {
     color: colors.primary,
-    fontFamily: fontFamily.h1,
+    fontFamily: fontFamily.displayBold,
     fontSize: 18,
   },
   premiumCard: {
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   premiumCardTitle: {
-    fontFamily: fontFamily.h2,
+    fontFamily: fontFamily.displaySemiBold,
     fontSize: 18,
     color: colors.surface,
   },

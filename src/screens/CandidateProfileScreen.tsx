@@ -6,6 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Avatar } from "../components/ui/Avatar";
 import { getInterestLabel } from "../constants/interests";
+import { formatMemberSince, isNewMember } from "../utils/date";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 
@@ -21,7 +22,8 @@ export function CandidateProfileScreen({ route }: Props) {
   }
 
   return (
-    <ScrollView style={styles.background} contentContainerStyle={styles.content}>
+    <View style={styles.background}>
+    <ScrollView contentContainerStyle={styles.content}>
       <LinearGradient
         colors={[colors.primary, "#9B7BFF"]}
         start={{ x: 0, y: 0 }}
@@ -33,15 +35,30 @@ export function CandidateProfileScreen({ route }: Props) {
           {candidate.display_name}
           {candidate.age ? `, ${candidate.age}` : ""}
         </Text>
-        {candidate.trust_score > 0 ? (
-          <View style={styles.trustBadge}>
-            <Feather name="check-circle" size={13} color={colors.surface} />
-            <Text style={styles.trustText}>
-              {candidate.trust_score} kişi gerçekten buluştuğunu onayladı
-            </Text>
-          </View>
-        ) : null}
+        <View style={styles.badgeRow}>
+          {candidate.trust_score > 0 ? (
+            <View style={styles.trustBadge}>
+              <Feather name="check-circle" size={13} color={colors.surface} />
+              <Text style={styles.trustText}>
+                {candidate.trust_score} kişi gerçekten buluştuğunu onayladı
+              </Text>
+            </View>
+          ) : null}
+          {isNewMember(candidate.created_at) ? (
+            <View style={styles.trustBadge}>
+              <Text style={styles.trustText}>✨ Yeni Üye</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={styles.memberSince}>{formatMemberSince(candidate.created_at)}</Text>
       </LinearGradient>
+
+      {candidate.occupation ? (
+        <View style={styles.card}>
+          <Text style={typeScale.eyebrow}>Meslek</Text>
+          <Text style={styles.bio}>{candidate.occupation}</Text>
+        </View>
+      ) : null}
 
       {candidate.photos.length > 0 ? (
         <View style={styles.card}>
@@ -78,6 +95,7 @@ export function CandidateProfileScreen({ route }: Props) {
           </View>
         </View>
       ) : null}
+    </ScrollView>
 
       <View style={styles.actionRow}>
         <Pressable
@@ -105,7 +123,7 @@ export function CandidateProfileScreen({ route }: Props) {
           <Feather name="heart" size={22} color={colors.surface} />
         </Pressable>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -117,7 +135,7 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.xl,
     gap: spacing.lg,
-    paddingBottom: 60,
+    paddingBottom: 100,
   },
   heroCard: {
     alignItems: "center",
@@ -132,6 +150,15 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: colors.surface,
     marginTop: spacing.sm,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  memberSince: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.75)",
   },
   trustBadge: {
     flexDirection: "row",
@@ -182,11 +209,18 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   actionRow: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: spacing.lg,
-    marginTop: spacing.md,
+    paddingVertical: spacing.lg,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   actionButton: {
     width: 56,

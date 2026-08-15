@@ -37,3 +37,15 @@ export function getIncomingLikes(eventId?: number): Promise<LikerResponse[]> {
     .get<LikerResponse[]>("/swipes/likes-received", { params: { event_id: eventId } })
     .then((res) => res.data);
 }
+
+export interface SwipeQuota {
+  is_premium: boolean;
+  swipes_used_today: number;
+  swipe_limit: number | null;
+  super_likes_used_today: number;
+  super_like_limit: number;
+}
+
+export function getSwipeQuota(): Promise<SwipeQuota> {
+  return apiClient.get<SwipeQuota>("/swipes/quota").then((res) => res.data);
+}

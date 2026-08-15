@@ -68,6 +68,19 @@ const TURKISH_MONTHS_SHORT = [
   "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
 ];
 
+const NEW_MEMBER_WINDOW_DAYS = 7;
+
+export function isNewMember(iso: string): boolean {
+  const date = parseApiDate(iso);
+  const diffDays = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays < NEW_MEMBER_WINDOW_DAYS;
+}
+
+export function formatMemberSince(iso: string): string {
+  const date = parseApiDate(iso);
+  return `${TURKISH_MONTHS_SHORT[date.getMonth()]} ${date.getFullYear()}'den beri üye`;
+}
+
 export function formatEventDate(iso: string): string {
   const date = parseApiDate(iso);
   const timeStr = `${pad(date.getHours())}:${pad(date.getMinutes())}`;

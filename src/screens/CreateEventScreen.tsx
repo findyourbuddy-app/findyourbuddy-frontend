@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useState, useMemo } from "react";
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Location from "expo-location";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -121,22 +121,50 @@ export function CreateEventScreen() {
 
   const minuteOptions = ["00", "15", "30", "45"];
 
-  async function handleUseLocation(): Promise<void> {
+  async function handleUseLocation(silent = false): Promise<void> {
     setIsLocating(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Konum izni gerekli", "Etkinlik konumunu almak için izin vermen gerekiyor.");
+        if (!silent) {
+          Alert.alert("Konum izni gerekli", "Etkinlik konumunu almak için izin vermen gerekiyor.");
+        }
         return;
       }
       const position = await Location.getCurrentPositionAsync({});
-      setCoordinates({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+      const { latitude, longitude } = position.coords;
+      setCoordinates({ latitude, longitude });
+
+      // Reverse geocoding has no web implementation in expo-location; skip
+      // there and let the user type the location name manually instead.
+      if (Platform.OS !== "web") {
+        try {
+          const [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (place) {
+            const readable = [place.name, place.street, place.district ?? place.subregion, place.city]
+              .filter(Boolean)
+              .join(", ");
+            if (readable) {
+              setLocationName((current) => (current.trim() ? current : readable));
+            }
+          }
+        } catch {
+          // Best-effort; manual entry still works if reverse geocoding fails.
+        }
+      }
     } catch {
-      Alert.alert("Konum alınamadı", "Bir sorun oluştu, tekrar dener misin?");
+      if (!silent) {
+        Alert.alert("Konum alınamadı", "Bir sorun oluştu, tekrar dener misin?");
+      }
     } finally {
       setIsLocating(false);
     }
   }
+
+  useEffect(() => {
+    handleUseLocation(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSave(): Promise<void> {
     setError(null);
@@ -236,7 +264,7 @@ export function CreateEventScreen() {
         <Text style={typeScale.eyebrow}>Koordinatlar</Text>
         <PrimaryButton
           label={coordinates ? "Konum Alındı ✓" : "Mevcut Konumumu Kullan"}
-          onPress={handleUseLocation}
+          onPress={() => handleUseLocation(false)}
           variant="outline"
           loading={isLocating}
         />
@@ -493,7 +521,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   modalTitle: {
-    fontFamily: fontFamily.h2,
+    fontFamily: fontFamily.displaySemiBold,
     fontSize: 16,
     color: colors.textPrimary,
   },
@@ -545,7 +573,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: colors.background,
     overflow: "hidden",
   },

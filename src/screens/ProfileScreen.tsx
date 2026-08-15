@@ -9,6 +9,7 @@ import { Badge } from "../components/ui/Badge";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { useAuth } from "../context/AuthContext";
 import { getInterestLabel } from "../constants/interests";
+import { formatMemberSince, isNewMember } from "../utils/date";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 
@@ -33,14 +34,26 @@ export function ProfileScreen() {
         <View style={styles.avatarRing}>
           <Avatar name={user.display_name} photoUrl={user.photo_url} size={88} />
         </View>
-        <Text style={styles.heroName}>{user.display_name}</Text>
+        <Text style={styles.heroName}>
+          {user.display_name}
+          {user.age ? `, ${user.age}` : ""}
+        </Text>
         <Text style={styles.heroEmail}>{user.email}</Text>
-        {isPremium ? (
-          <View style={styles.heroBadge}>
-            <Badge label="Premium Üye" variant="yellow" icon="⭐" />
-          </View>
-        ) : null}
+        <View style={styles.heroBadgeRow}>
+          {isPremium ? <Badge label="Premium Üye" variant="yellow" icon="⭐" /> : null}
+          {isNewMember(user.created_at) ? (
+            <Badge label="Yeni Üye" variant="green" icon="✨" />
+          ) : null}
+        </View>
+        <Text style={styles.memberSince}>{formatMemberSince(user.created_at)}</Text>
       </LinearGradient>
+
+      {user.occupation ? (
+        <View style={styles.card}>
+          <Text style={typeScale.eyebrow}>Meslek</Text>
+          <Text style={styles.bio}>{user.occupation}</Text>
+        </View>
+      ) : null}
 
       {user.photos.length > 0 ? (
         <View style={styles.card}>
@@ -145,8 +158,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "rgba(255,255,255,0.85)",
   },
-  heroBadge: {
+  heroBadgeRow: {
+    flexDirection: "row",
+    gap: spacing.xs,
     marginTop: spacing.sm,
+  },
+  memberSince: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: spacing.xs,
   },
   card: {
     backgroundColor: colors.surface,

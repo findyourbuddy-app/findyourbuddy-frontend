@@ -11,19 +11,23 @@ export interface User {
   display_name: string;
   is_active: boolean;
   age: number | null;
+  date_of_birth: string | null;
+  occupation: string | null;
   bio: string | null;
   interests: string[];
   latitude: number | null;
   longitude: number | null;
   photo_url: string | null;
   accepted_terms_at: string | null;
+  created_at: string;
   photos: UserPhoto[];
   trust_score: number;
 }
 
 export interface UserUpdate {
   display_name?: string;
-  age?: number;
+  date_of_birth?: string;
+  occupation?: string;
   bio?: string;
   interests?: string[];
   latitude?: number;

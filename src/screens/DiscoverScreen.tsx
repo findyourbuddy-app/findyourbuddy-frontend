@@ -37,7 +37,7 @@ export function DiscoverScreen() {
   const [hasMore, setHasMore] = useState(true);
 
   // Sorting and Location States
-  const [sortBy, setSortBy] = useState<"date" | "distance">("date");
+  const [sortBy, setSortBy] = useState<"date" | "distance" | "popularity">("date");
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -52,31 +52,35 @@ export function DiscoverScreen() {
     return R * c; // Distance in km
   }, []);
 
-  const handleSortToggle = async () => {
-    if (sortBy === "date") {
-      setIsLocating(true);
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          Alert.alert("Konum İzni Gerekli", "Etkinlikleri mesafeye göre sıralayabilmek için konum izni vermen gerekiyor.");
-          setIsLocating(false);
-          return;
-        }
-        const position = await Location.getCurrentPositionAsync({});
-        setUserCoords({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        setSortBy("distance");
-      } catch {
-        Alert.alert("Konum Alınamadı", "Konumunuz alınırken bir sorun oluştu.");
-      } finally {
-        setIsLocating(false);
+  const requestDistanceSort = useCallback(async () => {
+    setIsLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Konum İzni Gerekli", "Etkinlikleri mesafeye göre sıralayabilmek için konum izni vermen gerekiyor.");
+        return;
       }
-    } else {
-      setSortBy("date");
+      const position = await Location.getCurrentPositionAsync({});
+      setUserCoords({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
+      setSortBy("distance");
+    } catch {
+      Alert.alert("Konum Alınamadı", "Konumunuz alınırken bir sorun oluştu.");
+    } finally {
+      setIsLocating(false);
     }
-  };
+  }, []);
+
+  function openSortPicker(): void {
+    Alert.alert("Nasıl sıralansın?", undefined, [
+      { text: "Tarih ve Saat", onPress: () => setSortBy("date") },
+      { text: "En Yakın (Konuma Göre)", onPress: () => requestDistanceSort() },
+      { text: "Popülerlik (Katılımcı Sayısı)", onPress: () => setSortBy("popularity") },
+      { text: "Vazgeç", style: "cancel" },
+    ]);
+  }
 
   const sortedEvents = useMemo(() => {
     if (events.length === 0) return [];
@@ -88,6 +92,9 @@ export function DiscoverScreen() {
         const distB = getDistanceInKm(b.latitude, b.longitude, userCoords.latitude, userCoords.longitude);
         return distA - distB;
       });
+    }
+    if (sortBy === "popularity") {
+      return list.sort((a, b) => b.attendee_count - a.attendee_count);
     }
     // Default: Sort by date
     return list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
@@ -230,14 +237,18 @@ export function DiscoverScreen() {
                 <Feather name="map-pin" size={14} color={colors.textPrimary} />
                 <Text style={styles.locationText}>İstanbul</Text>
               </View>
-              <Pressable style={styles.sortPill} onPress={handleSortToggle} disabled={isLocating}>
+              <Pressable style={styles.sortPill} onPress={openSortPicker} disabled={isLocating}>
                 {isLocating ? (
                   <ActivityIndicator size="small" color={colors.primary} style={{ width: 14, height: 14 }} />
                 ) : (
                   <>
-                    <Feather name={sortBy === "distance" ? "navigation" : "clock"} size={12} color={colors.primary} />
+                    <Feather
+                      name={sortBy === "distance" ? "navigation" : sortBy === "popularity" ? "trending-up" : "clock"}
+                      size={12}
+                      color={colors.primary}
+                    />
                     <Text style={styles.sortText}>
-                      {sortBy === "distance" ? "En Yakın" : "Tarih"}
+                      {sortBy === "distance" ? "En Yakın" : sortBy === "popularity" ? "Popüler" : "Tarih"}
                     </Text>
                   </>
                 )}
@@ -303,7 +314,12 @@ export function DiscoverScreen() {
           ) : null}
 
           {rest.length > 0 ? (
-            <SectionHeader eyebrow="Hafta Sonu Havası" title="Yakınındaki Popüler Aktiviteler" actionLabel="Tümü" />
+            <SectionHeader
+              eyebrow="Hafta Sonu Havası"
+              title="Yakınındaki Popüler Aktiviteler"
+              actionLabel="Sırala"
+              onActionPress={openSortPicker}
+            />
           ) : null}
         </View>
       }

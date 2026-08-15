@@ -18,3 +18,12 @@ export function confirmPasswordReset(token: string, newPassword: string): Promis
     .post("/auth/password-reset/confirm", { token, new_password: newPassword })
     .then(() => undefined);
 }
+
+export function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  return apiClient
+    .post("/auth/change-password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    })
+    .then(() => undefined);
+}

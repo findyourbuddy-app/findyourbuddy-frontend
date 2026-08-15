@@ -126,7 +126,7 @@ export function EventDetailScreen({ route }: Props) {
         <Pressable style={styles.metaRow} onPress={handleOpenMap}>
           <Feather name="map-pin" size={16} color={colors.primary} />
           <Text style={[styles.metaText, { color: colors.primary, textDecorationLine: "underline" }]}>
-            {event.location_name} (Haritada Göster)
+            {event.location_name}
           </Text>
         </Pressable>
         <View style={styles.metaRow}>

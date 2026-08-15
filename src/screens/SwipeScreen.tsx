@@ -11,12 +11,12 @@ import { SwipeCandidateCard } from "../components/cards/SwipeCandidateCard";
 import { MatchCelebrationModal } from "../components/overlays/MatchCelebrationModal";
 import { SwipeFiltersModal } from "../components/overlays/SwipeFiltersModal";
 import { listEvents } from "../api/events";
-import { createSwipe, getSwipeCandidates } from "../api/swipes";
-import type { SwipeCandidateFilters } from "../api/swipes";
+import { createSwipe, getSwipeCandidates, getSwipeQuota } from "../api/swipes";
+import type { SwipeCandidateFilters, SwipeQuota } from "../api/swipes";
 import { useAuth } from "../context/AuthContext";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
-import type { User, UserPublic } from "../types";
+import type { Event, User, UserPublic } from "../types";
 
 interface ActiveEvent {
   id: number;
@@ -39,22 +39,35 @@ export function SwipeScreen() {
   const [match, setMatch] = useState<{ id: number; user: UserPublic } | null>(null);
   const [filters, setFilters] = useState<SwipeCandidateFilters>({});
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const [availableEvents, setAvailableEvents] = useState<Event[]>([]);
+  const [quota, setQuota] = useState<SwipeQuota | null>(null);
+
+  const refreshQuota = useCallback(() => {
+    getSwipeQuota()
+      .then(setQuota)
+      .catch(() => {
+        // Non-critical; the quota display just stays hidden if this fails.
+      });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
 
-      async function resolveActiveEvent(): Promise<ActiveEvent | null> {
+      async function resolveActiveEvent(upcoming: Event[]): Promise<ActiveEvent | null> {
         if (route.params) {
           return { id: route.params.eventId, title: route.params.eventTitle };
         }
-        const upcoming = await listEvents();
         return upcoming[0] ? { id: upcoming[0].id, title: upcoming[0].title } : null;
       }
 
       setIsLoading(true);
-      resolveActiveEvent()
-        .then(async (event) => {
+      refreshQuota();
+      listEvents()
+        .then(async (upcoming) => {
+          if (cancelled) return;
+          setAvailableEvents(upcoming);
+          const event = await resolveActiveEvent(upcoming);
           if (cancelled) return;
           setActiveEvent(event);
           setCurrentIndex(0);
@@ -77,8 +90,33 @@ export function SwipeScreen() {
       return () => {
         cancelled = true;
       };
-    }, [route.params, filters])
+    }, [route.params, filters, refreshQuota])
   );
+
+  function switchEvent(event: Event): void {
+    setActiveEvent({ id: event.id, title: event.title });
+    setCurrentIndex(0);
+    setIsLoading(true);
+    getSwipeCandidates(event.id, filters)
+      .then(setCandidates)
+      .catch(() => Alert.alert("Bir sorun oluştu", "Adaylar yüklenemedi. Lütfen tekrar dene."))
+      .finally(() => setIsLoading(false));
+  }
+
+  function openEventPicker(): void {
+    if (availableEvents.length <= 1) return;
+    Alert.alert(
+      "Etkinlik Değiştir",
+      undefined,
+      [
+        ...availableEvents.map((event) => ({
+          text: event.title,
+          onPress: () => switchEvent(event),
+        })),
+        { text: "Vazgeç", style: "cancel" as const },
+      ]
+    );
+  }
 
   function handleApplyFilters(nextFilters: SwipeCandidateFilters): void {
     setFilters(nextFilters);
@@ -96,6 +134,7 @@ export function SwipeScreen() {
         setMatch({ id: result.match_id, user: result.matched_user });
       }
       setCurrentIndex((index) => index + 1);
+      refreshQuota();
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 429) {
         const detail = error.response.data?.detail as string | undefined;
@@ -150,9 +189,27 @@ export function SwipeScreen() {
       </View>
 
       {activeEvent ? (
-        <View style={styles.eventPill}>
-          <Feather name="map-pin" size={14} color={colors.primary} />
-          <Text style={styles.eventPillText}>{activeEvent.title}</Text>
+        <View style={styles.metaRow}>
+          <Pressable
+            style={styles.eventPill}
+            onPress={openEventPicker}
+            disabled={availableEvents.length <= 1}
+            accessibilityRole="button"
+            accessibilityLabel="Etkinlik değiştir"
+          >
+            <Feather name="map-pin" size={14} color={colors.primary} />
+            <Text style={styles.eventPillText}>{activeEvent.title}</Text>
+            {availableEvents.length > 1 ? (
+              <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+            ) : null}
+          </Pressable>
+          {quota ? (
+            <Text style={styles.quotaText}>
+              {quota.is_premium ? "Sınırsız swipe" : `${quota.swipes_used_today}/${quota.swipe_limit} swipe`}
+              {" · "}
+              {quota.super_likes_used_today}/{quota.super_like_limit} süper
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -261,6 +318,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
   eventPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -275,6 +339,11 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 13,
     color: colors.textPrimary,
+  },
+  quotaText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   cardArea: {
     flex: 1,

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { markMessagesAsRead, sendMessage } from "../api/messages";
+import { listMessages, markMessagesAsRead, sendMessage } from "../api/messages";
 import { submitMatchFeedback } from "../api/matches";
 import { blockUser, reportUser } from "../api/safety";
 import { useAuth } from "../context/AuthContext";
@@ -30,7 +30,8 @@ export function ChatScreen({ route }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [historicalMessages, setHistoricalMessages] = useState<Message[]>([]);
+  const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -105,14 +106,25 @@ export function ChatScreen({ route }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otherUserId, otherUserName]);
 
+  // Firestore only carries messages sent after the real-time chat migration --
+  // older conversation history lives in Postgres and needs a one-time fetch so
+  // it doesn't appear to have "disappeared".
+  useEffect(() => {
+    listMessages(matchId)
+      .then(setHistoricalMessages)
+      .catch(() => {
+        // Best-effort; the live Firestore feed still works without history.
+      });
+  }, [matchId]);
+
   // Real-time Firestore message listener
   useEffect(() => {
     if (!user) return;
-    
+
     setErrorText(null);
     const messagesRef = collection(db, "matches", String(matchId), "messages");
     const q = query(messagesRef, orderBy("created_at", "asc"));
-    
+
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
@@ -121,6 +133,7 @@ export function ChatScreen({ route }: Props) {
           const data = docSnap.data();
           list.push({
             id: docSnap.id as any,
+            match_id: matchId,
             sender_id: data.sender_id,
             content: data.content,
             created_at: data.created_at?.toDate()?.toISOString() || new Date().toISOString(),
@@ -133,7 +146,7 @@ export function ChatScreen({ route }: Props) {
             updateDoc(docRef, { is_read: true }).catch(() => {});
           }
         });
-        setMessages(list);
+        setLiveMessages(list);
       },
       () => {
         setErrorText("Gerçek zamanlı sohbet bağlantı hatası.");
@@ -142,6 +155,20 @@ export function ChatScreen({ route }: Props) {
 
     return () => unsubscribe();
   }, [matchId, user]);
+
+  // Postgres has the full history; Firestore only has messages sent since the
+  // real-time migration. Keep whatever Postgres history predates Firestore's
+  // earliest message, then let Firestore drive everything from there on.
+  const messages = useMemo(() => {
+    if (liveMessages.length === 0) {
+      return historicalMessages;
+    }
+    const earliestLiveTime = new Date(liveMessages[0].created_at).getTime();
+    const olderHistory = historicalMessages.filter(
+      (message) => new Date(message.created_at).getTime() < earliestLiveTime
+    );
+    return [...olderHistory, ...liveMessages];
+  }, [historicalMessages, liveMessages]);
 
   // Sync read status to PostgreSQL backend on screen focus
   useFocusEffect(
@@ -160,7 +187,7 @@ export function ChatScreen({ route }: Props) {
 
   async function handleSend(): Promise<void> {
     const content = draft.trim();
-    if (!content) {
+    if (!content || !user) {
       return;
     }
     setErrorText(null);

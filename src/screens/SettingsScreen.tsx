@@ -209,6 +209,16 @@ export function SettingsScreen() {
       <View style={styles.card}>
         <Text style={typeScale.eyebrow}>Hesap</Text>
         <SettingsRow
+          icon="image"
+          label="Fotoğraflarım"
+          onPress={() => navigation.navigate("EditProfile")}
+        />
+        <SettingsRow
+          icon="lock"
+          label="Şifre Değiştir"
+          onPress={() => navigation.navigate("ChangePassword")}
+        />
+        <SettingsRow
           icon="shield"
           label="Engellenen Kullanıcılar"
           onPress={() => navigation.navigate("BlockedUsers")}

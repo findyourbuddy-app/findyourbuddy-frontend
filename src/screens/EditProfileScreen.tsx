@@ -18,7 +18,12 @@ import {
 } from "../api/users";
 import { useAuth } from "../context/AuthContext";
 import { INTERESTS } from "../constants/interests";
-import { MAX_AGE, MAX_BIO_LENGTH, MIN_AGE, isValidAge } from "../utils/profile";
+import {
+  MAX_BIO_LENGTH,
+  MAX_OCCUPATION_LENGTH,
+  calculateAge,
+  isValidBirthDate,
+} from "../utils/profile";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { UserPhoto } from "../types";
@@ -31,7 +36,17 @@ export function EditProfileScreen() {
   const navigation = useNavigation<EditProfileNavigationProp>();
   const { user, updateUser, justRegistered, clearJustRegistered } = useAuth();
 
-  const [age, setAge] = useState(user?.age ? String(user.age) : "");
+  const initialBirthDate = user?.date_of_birth ? new Date(user.date_of_birth) : null;
+  const [birthDay, setBirthDay] = useState(
+    initialBirthDate ? String(initialBirthDate.getDate()) : ""
+  );
+  const [birthMonth, setBirthMonth] = useState(
+    initialBirthDate ? String(initialBirthDate.getMonth() + 1) : ""
+  );
+  const [birthYear, setBirthYear] = useState(
+    initialBirthDate ? String(initialBirthDate.getFullYear()) : ""
+  );
+  const [occupation, setOccupation] = useState(user?.occupation ?? "");
   const [bio, setBio] = useState(user?.bio ?? "");
   const [selectedInterests, setSelectedInterests] = useState<Set<string>>(
     new Set(user?.interests ?? [])
@@ -182,17 +197,24 @@ export function EditProfileScreen() {
   async function handleSave(): Promise<void> {
     setError(null);
 
-    const trimmedAge = age.trim();
-    const parsedAge = trimmedAge ? Number(trimmedAge) : null;
-    if (parsedAge !== null && !isValidAge(parsedAge)) {
-      setError(`Yaş ${MIN_AGE}-${MAX_AGE} arasında olmalı.`);
-      return;
+    const hasBirthDateInput = birthDay.trim() || birthMonth.trim() || birthYear.trim();
+    let birthDateIso: string | undefined;
+    if (hasBirthDateInput) {
+      const day = Number(birthDay);
+      const month = Number(birthMonth);
+      const year = Number(birthYear);
+      if (!isValidBirthDate(day, month, year)) {
+        setError("Lütfen geçerli bir doğum tarihi gir (18-99 yaş arası).");
+        return;
+      }
+      birthDateIso = new Date(year, month - 1, day).toISOString().slice(0, 10);
     }
 
     setIsSaving(true);
     try {
       const updated = await updateCurrentUser({
-        age: parsedAge ?? undefined,
+        date_of_birth: birthDateIso,
+        occupation: occupation.trim() ? occupation.trim() : undefined,
         bio: bio.trim() ? bio.trim() : undefined,
         interests: Array.from(selectedInterests),
         latitude: location?.latitude,
@@ -232,7 +254,12 @@ export function EditProfileScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>Fotoğraflar</Text>
+        <View style={styles.bioHeader}>
+          <Text style={typeScale.eyebrow}>Fotoğraflar</Text>
+          <Text style={styles.charCount}>
+            {photos.length}/{MAX_GALLERY_PHOTOS}
+          </Text>
+        </View>
         <View style={styles.galleryGrid}>
           {photos.map((photo) => (
             <View key={photo.id} style={styles.galleryTile}>
@@ -262,15 +289,52 @@ export function EditProfileScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>Yaş</Text>
+        <Text style={typeScale.eyebrow}>Doğum Tarihi</Text>
+        <View style={styles.birthDateRow}>
+          <TextInput
+            style={[styles.input, styles.birthDateInput]}
+            keyboardType="number-pad"
+            placeholder="GG"
+            placeholderTextColor={colors.textSecondary}
+            value={birthDay}
+            onChangeText={setBirthDay}
+            maxLength={2}
+          />
+          <TextInput
+            style={[styles.input, styles.birthDateInput]}
+            keyboardType="number-pad"
+            placeholder="AA"
+            placeholderTextColor={colors.textSecondary}
+            value={birthMonth}
+            onChangeText={setBirthMonth}
+            maxLength={2}
+          />
+          <TextInput
+            style={[styles.input, styles.birthDateInputYear]}
+            keyboardType="number-pad"
+            placeholder="YYYY"
+            placeholderTextColor={colors.textSecondary}
+            value={birthYear}
+            onChangeText={setBirthYear}
+            maxLength={4}
+          />
+        </View>
+        {birthDay && birthMonth && birthYear && isValidBirthDate(Number(birthDay), Number(birthMonth), Number(birthYear)) ? (
+          <Text style={styles.charCount}>
+            Yaş: {calculateAge(new Date(Number(birthYear), Number(birthMonth) - 1, Number(birthDay)))}
+          </Text>
+        ) : null}
+      </View>
+
+      <View style={styles.field}>
+        <Text style={typeScale.eyebrow}>Meslek</Text>
         <TextInput
           style={styles.input}
-          keyboardType="number-pad"
-          placeholder={`${MIN_AGE}-${MAX_AGE}`}
+          placeholder="Örn. Yazılım Mühendisi"
           placeholderTextColor={colors.textSecondary}
-          value={age}
-          onChangeText={setAge}
-          maxLength={2}
+          value={occupation}
+          onChangeText={(text) => setOccupation(text.slice(0, MAX_OCCUPATION_LENGTH))}
+          maxLength={MAX_OCCUPATION_LENGTH}
         />
       </View>
 
@@ -419,6 +483,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+  },
+  birthDateRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  birthDateInput: {
+    flex: 1,
+    textAlign: "center",
+  },
+  birthDateInputYear: {
+    flex: 1.5,
+    textAlign: "center",
   },
   bioInput: {
     borderRadius: radius.card,
