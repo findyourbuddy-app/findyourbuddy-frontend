@@ -11,7 +11,7 @@ interface MapLocationPickerProps {
 
 const DEFAULT_DELTA = 0.01;
 
-export function MapLocationPicker({ latitude, longitude, onChange, height = 220 }: MapLocationPickerProps) {
+export function MapLocationPicker({ latitude, longitude, onChange, height = 260 }: MapLocationPickerProps) {
   const region: Region = {
     latitude,
     longitude,

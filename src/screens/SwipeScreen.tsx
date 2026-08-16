@@ -1,19 +1,21 @@
-import { useCallback, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View, Modal } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View, Modal, ActivityIndicator } from "react-native";
+import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import axios from "axios";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import type { CompositeNavigationProp, RouteProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { ActivityIndicator } from "react-native";
+import { Avatar } from "../components/ui/Avatar";
 import { SwipeCandidateCard } from "../components/cards/SwipeCandidateCard";
+import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { MatchCelebrationModal } from "../components/overlays/MatchCelebrationModal";
 import { SwipeFiltersModal } from "../components/overlays/SwipeFiltersModal";
 import { OptionPickerModal } from "../components/overlays/OptionPickerModal";
 import { attendEvent, listEvents, listMyAttendingEvents } from "../api/events";
 import { createSwipe, getSwipeCandidates, getSwipeQuota } from "../api/swipes";
-import { activateBoost, purchaseItems } from "../api/users";
+import { activateBoost, createPurchaseCheckoutSession } from "../api/users";
 import type { SwipeCandidateFilters, SwipeQuota } from "../api/swipes";
 import { useAuth } from "../context/AuthContext";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
@@ -46,6 +48,27 @@ export function SwipeScreen() {
   const [eventPickerVisible, setEventPickerVisible] = useState(false);
   const [storeVisible, setStoreVisible] = useState(false);
   const [boostConfirmVisible, setBoostConfirmVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<"system" | "user">("system");
+  const [userSubTab, setUserSubTab] = useState<"birebir" | "group">("birebir");
+  const [userGroupEvents, setUserGroupEvents] = useState<Event[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+
+  const systemEvents = useMemo(() => availableEvents.filter((event) => !event.creator_id), [availableEvents]);
+  const user1on1Events = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id) && !event.is_group_event), [availableEvents]);
+  const userGroupAttendingEvents = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id) && Boolean(event.is_group_event)), [availableEvents]);
+  const tabEvents = activeTab === "system" ? systemEvents : user1on1Events;
+
+  useEffect(() => {
+    if (activeTab === "user" && userSubTab === "group") {
+      setIsLoadingGroups(true);
+      listEvents(undefined, true, 0, 50)
+        .then((all) => {
+          setUserGroupEvents(all.filter((e) => Boolean(e.creator_id) && Boolean(e.is_group_event)));
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingGroups(false));
+    }
+  }, [activeTab, userSubTab]);
 
   const refreshQuota = useCallback(() => {
     getSwipeQuota()
@@ -59,11 +82,21 @@ export function SwipeScreen() {
     useCallback(() => {
       let cancelled = false;
 
-      async function resolveActiveEvent(upcoming: Event[]): Promise<ActiveEvent | null> {
+      async function resolveActiveEvent(
+        upcoming: Event[]
+      ): Promise<{ event: ActiveEvent | null; tab: "system" | "user" }> {
         if (route.params) {
-          return { id: route.params.eventId, title: route.params.eventTitle };
+          const matched = upcoming.find((event) => event.id === route.params!.eventId);
+          return {
+            event: { id: route.params.eventId, title: route.params.eventTitle },
+            tab: matched?.creator_id ? "user" : "system",
+          };
         }
-        return upcoming[0] ? { id: upcoming[0].id, title: upcoming[0].title } : null;
+        const currentTabEvents = upcoming.filter((event) =>
+          activeTab === "system" ? !event.creator_id : event.creator_id
+        );
+        const fallback = currentTabEvents[0];
+        return { event: fallback ? { id: fallback.id, title: fallback.title } : null, tab: activeTab };
       }
 
       setIsLoading(true);
@@ -72,8 +105,9 @@ export function SwipeScreen() {
         .then(async (upcoming) => {
           if (cancelled) return;
           setAvailableEvents(upcoming);
-          const event = await resolveActiveEvent(upcoming);
+          const { event, tab } = await resolveActiveEvent(upcoming);
           if (cancelled) return;
+          setActiveTab(tab);
           setActiveEvent(event);
           setCurrentIndex(0);
           if (event) {
@@ -98,7 +132,7 @@ export function SwipeScreen() {
       return () => {
         cancelled = true;
       };
-    }, [route.params, filters, refreshQuota])
+    }, [route.params, filters, refreshQuota, activeTab])
   );
 
   function switchEvent(event: Event): void {
@@ -115,11 +149,11 @@ export function SwipeScreen() {
   }
 
   function openEventPicker(): void {
-    if (availableEvents.length <= 1) return;
+    if (tabEvents.length <= 1) return;
     setEventPickerVisible(true);
   }
 
-  const eventPickerOptions = availableEvents.map((event) => ({
+  const eventPickerOptions = tabEvents.map((event) => ({
     key: String(event.id),
     label: event.title,
     icon: "map-pin" as const,
@@ -203,12 +237,15 @@ export function SwipeScreen() {
   async function handlePurchase(itemType: "boost" | "super_likes" | "swipes"): Promise<void> {
     try {
       setIsLoading(true);
-      const updatedUser = await purchaseItems(itemType, 1);
-      updateUser(updatedUser);
+      const { checkout_url } = await createPurchaseCheckoutSession(itemType, 1);
       setStoreVisible(false);
-      Alert.alert("Satın Alım Başarılı! 🎉", "Ödemeniz başarıyla tamamlandı ve hesabınıza tanımlandı.");
+      if (checkout_url) {
+        Linking.openURL(checkout_url);
+      } else {
+        Alert.alert("Ödeme Hatası", "Ödeme linki alınamadı.");
+      }
     } catch {
-      Alert.alert("Ödeme Hatası", "Ödeme işlemi gerçekleştirilemedi.");
+      Alert.alert("Ödeme Hatası", "Ödeme sayfası başlatılamadı. Lütfen sunucunun açık olduğundan emin ol.");
     } finally {
       setIsLoading(false);
     }
@@ -262,18 +299,64 @@ export function SwipeScreen() {
         </View>
       </View>
 
-      {activeEvent ? (
+      <View style={styles.tabRow}>
+        <Pressable
+          style={[styles.tabButton, activeTab === "system" && styles.tabButtonActive]}
+          onPress={() => setActiveTab("system")}
+          accessibilityRole="button"
+          accessibilityLabel="Sistem Etkinlikleri"
+        >
+          <Text style={[styles.tabButtonText, activeTab === "system" && styles.tabButtonTextActive]}>
+            Sistem Etkinlikleri
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tabButton, activeTab === "user" && styles.tabButtonActive]}
+          onPress={() => setActiveTab("user")}
+          accessibilityRole="button"
+          accessibilityLabel="Kullanıcı Etkinlikleri"
+        >
+          <Text style={[styles.tabButtonText, activeTab === "user" && styles.tabButtonTextActive]}>
+            Kullanıcı Etkinlikleri
+          </Text>
+        </Pressable>
+      </View>
+
+      {activeTab === "user" ? (
+        <View style={styles.subTabRow}>
+          <Pressable
+            style={[styles.subTabButton, userSubTab === "birebir" && styles.subTabButtonActive]}
+            onPress={() => setUserSubTab("birebir")}
+          >
+            <Feather name="user" size={13} color={userSubTab === "birebir" ? colors.primary : colors.textSecondary} />
+            <Text style={[styles.subTabButtonText, userSubTab === "birebir" && styles.subTabButtonTextActive]}>
+              Birebir (1-on-1)
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.subTabButton, userSubTab === "group" && styles.subTabButtonActive]}
+            onPress={() => setUserSubTab("group")}
+          >
+            <Feather name="users" size={13} color={userSubTab === "group" ? colors.primary : colors.textSecondary} />
+            <Text style={[styles.subTabButtonText, userSubTab === "group" && styles.subTabButtonTextActive]}>
+              Grup Etkinlikleri
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {activeEvent && (activeTab !== "user" || userSubTab !== "group") ? (
         <View style={styles.metaRow}>
           <Pressable
             style={styles.eventPill}
             onPress={openEventPicker}
-            disabled={availableEvents.length <= 1}
+            disabled={tabEvents.length <= 1}
             accessibilityRole="button"
             accessibilityLabel="Etkinlik değiştir"
           >
             <Feather name="map-pin" size={14} color={colors.primary} />
             <Text style={styles.eventPillText}>{activeEvent.title}</Text>
-            {availableEvents.length > 1 ? (
+            {tabEvents.length > 1 ? (
               <Feather name="chevron-down" size={12} color={colors.textSecondary} />
             ) : null}
           </Pressable>
@@ -288,15 +371,89 @@ export function SwipeScreen() {
       ) : null}
 
       <View style={styles.cardArea}>
-        {isLoading ? (
+        {activeTab === "user" && userSubTab === "group" ? (
+          isLoadingGroups ? (
+            <View style={styles.center}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : userGroupEvents.length === 0 ? (
+            <View style={styles.center}>
+              <Text style={styles.emptyText}>Henüz kullanıcılar tarafından grup etkinliği oluşturulmadı.</Text>
+              <View style={{ marginTop: spacing.md }}>
+                <PrimaryButton
+                  label="Grup Etkinliği Oluştur"
+                  onPress={() => navigation.navigate("CreateEvent")}
+                />
+              </View>
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
+              {userGroupEvents.map((event) => (
+                <View key={event.id} style={styles.groupCardItem}>
+                  <View style={styles.groupCardHeader}>
+                    <Text style={styles.groupCategoryPill}>{event.category}</Text>
+                    <View style={styles.attendeesBadge}>
+                      <Feather name="users" size={12} color={colors.primary} />
+                      <Text style={styles.attendeesBadgeText}>
+                        Max {event.max_attendees ?? "∞"} Katılımcı ({event.attendee_count} Katıldı)
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.groupCardTitle}>{event.title}</Text>
+                  <Text style={styles.groupCardLocation}>📍 {event.location_name}</Text>
+
+                  <View style={styles.groupCardFooter}>
+                    <View style={styles.creatorInfo}>
+                      <Avatar
+                        name={event.creator?.display_name ?? "Kullanıcı"}
+                        photoUrl={isPremium || !event.creator ? (event.creator?.photo_url ?? null) : null}
+                        size={36}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.creatorNameText}>
+                          {isPremium ? (event.creator?.display_name ?? "Kullanıcı") : "🔒 Gizli Oluşturan (Premium)"}
+                        </Text>
+                        <Text style={styles.creatorSubText}>Etkinlik Oluşturanı</Text>
+                      </View>
+                    </View>
+
+                    <Pressable
+                      style={styles.groupCardActionBtn}
+                      onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
+                    >
+                      <Text style={styles.groupCardActionText}>
+                        {event.is_attending ? "Detaylar & Sohbet" : "Başvur / Katıl"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          )
+        ) : isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator color={colors.primary} />
           </View>
         ) : !activeEvent ? (
           <View style={styles.center}>
-            <Text style={styles.emptyText}>
-              Yaklaşan etkinlik yok. Önce Keşfet sekmesinden bir etkinlik seç.
-            </Text>
+            {activeTab === "user" ? (
+              <>
+                <Text style={styles.emptyText}>
+                  Bu sekmede kaydırabilmek için önce bir kullanıcı etkinliğine katıldığını belirtmen gerekiyor.
+                </Text>
+                <View style={{ marginTop: spacing.md }}>
+                  <PrimaryButton
+                    label="Etkinlik Bul"
+                    onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
+                  />
+                </View>
+              </>
+            ) : (
+              <Text style={styles.emptyText}>
+                Yaklaşan etkinlik yok. Önce Keşfet sekmesinden bir etkinlik seç.
+              </Text>
+            )}
           </View>
         ) : candidates[currentIndex] ? (
           <SwipeCandidateCard
@@ -320,7 +477,7 @@ export function SwipeScreen() {
         )}
       </View>
 
-      {activeEvent && candidates[currentIndex] ? (
+      {(activeTab !== "user" || userSubTab !== "group") && activeEvent && candidates[currentIndex] ? (
         <View style={styles.actionRow}>
           <Pressable
             style={[styles.actionButton, styles.passButton]}
@@ -495,6 +652,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
+  },
+  tabRow: {
+    flexDirection: "row",
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    padding: 4,
+    gap: 4,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    alignItems: "center",
+  },
+  tabButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  tabButtonText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  tabButtonTextActive: {
+    color: colors.surface,
   },
   metaRow: {
     flexDirection: "row",
@@ -746,5 +927,124 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  subTabRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  subTabButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  subTabButtonActive: {
+    backgroundColor: colors.primaryMuted,
+    borderColor: colors.primary,
+  },
+  subTabButtonText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  subTabButtonTextActive: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  groupCardItem: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  groupCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  groupCategoryPill: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 11,
+    color: colors.primary,
+    backgroundColor: colors.primaryMuted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  attendeesBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  attendeesBadgeText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.textPrimary,
+  },
+  groupCardTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 16,
+    color: colors.textPrimary,
+    marginTop: 2,
+  },
+  groupCardLocation: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  groupCardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  creatorInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    flex: 1,
+  },
+  creatorNameText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.textPrimary,
+  },
+  creatorSubText: {
+    fontFamily: fontFamily.body,
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  groupCardActionBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+  },
+  groupCardActionText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.surface,
   },
 });

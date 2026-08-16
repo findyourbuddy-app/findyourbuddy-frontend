@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert } from "../utils/alert";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -7,12 +8,14 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Avatar } from "../components/ui/Avatar";
 import { Badge } from "../components/ui/Badge";
+import { IconSectionHeader } from "../components/ui/IconSectionHeader";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { useAuth } from "../context/AuthContext";
 import { getInterestLabel } from "../constants/interests";
+import { getHobbyLabel } from "../constants/hobbies";
 import { formatEventDate, formatMemberSince, isNewMember } from "../utils/date";
 import { listMyAttendingEvents } from "../api/events";
-import { activateBoost } from "../api/users";
+import { activateBoost, getCurrentUser } from "../api/users";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
@@ -23,11 +26,25 @@ export function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
   const { user, signOut, isPremium, updateUser } = useAuth();
   const [attendingEvents, setAttendingEvents] = useState<Event[]>([]);
+  const [pastEvents, setPastEvents] = useState<Event[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      listMyAttendingEvents()
+      // Re-sync from the server on every focus so edits made elsewhere
+      // (EditProfile, photo uploads, boosts) are reflected here even when
+      // this screen instance wasn't remounted -- context alone can lag
+      // behind the server if a screen updates it optimistically.
+      getCurrentUser().then(updateUser).catch(() => {});
+      listMyAttendingEvents(true)
         .then(setAttendingEvents)
+        .catch(() => {
+          // Non-critical enhancement; profile still works without it.
+        });
+      // Past attendances are kept as a read-only history -- the underlying
+      // event may already be gone (retention cleanup), so this list is never
+      // tappable into a detail screen.
+      listMyAttendingEvents(false)
+        .then((all) => setPastEvents(all.filter((event) => new Date(event.starts_at) < new Date())))
         .catch(() => {
           // Non-critical enhancement; profile still works without it.
         });
@@ -85,6 +102,8 @@ export function ProfileScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.heroCard}
       >
+        <View style={styles.heroDecorLarge} />
+        <View style={styles.heroDecorSmall} />
         <View style={styles.avatarRing}>
           <Avatar name={user.display_name} photoUrl={user.photo_url} size={88} />
         </View>
@@ -99,19 +118,29 @@ export function ProfileScreen() {
             <Badge label="Yeni Üye" variant="green" icon="✨" />
           ) : null}
         </View>
-        <Text style={styles.memberSince}>{formatMemberSince(user.created_at)}</Text>
+        <View style={styles.heroStatsRow}>
+          <View style={styles.heroStat}>
+            <Feather name="shield" size={14} color={colors.surface} />
+            <Text style={styles.heroStatText}>Güven Skoru {user.trust_score}</Text>
+          </View>
+          <View style={styles.heroStatDivider} />
+          <View style={styles.heroStat}>
+            <Feather name="calendar" size={14} color={colors.surface} />
+            <Text style={styles.heroStatText}>{formatMemberSince(user.created_at)}</Text>
+          </View>
+        </View>
       </LinearGradient>
 
       {user.occupation ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Meslek</Text>
+        <View style={[styles.card, styles.cardAccentBlue]}>
+          <IconSectionHeader icon="briefcase" color="#2E7FC9" label="Meslek" />
           <Text style={styles.bio}>{user.occupation}</Text>
         </View>
       ) : null}
 
       {user.photos.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Fotoğraflarım</Text>
+        <View style={[styles.card, styles.cardAccentPink]}>
+          <IconSectionHeader icon="image" color="#D9427F" label="Fotoğraflarım" />
           <FlatList
             data={user.photos}
             keyExtractor={(photo) => String(photo.id)}
@@ -126,15 +155,28 @@ export function ProfileScreen() {
       ) : null}
 
       {user.bio ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Hakkında</Text>
+        <View style={[styles.card, styles.cardAccentPurple]}>
+          <IconSectionHeader icon="feather" color={colors.primary} label="Hakkında" />
           <Text style={styles.bio}>{user.bio}</Text>
         </View>
       ) : null}
 
+      {user.hobbies && user.hobbies.length > 0 ? (
+        <View style={[styles.card, styles.cardAccentPurple]}>
+          <IconSectionHeader icon="star" color="#8A2BE2" label="Hobilerim" />
+          <View style={styles.chipRow}>
+            {user.hobbies.map((hobby) => (
+              <View key={hobby} style={[styles.chip, { backgroundColor: "#F3E8FF" }]}>
+                <Text style={[styles.chipText, { color: "#8A2BE2" }]}>{getHobbyLabel(hobby)}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
       {user.interests.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>İlgi Alanları</Text>
+        <View style={[styles.card, styles.cardAccentYellow]}>
+          <IconSectionHeader icon="heart" color="#E0A800" label="Yapmak İstediğim Aktiviteler" />
           <View style={styles.chipRow}>
             {user.interests.map((interest) => (
               <View key={interest} style={styles.chip}>
@@ -146,8 +188,8 @@ export function ProfileScreen() {
       ) : null}
 
       {attendingEvents.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Katılacağı Etkinlikler</Text>
+        <View style={[styles.card, styles.cardAccentGreen]}>
+          <IconSectionHeader icon="calendar" color={colors.accentGreen} label="Katılacağı Etkinlikler" />
           {attendingEvents.map((event) => (
             <Pressable
               key={event.id}
@@ -167,6 +209,25 @@ export function ProfileScreen() {
               </View>
               <Feather name="chevron-right" size={18} color={colors.textSecondary} />
             </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      {pastEvents.length > 0 ? (
+        <View style={[styles.card, styles.cardAccentBlue]}>
+          <IconSectionHeader icon="clock" color="#2E7FC9" label="Geçmiş Etkinlikler" />
+          {pastEvents.map((event) => (
+            <View key={event.id} style={styles.eventRow}>
+              <View style={styles.eventRowLeft}>
+                <View style={[styles.eventIcon, styles.eventIconPast]}>
+                  <Feather name="calendar" size={16} color={colors.textSecondary} />
+                </View>
+                <View>
+                  <Text style={[styles.eventTitle, styles.eventTitlePast]}>{event.title}</Text>
+                  <Text style={styles.eventDate}>{formatEventDate(event.starts_at)}</Text>
+                </View>
+              </View>
+            </View>
           ))}
         </View>
       ) : null}
@@ -231,7 +292,27 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     paddingVertical: spacing.xxl,
     paddingHorizontal: spacing.lg,
+    overflow: "hidden",
+    position: "relative",
     ...shadows.card,
+  },
+  heroDecorLarge: {
+    position: "absolute",
+    top: -60,
+    right: -50,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  heroDecorSmall: {
+    position: "absolute",
+    bottom: -30,
+    left: -30,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   avatarRing: {
     padding: 4,
@@ -260,12 +341,54 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.75)",
     marginTop: spacing.xs,
   },
+  heroStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    marginTop: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  heroStat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  heroStatDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: "rgba(255,255,255,0.3)",
+  },
+  heroStatText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 12,
+    color: colors.surface,
+  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.card,
     padding: spacing.lg,
     gap: spacing.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: "transparent",
     ...shadows.soft,
+  },
+  cardAccentBlue: {
+    borderLeftColor: "#2E7FC9",
+  },
+  cardAccentPink: {
+    borderLeftColor: "#D9427F",
+  },
+  cardAccentPurple: {
+    borderLeftColor: colors.primary,
+  },
+  cardAccentYellow: {
+    borderLeftColor: "#E0A800",
+  },
+  cardAccentGreen: {
+    borderLeftColor: colors.accentGreen,
   },
   galleryImage: {
     width: 96,
@@ -316,6 +439,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 14,
     color: colors.textPrimary,
+  },
+  eventIconPast: {
+    backgroundColor: colors.background,
+  },
+  eventTitlePast: {
+    color: colors.textSecondary,
   },
   eventDate: {
     fontFamily: fontFamily.body,

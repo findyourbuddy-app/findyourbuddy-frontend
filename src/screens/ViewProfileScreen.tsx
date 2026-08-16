@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
 import { Avatar } from "../components/ui/Avatar";
 import { getInterestLabel } from "../constants/interests";
+import { getHobbyLabel } from "../constants/hobbies";
 import { formatMemberSince } from "../utils/date";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import { apiClient } from "../api/client";
@@ -52,159 +53,189 @@ export function ViewProfileScreen() {
     );
   }
 
+  // Extract all photo URLs
+  const allPhotoUrls: string[] = [];
+  if (profile.photo_url) {
+    allPhotoUrls.push(profile.photo_url);
+  }
+  profile.photos.forEach((p) => {
+    if (p.photo_url && !allPhotoUrls.includes(p.photo_url)) {
+      allPhotoUrls.push(p.photo_url);
+    }
+  });
+
+  const photo1 = allPhotoUrls[0];
+  const photo2 = allPhotoUrls[1];
+  const photo3 = allPhotoUrls[2];
+  const remainingPhotos = allPhotoUrls.slice(3);
+
   return (
-    <ScrollView style={styles.background} contentContainerStyle={styles.content}>
-      <LinearGradient
-        colors={[colors.primary, "#9B7BFF"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.heroCard}
-      >
-        <Avatar name={profile.display_name} photoUrl={profile.photo_url} size={96} />
-        <View style={styles.nameRow}>
-          <Text style={styles.heroName}>
-            {profile.display_name}
-            {profile.age ? `, ${profile.age}` : ""}
-          </Text>
-          {profile.verification_status === "verified" ? (
-            <Feather name="check-circle" size={20} color="#20E290" style={{ marginLeft: spacing.xs, marginTop: spacing.sm }} />
-          ) : profile.verification_status === "pending" ? (
-            <Feather name="clock" size={18} color="#FFD15C" style={{ marginLeft: spacing.xs, marginTop: spacing.sm }} />
-          ) : null}
-        </View>
+    <ScrollView style={styles.background} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Photo 1 Hero Header */}
+      <View style={styles.mainPhotoCard}>
+        {photo1 ? (
+          <Image source={{ uri: photo1 }} style={styles.fullImage} contentFit="cover" />
+        ) : (
+          <View style={styles.avatarPlaceholder}>
+            <Avatar name={profile.display_name} photoUrl={null} size={96} />
+          </View>
+        )}
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.85)"]}
+          style={styles.photoGradient}
+        >
+          <View style={styles.nameRow}>
+            <Text style={styles.heroName}>
+              {profile.display_name}
+              {profile.age ? `, ${profile.age}` : ""}
+            </Text>
+            {profile.verification_status === "verified" ? (
+              <Feather name="check-circle" size={20} color="#20E290" style={{ marginLeft: 6 }} />
+            ) : profile.verification_status === "pending" ? (
+              <Feather name="clock" size={18} color="#FFD15C" style={{ marginLeft: 6 }} />
+            ) : null}
+          </View>
 
-        <View style={styles.badgeRow}>
-          {profile.trust_score > 0 ? (
-            <View style={styles.trustBadge}>
-              <Feather name="check-circle" size={13} color={colors.surface} />
-              <Text style={styles.trustText}>
-                {profile.trust_score} kişi buluştuğunu onayladı
-              </Text>
-            </View>
-          ) : null}
-          {profile.verification_status === "verified" ? (
-            <View style={styles.trustBadge}>
-              <Text style={styles.trustText}>✓ Doğrulanmış Üye</Text>
-            </View>
-          ) : profile.verification_status === "pending" ? (
-            <View style={styles.trustBadge}>
-              <Text style={styles.trustText}>⏳ Onay Bekliyor</Text>
-            </View>
-          ) : null}
-        </View>
-        <Text style={styles.memberSince}>{formatMemberSince(profile.created_at)}</Text>
-      </LinearGradient>
+          <View style={styles.badgeRow}>
+            {profile.trust_score > 0 ? (
+              <View style={styles.trustBadge}>
+                <Feather name="shield" size={12} color={colors.surface} />
+                <Text style={styles.trustText}>{profile.trust_score} Onaylı Buluşma</Text>
+              </View>
+            ) : null}
+            {profile.zodiac_sign ? (
+              <View style={styles.trustBadge}>
+                <Text style={styles.trustText}>🔮 {profile.zodiac_sign}</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.memberSince}>{formatMemberSince(profile.created_at)}</Text>
+        </LinearGradient>
+      </View>
 
-      {/* University & Occupation */}
-      {(profile.occupation || profile.university) ? (
+      {/* Verbal Card 1: Bio, Prompt & Voice Note */}
+      {(profile.bio || profile.about_me_prompt || profile.voice_note_url) ? (
         <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Eğitim ve Meslek</Text>
+          <View style={styles.cardHeader}>
+            <Feather name="user" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>Hakkımda & Detaylar</Text>
+          </View>
+
+          {profile.bio ? <Text style={styles.bioText}>{profile.bio}</Text> : null}
+
+          {profile.about_me_prompt ? (
+            <View style={styles.promptBox}>
+              <Text style={styles.promptQuestion}>Beni yakından tanımak istersen:</Text>
+              <Text style={styles.promptAnswer}>“{profile.about_me_prompt}”</Text>
+            </View>
+          ) : null}
+
+          {profile.voice_note_url ? (
+            <Pressable
+              style={[styles.voicePlayer, isPlayingVoice && styles.voicePlayerActive]}
+              onPress={handlePlayVoice}
+            >
+              <Feather
+                name={isPlayingVoice ? "pause-circle" : "play-circle"}
+                size={26}
+                color={isPlayingVoice ? colors.surface : colors.primary}
+              />
+              <Text style={[styles.voiceText, isPlayingVoice && { color: colors.surface }]}>
+                {isPlayingVoice ? "Ses Kaydı Oynatılıyor..." : "Ses Tanıtımını Dinle 🎙️"}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
+      {/* Interspersed Photo 2 Card */}
+      {photo2 ? (
+        <View style={styles.interspersedPhotoCard}>
+          <Image source={{ uri: photo2 }} style={styles.fullImage} contentFit="cover" />
+        </View>
+      ) : null}
+
+      {/* Verbal Card 2: Hobilerim & Yapmak İstediğim Aktiviteler */}
+      {(profile.hobbies && profile.hobbies.length > 0) || (profile.interests && profile.interests.length > 0) ? (
+        <View style={styles.card}>
+          {profile.hobbies && profile.hobbies.length > 0 ? (
+            <View style={{ gap: spacing.xs }}>
+              <View style={styles.cardHeader}>
+                <Feather name="heart" size={18} color="#8A2BE2" />
+                <Text style={[styles.cardTitle, { color: "#8A2BE2" }]}>Hobilerim (Max 4)</Text>
+              </View>
+              <View style={styles.chipRow}>
+                {profile.hobbies.map((hobby) => (
+                  <View key={hobby} style={styles.hobbyChip}>
+                    <Text style={styles.hobbyChipText}>{getHobbyLabel(hobby)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {profile.interests && profile.interests.length > 0 ? (
+            <View style={{ gap: spacing.xs, marginTop: profile.hobbies?.length ? spacing.md : 0 }}>
+              <View style={styles.cardHeader}>
+                <Feather name="activity" size={18} color={colors.primary} />
+                <Text style={styles.cardTitle}>Yapmak İstediğim Aktiviteler</Text>
+              </View>
+              <View style={styles.chipRow}>
+                {profile.interests.map((interest) => (
+                  <View key={interest} style={styles.chip}>
+                    <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      {/* Interspersed Photo 3 Card */}
+      {photo3 ? (
+        <View style={styles.interspersedPhotoCard}>
+          <Image source={{ uri: photo3 }} style={styles.fullImage} contentFit="cover" />
+        </View>
+      ) : null}
+
+      {/* Verbal Card 3: Kariyer & Beklentiler */}
+      {(profile.occupation || profile.university || profile.looking_for) ? (
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Feather name="briefcase" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>Kariyer & Beklentiler</Text>
+          </View>
+
           {profile.occupation ? (
-            <View style={styles.row}>
+            <View style={styles.infoRow}>
               <Feather name="briefcase" size={16} color={colors.textSecondary} />
               <Text style={styles.infoText}>{profile.occupation}</Text>
             </View>
           ) : null}
+
           {profile.university ? (
-            <View style={styles.row}>
+            <View style={styles.infoRow}>
               <Feather name="book-open" size={16} color={colors.textSecondary} />
               <Text style={styles.infoText}>{profile.university}</Text>
             </View>
           ) : null}
-        </View>
-      ) : null}
 
-      {/* Expectation & Zodiac */}
-      {(profile.looking_for || profile.zodiac_sign) ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Kişisel Özellikler</Text>
           {profile.looking_for ? (
-            <View style={styles.row}>
+            <View style={styles.infoRow}>
               <Feather name="target" size={16} color={colors.textSecondary} />
-              <Text style={styles.infoText}>Beklenti: {profile.looking_for}</Text>
-            </View>
-          ) : null}
-          {profile.zodiac_sign ? (
-            <View style={styles.row}>
-              <Feather name="compass" size={16} color={colors.textSecondary} />
-              <Text style={styles.infoText}>Burç: {profile.zodiac_sign}</Text>
+              <Text style={styles.infoText}>Ne Arıyor: {profile.looking_for}</Text>
             </View>
           ) : null}
         </View>
       ) : null}
 
-      {/* Voice note intro */}
-      {profile.voice_note_url ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Ses Tanıtımı 🎙️</Text>
-          <Pressable
-            style={[styles.voicePlayer, isPlayingVoice && styles.voicePlayerActive]}
-            onPress={handlePlayVoice}
-          >
-            <Feather
-              name={isPlayingVoice ? "pause-circle" : "play-circle"}
-              size={28}
-              color={isPlayingVoice ? colors.surface : colors.primary}
-            />
-            <Text
-              style={[
-                styles.voiceText,
-                isPlayingVoice && { color: colors.surface }
-              ]}
-            >
-              {isPlayingVoice ? "Ses Kaydı Oynatılıyor..." : "Ses Tanıtımını Dinle"}
-            </Text>
-          </Pressable>
+      {/* Remaining Photos Interspersed */}
+      {remainingPhotos.map((uri, idx) => (
+        <View key={idx} style={styles.interspersedPhotoCard}>
+          <Image source={{ uri }} style={styles.fullImage} contentFit="cover" />
         </View>
-      ) : null}
-
-      {/* Photos */}
-      {profile.photos.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Fotoğraflar</Text>
-          <FlatList
-            data={profile.photos}
-            keyExtractor={(photo) => String(photo.id)}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <Image source={{ uri: item.photo_url }} style={styles.galleryImage} />
-            )}
-            ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
-          />
-        </View>
-      ) : null}
-
-      {/* Bio */}
-      {profile.bio ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Hakkımda</Text>
-          <Text style={styles.bio}>{profile.bio}</Text>
-        </View>
-      ) : null}
-
-      {/* Profile Prompt */}
-      {profile.about_me_prompt ? (
-        <View style={styles.card}>
-          <Text style={[typeScale.eyebrow, { color: colors.primary }]}>Eğlenceli Detay</Text>
-          <Text style={styles.promptQuestion}>Beni yakından tanımak istersen:</Text>
-          <Text style={styles.promptAnswer}>{profile.about_me_prompt}</Text>
-        </View>
-      ) : null}
-
-      {/* Interests */}
-      {profile.interests.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>İlgi Alanları</Text>
-          <View style={styles.chipRow}>
-            {profile.interests.map((interest) => (
-              <View key={interest} style={styles.chip}>
-                <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      ) : null}
+      ))}
     </ScrollView>
   );
 }
@@ -221,54 +252,69 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: spacing.xl,
-    gap: spacing.lg,
+    padding: spacing.md,
+    gap: spacing.md,
     paddingBottom: 60,
   },
-  heroCard: {
-    alignItems: "center",
-    gap: spacing.xs,
+  mainPhotoCard: {
+    height: 380,
     borderRadius: radius.card,
-    paddingVertical: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    overflow: "hidden",
+    backgroundColor: colors.surface,
+    justifyContent: "flex-end",
     ...shadows.card,
+  },
+  fullImage: {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+  },
+  avatarPlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: colors.primaryMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoGradient: {
+    padding: spacing.lg,
+    gap: spacing.xs,
+    justifyContent: "flex-end",
   },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
   },
   heroName: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: 22,
+    fontSize: 24,
     color: colors.surface,
-    marginTop: spacing.sm,
   },
   badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "center",
     gap: spacing.xs,
-  },
-  memberSince: {
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-    color: "rgba(255,255,255,0.75)",
+    marginTop: 4,
   },
   trustBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.25)",
     paddingHorizontal: spacing.md,
     paddingVertical: 4,
     borderRadius: radius.pill,
-    marginTop: spacing.xs,
   },
   trustText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
     color: colors.surface,
+  },
+  memberSince: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 2,
   },
   card: {
     backgroundColor: colors.surface,
@@ -277,43 +323,73 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     ...shadows.soft,
   },
-  row: {
+  cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: 2,
+    gap: spacing.xs,
   },
-  infoText: {
-    fontFamily: fontFamily.body,
+  cardTitle: {
+    fontFamily: fontFamily.bodySemiBold,
     fontSize: 15,
     color: colors.textPrimary,
   },
-  galleryImage: {
-    width: 120,
-    height: 120,
+  bioText: {
+    fontFamily: fontFamily.body,
+    fontSize: 15,
+    color: colors.textPrimary,
+    lineHeight: 22,
+  },
+  promptBox: {
+    backgroundColor: colors.background,
     borderRadius: radius.sm,
-  },
-  bio: {
-    fontFamily: fontFamily.body,
-    fontSize: 15,
-    color: colors.textPrimary,
+    padding: spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
   promptQuestion: {
     fontFamily: fontFamily.bodyMedium,
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textSecondary,
     fontStyle: "italic",
   },
   promptAnswer: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: 16,
+    fontSize: 15,
     color: colors.textPrimary,
     marginTop: 2,
+  },
+  voicePlayer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+  },
+  voicePlayerActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  voiceText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  interspersedPhotoCard: {
+    height: 340,
+    borderRadius: radius.card,
+    overflow: "hidden",
+    backgroundColor: colors.surface,
+    ...shadows.soft,
   },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   chip: {
     backgroundColor: colors.primaryMuted,
@@ -326,24 +402,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.primary,
   },
-  voicePlayer: {
+  hobbyChip: {
+    backgroundColor: "#F3E8FF",
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
+  hobbyChipText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: "#8A2BE2",
+  },
+  infoRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
   },
-  voicePlayerActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  voiceText: {
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 13,
+  infoText: {
+    fontFamily: fontFamily.body,
+    fontSize: 14,
     color: colors.textPrimary,
   },
 });

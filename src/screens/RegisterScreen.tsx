@@ -35,7 +35,7 @@ export function RegisterScreen() {
       return;
     }
     const normalizedPhone = phoneNumber.trim().replace(/[\s()-]/g, "");
-    if (!PHONE_REGEX.test(normalizedPhone)) {
+    if (normalizedPhone && !PHONE_REGEX.test(normalizedPhone)) {
       setError("Lütfen geçerli bir telefon numarası girin (örn. 05XXXXXXXXX).");
       return;
     }
@@ -51,22 +51,26 @@ export function RegisterScreen() {
     setIsSubmitting(true);
     try {
       await signUp({
-        display_name: displayName,
-        email,
+        display_name: displayName.trim(),
+        email: email.trim().toLowerCase(),
         password,
         accepted_terms: acceptedTerms,
-        phone_number: normalizedPhone,
+        phone_number: normalizedPhone || undefined,
       });
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 409) {
-        const detail = err.response.data?.detail as string | undefined;
-        if (detail?.toLowerCase().includes("phone")) {
+        const detail = (err.response.data?.detail as string | undefined) || "";
+        if (detail.toLowerCase().includes("phone")) {
           setError("Bu telefon numarası sistemde zaten kayıtlı. Farklı bir numara dener misin?");
         } else {
           setError("Bu e-posta adresi zaten kayıtlı.");
         }
+      } else if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        const msg = Array.isArray(detail) ? detail.map(d => d.msg).join(", ") : String(detail);
+        setError(msg || "Kayıt oluşturulamadı. Bilgileri kontrol edip tekrar dene.");
       } else {
-        setError("Kayıt oluşturulamadı. Bilgileri kontrol edip tekrar dene.");
+        setError("Kayıt oluşturulamadı. İnternet bağlantını ve bilgilerini kontrol edip tekrar dene.");
       }
     } finally {
       setIsSubmitting(false);

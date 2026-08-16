@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
@@ -89,11 +90,11 @@ export function AIRecommendationsScreen() {
         <View style={styles.featuresList}>
           <View style={styles.featureItem}>
             <View style={styles.featureIconContainer}>
-              <Feather name="trending-up" size={20} color={colors.primary} />
+              <Feather name="target" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.featureItemTitle}>%99 Eşleşme Analizi</Text>
-              <Text style={styles.featureItemDesc}>Ortak hobiler ve aktivite sıklıklarına göre uyumluluk derecesi hesaplanır.</Text>
+              <Text style={styles.featureItemTitle}>%99 Hobiler & Aktivite Uyum Analizi 🎯</Text>
+              <Text style={styles.featureItemDesc}>Ortak hobiler (Spor, Oyun, Sinema vb.) ve birlikte yapılmak istenen aktivitelerin kesişimine göre arkadaşlık denkliği hesaplanır.</Text>
             </View>
           </View>
 
@@ -102,8 +103,18 @@ export function AIRecommendationsScreen() {
               <Feather name="moon" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.featureItemTitle}>Astrolojik Element Uyumu</Text>
-              <Text style={styles.featureItemDesc}>Zodyak element gruplarına (Ateş, Toprak, Hava, Su) göre sinerji analizi yapılır.</Text>
+              <Text style={styles.featureItemTitle}>Astrolojik Element Sinerjisi 🔮</Text>
+              <Text style={styles.featureItemDesc}>Zodyak element gruplarına (Ateş, Toprak, Hava, Su) göre kişisel mizaç ve enerji uyumluluğu analiz edilir.</Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <View style={styles.featureIconContainer}>
+              <Feather name="briefcase" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureItemTitle}>Okul, Meslek & Yaşam Tarzı Hizalaması 🎓</Text>
+              <Text style={styles.featureItemDesc}>Ortak üniversite, kariyer hedefleri ve sosyal yaşam temposuna en uygun kankalar önceliklendirilir.</Text>
             </View>
           </View>
 
@@ -112,8 +123,18 @@ export function AIRecommendationsScreen() {
               <Feather name="mic" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.featureItemTitle}>Profil Ses Kayıtları</Text>
-              <Text style={styles.featureItemDesc}>Kullanıcıların kendi seslerinden kendilerini tanıttığı kayıtları dinleyin.</Text>
+              <Text style={styles.featureItemTitle}>Profil Ses Kayıtları 🎙️</Text>
+              <Text style={styles.featureItemDesc}>Potansiyel kankanın ses tonunu, samimiyetini ve enerjisini buluşmadan önce dinleme olanağı sunar.</Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <View style={styles.featureIconContainer}>
+              <Feather name="sliders" size={20} color="#FFD700" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureItemTitle}>Gelişmiş Cinsiyet, Yaş & Konum Filtreleri 🎛️</Text>
+              <Text style={styles.featureItemDesc}>Cinsiyet tercihi (Kadın / Erkek / Herkes), özel yaş aralığı ve mesafe sınırı (km) ile tam hedefindeki kişileri filtrelemek Premium'a özeldir.</Text>
             </View>
           </View>
         </View>

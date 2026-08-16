@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
-import { Alert, Animated, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert } from "../../utils/alert";
 import { Avatar } from "../ui/Avatar";
 import { blockUser, reportUser } from "../../api/safety";
 import { colors, fontFamily, radius, spacing } from "../../theme";

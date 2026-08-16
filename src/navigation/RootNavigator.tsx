@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { AlertHost } from "../components/ui/AlertHost";
 import { FloatingTabBar } from "../components/navigation/FloatingTabBar";
 import { colors, spacing } from "../theme";
 import { LoginScreen } from "../screens/LoginScreen";
@@ -31,6 +32,7 @@ import { CommunityGuidelinesScreen } from "../screens/CommunityGuidelinesScreen"
 import { CallScreen } from "../screens/CallScreen";
 import { AIRecommendationsScreen } from "../screens/AIRecommendationsScreen";
 import { VerifyPhoneScreen } from "../screens/VerifyPhoneScreen";
+import { OnboardingScreen } from "../screens/OnboardingScreen";
 import type { User } from "../types";
 
 export type AuthStackParamList = {
@@ -49,6 +51,7 @@ export type MainTabParamList = {
 };
 
 export type MainStackParamList = {
+  Onboarding: undefined;
   Tabs: NavigatorScreenParams<MainTabParamList> | undefined;
   Chat: { matchId: number; otherUserId: number; otherUserName: string; needsFeedback?: boolean };
   Call: {
@@ -119,10 +122,16 @@ function MainTabNavigator() {
 }
 
 function MainNavigator() {
-  const { justRegistered } = useAuth();
+  const { user, justRegistered } = useAuth();
+  const isNewOrIncomplete =
+    justRegistered ||
+    !user?.photo_url ||
+    (!user?.date_of_birth && !user?.age) ||
+    (!user?.hobbies || user.hobbies.length === 0);
 
   return (
-    <MainStack.Navigator initialRouteName={justRegistered ? "EditProfile" : "Tabs"}>
+    <MainStack.Navigator initialRouteName={isNewOrIncomplete ? "Onboarding" : "Tabs"}>
+      <MainStack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
       <MainStack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false }} />
       <MainStack.Screen
         name="Chat"
@@ -230,6 +239,7 @@ export function RootNavigator() {
   return (
     <NavigationContainer>
       {user ? (user.phone_verified ? <MainNavigator /> : <VerifyPhoneScreen />) : <AuthNavigator />}
+      <AlertHost />
     </NavigationContainer>
   );
 }

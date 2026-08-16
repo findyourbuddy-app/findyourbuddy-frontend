@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Alert, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from "react-native";
+import { Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert } from "../utils/alert";
 import * as Notifications from "expo-notifications";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";

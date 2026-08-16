@@ -34,9 +34,10 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
             </View>
           </LinearGradient>
         )}
-        {isToday(event.starts_at) ? (
+        {isToday(event.starts_at) || event.creator_id ? (
           <View style={styles.badgeSlot}>
-            <Badge label="Bu akşam" variant="yellow" icon="⚡" />
+            {isToday(event.starts_at) ? <Badge label="Bu akşam" variant="yellow" icon="⚡" /> : null}
+            {event.creator_id ? <Badge label="Kullanıcı Etkinliği" variant="primary" /> : null}
           </View>
         ) : null}
         <Pressable style={styles.bookmark} onPress={onToggleBookmark}>
@@ -73,7 +74,10 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
             </Text>
           </View>
         ) : null}
-        <PrimaryButton label="Kankaları Gör" onPress={onPressJoin} />
+        <PrimaryButton
+          label={event.is_attending ? "Kankaları Gör" : "Bu Etkinliğe Gidiyorum"}
+          onPress={onPressJoin}
+        />
       </View>
     </Pressable>
   );
@@ -102,6 +106,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: spacing.md,
     left: spacing.md,
+    flexDirection: "row",
+    gap: spacing.xs,
   },
   bookmark: {
     position: "absolute",

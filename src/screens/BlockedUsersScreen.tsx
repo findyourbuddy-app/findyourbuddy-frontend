@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert } from "../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
 import { Avatar } from "../components/ui/Avatar";
 import { listMyBlocks, unblockUser } from "../api/safety";

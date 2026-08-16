@@ -5,6 +5,7 @@ export interface SwipeCandidateFilters {
   minAge?: number;
   maxAge?: number;
   maxDistanceKm?: number;
+  genderPreference?: string;
 }
 
 export function getSwipeCandidates(
@@ -18,6 +19,7 @@ export function getSwipeCandidates(
         min_age: filters?.minAge,
         max_age: filters?.maxAge,
         max_distance_km: filters?.maxDistanceKm,
+        gender_preference: filters?.genderPreference,
       },
     })
     .then((res) => res.data);

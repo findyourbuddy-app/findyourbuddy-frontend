@@ -64,6 +64,14 @@ export function activateBoost(): Promise<User> {
   return apiClient.post<User>("/users/me/boost").then((res) => res.data);
 }
 
-export function purchaseItems(itemType: "boost" | "super_likes" | "swipes", quantity: number): Promise<User> {
-  return apiClient.post<User>("/users/me/purchase", { item_type: itemType, quantity }).then((res) => res.data);
+export function createPurchaseCheckoutSession(
+  itemType: "boost" | "super_likes" | "swipes",
+  quantity: number
+): Promise<{ checkout_url: string }> {
+  return apiClient
+    .post<{ checkout_url: string }>("/users/me/purchase/checkout-session", {
+      item_type: itemType,
+      quantity,
+    })
+    .then((res) => res.data);
 }

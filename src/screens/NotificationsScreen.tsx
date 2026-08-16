@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Alert, FlatList, StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import { FlatList, StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { listMyNotifications, markMyNotificationsRead } from "../api/notifications";

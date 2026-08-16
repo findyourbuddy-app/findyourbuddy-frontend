@@ -55,6 +55,7 @@ export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, di
               {"  ·  "}{distanceLabel}
             </Text>
           )}
+          {event.creator_id ? <Text style={styles.userEventTag}>{"  ·  "}Kullanıcı Etkinliği</Text> : null}
         </View>
         <Text style={typeScale.h2}>{event.title}</Text>
       </View>
@@ -95,5 +96,10 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  userEventTag: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
   },
 });

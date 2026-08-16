@@ -15,12 +15,14 @@ export interface User {
   occupation: string | null;
   university: string | null;
   zodiac_sign: string | null;
+  gender: string | null;
   verification_status: string;
   looking_for: string | null;
   about_me_prompt: string | null;
   voice_note_url: string | null;
   bio: string | null;
   interests: string[];
+  hobbies?: string[];
   latitude: number | null;
   longitude: number | null;
   photo_url: string | null;
@@ -31,7 +33,8 @@ export interface User {
   boosted_until?: string | null;
   boosts_balance?: number;
   extra_super_likes?: number;
-  phone_number: string;
+  event_credits_balance?: number;
+  phone_number?: string | null;
   phone_verified: boolean;
 }
 
@@ -41,11 +44,13 @@ export interface UserUpdate {
   occupation?: string;
   university?: string | null;
   zodiac_sign?: string | null;
+  gender?: string | null;
   looking_for?: string | null;
   about_me_prompt?: string | null;
   voice_note_url?: string | null;
   bio?: string;
   interests?: string[];
+  hobbies?: string[];
   latitude?: number;
   longitude?: number;
 }
@@ -55,7 +60,7 @@ export interface RegisterPayload {
   password: string;
   display_name: string;
   accepted_terms: boolean;
-  phone_number: string;
+  phone_number?: string;
 }
 
 export interface LoginPayload {
@@ -85,6 +90,7 @@ export interface Event {
   is_group_event: boolean;
   max_attendees: number | null;
   is_paid: boolean;
+  ticket_price: number | null;
   creator?: UserPublic | null;
   created_at: string;
   attendee_count: number;
@@ -104,6 +110,14 @@ export interface EventCreate {
   is_group_event?: boolean;
   max_attendees?: number | null;
   is_paid?: boolean;
+  ticket_price?: number | null;
+}
+
+export interface EventCreationQuota {
+  is_premium: boolean;
+  events_created_this_week: number;
+  weekly_limit: number | null;
+  credits_balance: number;
 }
 
 export type SwipeDirection = "like" | "pass" | "super_like";

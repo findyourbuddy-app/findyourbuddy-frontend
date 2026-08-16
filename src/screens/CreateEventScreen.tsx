@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useState, useMemo } from "react";
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert } from "../utils/alert";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -8,7 +9,8 @@ import { Chip } from "../components/ui/Chip";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
 import type { GeocodingResult } from "../api/geocoding";
-import { createEvent } from "../api/events";
+import { createEvent, createEventCreditsCheckoutSession, getEventCreationQuota } from "../api/events";
+import type { EventCreationQuota } from "../types";
 import { CATEGORIES } from "../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
@@ -60,6 +62,38 @@ export function CreateEventScreen() {
   const [isGroupEvent, setIsGroupEvent] = useState(false);
   const [maxAttendees, setMaxAttendees] = useState("10");
   const [isPaid, setIsPaid] = useState(false);
+  const [ticketPrice, setTicketPrice] = useState("");
+  const [quota, setQuota] = useState<EventCreationQuota | null>(null);
+  const [isBuyingCredits, setIsBuyingCredits] = useState(false);
+
+  function refreshQuota(): void {
+    getEventCreationQuota()
+      .then(setQuota)
+      .catch(() => {
+        // Best-effort; the 429 on submit still guards the actual limit.
+      });
+  }
+
+  useEffect(refreshQuota, []);
+
+  async function handleBuyCredits(): Promise<void> {
+    setIsBuyingCredits(true);
+    try {
+      const { checkout_url } = await createEventCreditsCheckoutSession();
+      if (checkout_url) {
+        Linking.openURL(checkout_url);
+      } else {
+        Alert.alert("Ödeme Hatası", "Ödeme linki alınamadı.");
+      }
+    } catch {
+      Alert.alert(
+        "Ödeme Hatası",
+        "Ödeme sayfası başlatılamadı. Lütfen sunucunun açık olduğundan emin ol."
+      );
+    } finally {
+      setIsBuyingCredits(false);
+    }
+  }
 
   // Picker States
   const [isCalendarVisible, setIsCalendarVisible] = useState(false);
@@ -156,6 +190,11 @@ export function CreateEventScreen() {
       setError("Etkinlik tarihi gelecekte olmalı.");
       return;
     }
+    const parsedPrice = ticketPrice.trim() ? Number(ticketPrice.trim().replace(",", ".")) : null;
+    if (isPaid && (parsedPrice === null || Number.isNaN(parsedPrice) || parsedPrice <= 0)) {
+      setError("Bilet fiyatını gir.");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -170,11 +209,13 @@ export function CreateEventScreen() {
         is_group_event: isGroupEvent,
         max_attendees: isGroupEvent && maxAttendees.trim() ? parseInt(maxAttendees, 10) : null,
         is_paid: isPaid,
+        ticket_price: isPaid ? parsedPrice : null,
       });
       navigation.goBack();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {
-        setError("Günlük etkinlik oluşturma limitine ulaştın. Premium ile sınırsız etkinlik oluşturabilirsin.");
+        setError("Haftalık etkinlik oluşturma limitine ulaştın. Premium ile sınırsız etkinlik oluşturabilirsin.");
+        refreshQuota();
       } else {
         setError("Etkinlik oluşturulamadı. Bilgileri kontrol edip tekrar dene.");
       }
@@ -245,9 +286,19 @@ export function CreateEventScreen() {
           <Chip label="Ücretli (Biletli)" active={isPaid} onPress={() => setIsPaid(true)} />
         </View>
         {isPaid ? (
-          <Text style={styles.helperText}>
-            Ücretli etkinliklerde katılım, konuma yakınlık yerine bilet QR kodu yüklenerek doğrulanır.
-          </Text>
+          <>
+            <TextInput
+              style={styles.input}
+              keyboardType="decimal-pad"
+              placeholder="Bilet fiyatı (₺)"
+              placeholderTextColor={colors.textSecondary}
+              value={ticketPrice}
+              onChangeText={setTicketPrice}
+            />
+            <Text style={styles.helperText}>
+              Ücretli etkinliklerde katılım, konuma yakınlık yerine bilet QR kodu yüklenerek doğrulanır.
+            </Text>
+          </>
         ) : null}
       </View>
 
@@ -306,6 +357,24 @@ export function CreateEventScreen() {
         </View>
       </View>
 
+      {quota && !quota.is_premium && quota.weekly_limit !== null ? (
+        <View style={styles.quotaCard}>
+          <Text style={styles.helperText}>
+            Bu hafta kalan etkinlik oluşturma hakkın: {Math.max(quota.weekly_limit - quota.events_created_this_week, 0)}/
+            {quota.weekly_limit}. Premium ile sınırsız etkinlik oluşturabilirsin.
+          </Text>
+          {quota.credits_balance > 0 ? (
+            <Text style={styles.helperText}>Ekstra satın alınmış hakkın: {quota.credits_balance}</Text>
+          ) : null}
+          <PrimaryButton
+            label={isBuyingCredits ? "Yönlendiriliyor..." : "3 Ekstra Hak Satın Al (49 ₺)"}
+            onPress={handleBuyCredits}
+            loading={isBuyingCredits}
+            variant="outline"
+          />
+        </View>
+      ) : null}
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <PrimaryButton label="Etkinliği Oluştur" onPress={handleSave} loading={isSaving} />
@@ -314,6 +383,8 @@ export function CreateEventScreen() {
         visible={isLocationPickerVisible}
         onSelect={handleLocationSelect}
         onDismiss={() => setIsLocationPickerVisible(false)}
+        initialLatitude={coordinates?.latitude}
+        initialLongitude={coordinates?.longitude}
       />
 
       {/* CUSTOM CALENDAR MODAL */}
@@ -524,6 +595,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  quotaCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    gap: spacing.sm,
   },
   modalOverlay: {
     flex: 1,

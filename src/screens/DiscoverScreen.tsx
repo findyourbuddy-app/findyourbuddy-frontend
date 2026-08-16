@@ -1,5 +1,6 @@
-import { useCallback, useState, useMemo } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { Alert } from "../utils/alert";
 import * as Location from "expo-location";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -12,11 +13,16 @@ import { Chip } from "../components/ui/Chip";
 import { SectionHeader } from "../components/ui/SectionHeader";
 import { EventCard } from "../components/cards/EventCard";
 import { EventListItem } from "../components/cards/EventListItem";
+import { EventsMapView } from "../components/maps/EventsMapView";
 import { OptionPickerModal } from "../components/overlays/OptionPickerModal";
+import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
 import { createBookmark, deleteBookmark, listMyBookmarks } from "../api/bookmarks";
-import { listEvents } from "../api/events";
+import { reverseGeocode } from "../api/geocoding";
+import type { GeocodingResult } from "../api/geocoding";
+import { hasValidCoordinates } from "../utils/location";
+import { attendEvent, listEvents } from "../api/events";
 import { useAuth } from "../context/AuthContext";
-import { CATEGORIES } from "../constants/categories";
+import { CATEGORIES, getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, spacing, typeScale, radius, shadows } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
@@ -27,6 +33,10 @@ type DiscoverNavigationProp = CompositeNavigationProp<
 >;
 
 const LIMIT = 15;
+
+function shortenPlaceLabel(displayName: string): string {
+  return displayName.split(",").slice(0, 2).join(",").trim();
+}
 
 export function DiscoverScreen() {
   const navigation = useNavigation<DiscoverNavigationProp>();
@@ -45,6 +55,77 @@ export function DiscoverScreen() {
   const [sortPickerVisible, setSortPickerVisible] = useState(false);
   const [isMapView, setIsMapView] = useState(false);
   const [selectedMapEvent, setSelectedMapEvent] = useState<Event | null>(null);
+  const [cityLabel, setCityLabel] = useState("Konum Seç");
+  const [isCityPickerVisible, setIsCityPickerVisible] = useState(false);
+  const [mapEvents, setMapEvents] = useState<Event[]>([]);
+  const [isLoadingMapEvents, setIsLoadingMapEvents] = useState(false);
+  const [mapDateFilter, setMapDateFilter] = useState<"today" | "week" | "all">("all");
+
+  // The map view isn't limited by list-view pagination -- it loads a much
+  // larger batch once, on entry, so "haritada göster" actually means
+  // everything in the system with a location, not just the first page.
+  useEffect(() => {
+    if (!isMapView) return;
+    let cancelled = false;
+    setIsLoadingMapEvents(true);
+    listEvents(selectedCategory ?? undefined, true, 0, 200)
+      .then((result) => {
+        if (!cancelled) setMapEvents(result);
+      })
+      .catch(() => {
+        // Best-effort; the map just shows whatever loaded before the failure.
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingMapEvents(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isMapView, selectedCategory]);
+
+  const filteredMapEvents = useMemo(() => {
+    const withValidLocation = mapEvents.filter((event) => hasValidCoordinates(event.latitude, event.longitude));
+    if (mapDateFilter === "all") return withValidLocation;
+    const now = new Date();
+    const cutoff = new Date(now);
+    if (mapDateFilter === "today") {
+      cutoff.setHours(23, 59, 59, 999);
+    } else {
+      cutoff.setDate(cutoff.getDate() + 7);
+    }
+    return withValidLocation.filter((event) => new Date(event.starts_at) <= cutoff);
+  }, [mapEvents, mapDateFilter]);
+
+  // Ask for location up front so the app opens showing where the user
+  // actually is (old behavior hardcoded "İstanbul" for everyone). Also
+  // powers the map view's default center.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted" || cancelled) return;
+        const position = await Location.getCurrentPositionAsync({});
+        if (cancelled) return;
+        setUserCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        const result = await reverseGeocode(position.coords.latitude, position.coords.longitude);
+        if (cancelled) return;
+        setCityLabel(shortenPlaceLabel(result.display_name));
+      } catch {
+        // Best-effort; the pill stays tappable and defaults stay in place.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function handleCitySelect(result: GeocodingResult): void {
+    setCityLabel(shortenPlaceLabel(result.display_name));
+    setUserCoords({ latitude: result.latitude, longitude: result.longitude });
+    setSortBy("distance");
+    setIsCityPickerVisible(false);
+  }
 
   const getDistanceInKm = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; // Radius of the earth in km
@@ -127,17 +208,26 @@ export function DiscoverScreen() {
     return list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
   }, [events, sortBy, userCoords, getDistanceInKm]);
 
+  // Rapidly tapping category chips can fire overlapping requests -- without
+  // this guard, a slower older request resolving after a newer one would
+  // silently overwrite the list with the wrong category's events, which
+  // looks exactly like "filtering is broken" from the outside.
+  const loadEventsRequestIdRef = useRef(0);
+
   const loadEvents = useCallback(async (category: string | null) => {
+    const requestId = ++loadEventsRequestIdRef.current;
     setIsRefreshing(true);
     setHasMore(true);
     try {
       const result = await listEvents(category ?? undefined, true, 0, LIMIT);
+      if (requestId !== loadEventsRequestIdRef.current) return;
       setEvents(result);
       setHasMore(result.length === LIMIT);
     } catch {
+      if (requestId !== loadEventsRequestIdRef.current) return;
       Alert.alert("Bir sorun oluştu", "Etkinlikler yüklenemedi. Lütfen tekrar dene.");
     } finally {
-      setIsRefreshing(false);
+      if (requestId === loadEventsRequestIdRef.current) setIsRefreshing(false);
     }
   }, []);
 
@@ -218,13 +308,42 @@ export function DiscoverScreen() {
     navigation.navigate("Swipe", { eventId: event.id, eventTitle: event.title });
   }
 
+  async function handlePressJoin(event: Event): Promise<void> {
+    if (event.is_attending) {
+      goToSwipe(event);
+      return;
+    }
+    try {
+      const updated = await attendEvent(event.id);
+      // Stay put so the button visibly flips to "Kankaları Gör" instead of
+      // yanking the user straight into Swipe before they've even confirmed
+      // they're going -- same fix as EventDetailScreen's attend flow.
+      setEvents((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    } catch {
+      Alert.alert("Bir sorun oluştu", "Etkinliğe katılamadın. Lütfen tekrar dene.");
+    }
+  }
+
   function goToDetail(event: Event): void {
     navigation.navigate("EventDetail", { eventId: event.id });
   }
 
   const [featured, rest] = useMemo(() => {
     const list = sortedEvents;
-    return [list[0] || null, list.slice(1)];
+    if (list.length === 0) return [null, []] as const;
+    // Feature whichever near-term event has the most interest, not just
+    // whatever happens to be chronologically soonest -- a popular event in
+    // 3 days beats an empty one starting in 20 minutes.
+    const now = Date.now();
+    const nearTermWindowMs = 7 * 24 * 60 * 60 * 1000;
+    const nearTerm = list.filter(
+      (event) => new Date(event.starts_at).getTime() - now <= nearTermWindowMs
+    );
+    const candidates = nearTerm.length > 0 ? nearTerm : list;
+    const featuredEvent = candidates.reduce((best, event) =>
+      event.attendee_count > best.attendee_count ? event : best
+    );
+    return [featuredEvent, list.filter((event) => event.id !== featuredEvent.id)] as const;
   }, [sortedEvents]);
 
   const getEventDistanceLabel = useCallback((event: Event) => {
@@ -241,6 +360,7 @@ export function DiscoverScreen() {
   return (
     <>
     <FlatList
+      key={selectedCategory ?? "all"}
       style={styles.background}
       contentContainerStyle={styles.list}
       data={isMapView ? [] : rest}
@@ -253,45 +373,23 @@ export function DiscoverScreen() {
       ListFooterComponent={
         isMapView ? (
           <View style={styles.mapCanvasContainer}>
-            <Text style={styles.mapCanvasTitle}>📍 Etkinlik Haritası</Text>
-            <View style={styles.mapCanvas}>
-              {/* Radar pulse in center representing user */}
-              <View style={styles.userPulseOuter}>
-                <View style={styles.userPulseInner} />
-              </View>
-              {/* Event pins */}
-              {events.map((event) => {
-                const centerLat = userCoords?.latitude ?? 41.0082;
-                const centerLng = userCoords?.longitude ?? 28.9784;
-                
-                const latDiff = event.latitude - centerLat;
-                const lngDiff = event.longitude - centerLng;
-                
-                const leftOffset = 150 + lngDiff * 1200;
-                const topOffset = 140 - latDiff * 1200;
-                
-                const x = Math.max(10, Math.min(290, leftOffset));
-                const y = Math.max(10, Math.min(270, topOffset));
-
-                return (
-                  <Pressable
-                    key={event.id}
-                    style={[
-                      styles.mapPin,
-                      { left: x, top: y },
-                      selectedMapEvent?.id === event.id && styles.mapPinSelected
-                    ]}
-                    onPress={() => setSelectedMapEvent(event)}
-                  >
-                    <Feather
-                      name="map-pin"
-                      size={20}
-                      color={selectedMapEvent?.id === event.id ? colors.accentYellow : colors.primary}
-                    />
-                  </Pressable>
-                );
-              })}
+            <View style={styles.mapHeaderRow}>
+              <Text style={styles.mapCanvasTitle}>📍 Etkinlik Haritası</Text>
+              {isLoadingMapEvents ? <ActivityIndicator size="small" color={colors.primary} /> : null}
             </View>
+            <View style={styles.mapDateFilterRow}>
+              <Chip label="Tümü" active={mapDateFilter === "all"} onPress={() => setMapDateFilter("all")} />
+              <Chip label="Bugün" active={mapDateFilter === "today"} onPress={() => setMapDateFilter("today")} />
+              <Chip label="Bu Hafta" active={mapDateFilter === "week"} onPress={() => setMapDateFilter("week")} />
+            </View>
+            <EventsMapView
+              events={filteredMapEvents}
+              centerLatitude={userCoords?.latitude ?? 41.0082}
+              centerLongitude={userCoords?.longitude ?? 28.9784}
+              onSelectEvent={setSelectedMapEvent}
+              selectedEventId={selectedMapEvent?.id ?? null}
+              height={360}
+            />
 
             {/* Selected Event Card Overlay */}
             {selectedMapEvent && (
@@ -322,10 +420,10 @@ export function DiscoverScreen() {
         <View style={styles.headerArea}>
           <View style={styles.topRow}>
             <View style={{ flexDirection: "row", gap: spacing.xs }}>
-              <View style={styles.locationPill}>
+              <Pressable style={styles.locationPill} onPress={() => setIsCityPickerVisible(true)}>
                 <Feather name="map-pin" size={14} color={colors.textPrimary} />
-                <Text style={styles.locationText}>İstanbul</Text>
-              </View>
+                <Text style={styles.locationText}>{cityLabel}</Text>
+              </Pressable>
               <Pressable style={styles.sortPill} onPress={openSortPicker} disabled={isLocating}>
                 {isLocating ? (
                   <ActivityIndicator size="small" color={colors.primary} style={{ width: 14, height: 14 }} />
@@ -377,73 +475,79 @@ export function DiscoverScreen() {
             </View>
           </View>
 
-          <Text style={[typeScale.display, styles.title]}>
-            Bugün ne yapmak istersin, {user?.display_name ?? ""}?
-          </Text>
+          {!isMapView ? (
+            <>
+              <Text style={[typeScale.display, styles.title]}>
+                Bugün ne yapmak istersin, {user?.display_name ?? ""}?
+              </Text>
 
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={CATEGORIES}
-            keyExtractor={(category) => category.slug}
-            renderItem={({ item }) => (
-              <Chip
-                label={item.label}
-                active={selectedCategory === item.slug}
-                onPress={() => handleSelectCategory(item.slug)}
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={CATEGORIES}
+                keyExtractor={(category) => category.slug}
+                renderItem={({ item }) => (
+                  <Chip
+                    label={item.label}
+                    active={selectedCategory === item.slug}
+                    onPress={() => handleSelectCategory(item.slug)}
+                  />
+                )}
+                style={styles.chipList}
               />
-            )}
-            style={styles.chipList}
-          />
 
-          <Pressable
-            style={styles.aiMatchingBanner}
-            onPress={() => navigation.navigate("AIRecommendations")}
-          >
-            <LinearGradient
-              colors={["#2D1B6B", "#6C5CE7"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.aiMatchingBannerGradient}
-            >
-              <View style={styles.aiMatchingTextCol}>
-                <Text style={styles.aiMatchingTitle}>✨ AI Kanka Eşleştirici</Text>
-                <Text style={styles.aiMatchingDesc}>Zodyak element ve ilgi alanı uyumunu hesapla!</Text>
-              </View>
-              <View style={styles.aiMatchingBadge}>
-                <Text style={styles.aiMatchingBadgeText}>Hesapla</Text>
-                <Feather name="chevron-right" size={14} color={colors.primary} />
-              </View>
-            </LinearGradient>
-          </Pressable>
+              <Pressable
+                style={styles.aiMatchingBanner}
+                onPress={() => navigation.navigate("AIRecommendations")}
+              >
+                <LinearGradient
+                  colors={["#2D1B6B", "#6C5CE7"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.aiMatchingBannerGradient}
+                >
+                  <View style={styles.aiMatchingTextCol}>
+                    <Text style={styles.aiMatchingTitle}>✨ AI Kanka Eşleştirici</Text>
+                    <Text style={styles.aiMatchingDesc}>Zodyak element ve ilgi alanı uyumunu hesapla!</Text>
+                  </View>
+                  <View style={styles.aiMatchingBadge}>
+                    <Text style={styles.aiMatchingBadgeText}>Hesapla</Text>
+                    <Feather name="chevron-right" size={14} color={colors.primary} />
+                  </View>
+                </LinearGradient>
+              </Pressable>
 
-          {featured ? (
-            <View style={styles.featuredWrapper}>
-              <EventCard
-                event={featured}
-                bookmarked={bookmarkedIds.has(featured.id)}
-                onToggleBookmark={() => toggleBookmark(featured.id)}
-                onPressJoin={() => goToSwipe(featured)}
-                onPress={() => goToDetail(featured)}
-                distanceLabel={getEventDistanceLabel(featured)}
-              />
-            </View>
-          ) : null}
+              {featured ? (
+                <View style={styles.featuredWrapper}>
+                  <EventCard
+                    event={featured}
+                    bookmarked={bookmarkedIds.has(featured.id)}
+                    onToggleBookmark={() => toggleBookmark(featured.id)}
+                    onPressJoin={() => handlePressJoin(featured)}
+                    onPress={() => goToDetail(featured)}
+                    distanceLabel={getEventDistanceLabel(featured)}
+                  />
+                </View>
+              ) : null}
 
-          {rest.length > 0 ? (
-            <SectionHeader
-              eyebrow="Hafta Sonu Havası"
-              title="Yakınındaki Popüler Aktiviteler"
-              actionLabel="Sırala"
-              onActionPress={openSortPicker}
-            />
+              {rest.length > 0 ? (
+                <SectionHeader
+                  eyebrow="Hafta Sonu Havası"
+                  title="Yakınındaki Popüler Aktiviteler"
+                  actionLabel="Sırala"
+                  onActionPress={openSortPicker}
+                />
+              ) : null}
+            </>
           ) : null}
         </View>
       }
       ListEmptyComponent={
         events.length === 0 && !isRefreshing ? (
           <Text style={styles.emptyText}>
-            Şu an gösterilecek etkinlik yok. Daha sonra tekrar kontrol et!
+            {selectedCategory
+              ? `${getCategoryMeta(selectedCategory).label} kategorisinde şu an etkinlik yok. Başka bir kategori dener misin?`
+              : "Şu an gösterilecek etkinlik yok. Daha sonra tekrar kontrol et!"}
           </Text>
         ) : null
       }
@@ -465,6 +569,13 @@ export function DiscoverScreen() {
       options={sortOptions}
       onDismiss={() => setSortPickerVisible(false)}
       selectedKey={sortBy || undefined}
+    />
+    <LocationPickerModal
+      visible={isCityPickerVisible}
+      onSelect={handleCitySelect}
+      onDismiss={() => setIsCityPickerVisible(false)}
+      initialLatitude={userCoords?.latitude}
+      initialLongitude={userCoords?.longitude}
     />
     </>
   );
@@ -568,42 +679,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textPrimary,
   },
-  mapCanvas: {
-    width: "100%",
-    height: 300,
-    backgroundColor: "#0F0B26",
-    borderRadius: radius.sm,
-    position: "relative",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  userPulseOuter: {
-    position: "absolute",
-    left: 150,
-    top: 140,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(108, 92, 231, 0.25)",
-    justifyContent: "center",
+  mapHeaderRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: spacing.sm,
   },
-  userPulseInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
-  },
-  mapPin: {
-    position: "absolute",
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  mapPinSelected: {
-    transform: [{ scale: 1.2 }],
+  mapDateFilterRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
   },
   mapCallout: {
     flexDirection: "row",
