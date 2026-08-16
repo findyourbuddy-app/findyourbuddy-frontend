@@ -2,6 +2,7 @@
   "expo": {
     "name": "FindYourBuddy",
     "slug": "findyourbuddy-frontend",
+    "owner": "engincts",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,7 +24,15 @@
         "googleMaps": {
           "apiKey": "REPLACE_WITH_GOOGLE_MAPS_ANDROID_API_KEY"
         }
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -54,6 +63,11 @@
       ],
       "expo-notifications",
       "expo-audio"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d6065c0d-88dc-4d8c-870c-a97b0783b372"
+      }
+    }
   }
 }

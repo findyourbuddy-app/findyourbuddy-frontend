@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
 import { Alert } from "../utils/alert";
 import * as Location from "expo-location";
 import { Feather } from "@expo/vector-icons";
@@ -38,6 +38,35 @@ function shortenPlaceLabel(displayName: string): string {
   return displayName.split(",").slice(0, 2).join(",").trim();
 }
 
+function normalizeText(text: string): string {
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function isSmartMatch(text: string, query: string): boolean {
+  if (!query.trim() || !text) return false;
+  const normText = normalizeText(text);
+  const normQuery = normalizeText(query);
+  if (!normQuery) return true;
+  if (!normText) return false;
+
+  if (normText.includes(normQuery)) return true;
+
+  const queryTokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  return queryTokens.every((token) => {
+    const normToken = normalizeText(token);
+    return normText.includes(normToken);
+  });
+}
+
 export function DiscoverScreen() {
   const navigation = useNavigation<DiscoverNavigationProp>();
   const { user } = useAuth();
@@ -48,7 +77,8 @@ export function DiscoverScreen() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // Sorting and Location States
+  // Sorting, Search and Location States
+  const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "distance" | "popularity" | undefined>(undefined);
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -328,8 +358,22 @@ export function DiscoverScreen() {
     navigation.navigate("EventDetail", { eventId: event.id });
   }
 
+  const filteredEvents = useMemo(() => {
+    if (!searchQuery.trim()) return sortedEvents;
+    const q = searchQuery.trim();
+    return sortedEvents.filter((event) => {
+      const categoryLabel = getCategoryMeta(event.category)?.label || "";
+      return (
+        isSmartMatch(event.title, q) ||
+        isSmartMatch(event.location_name, q) ||
+        isSmartMatch(event.description || "", q) ||
+        isSmartMatch(categoryLabel, q)
+      );
+    });
+  }, [sortedEvents, searchQuery]);
+
   const [featured, rest] = useMemo(() => {
-    const list = sortedEvents;
+    const list = filteredEvents;
     if (list.length === 0) return [null, []] as const;
     // Feature whichever near-term event has the most interest, not just
     // whatever happens to be chronologically soonest -- a popular event in
@@ -344,7 +388,7 @@ export function DiscoverScreen() {
       event.attendee_count > best.attendee_count ? event : best
     );
     return [featuredEvent, list.filter((event) => event.id !== featuredEvent.id)] as const;
-  }, [sortedEvents]);
+  }, [filteredEvents]);
 
   const getEventDistanceLabel = useCallback((event: Event) => {
     if (sortBy === "distance" && userCoords) {
@@ -424,22 +468,6 @@ export function DiscoverScreen() {
                 <Feather name="map-pin" size={14} color={colors.textPrimary} />
                 <Text style={styles.locationText}>{cityLabel}</Text>
               </Pressable>
-              <Pressable style={styles.sortPill} onPress={openSortPicker} disabled={isLocating}>
-                {isLocating ? (
-                  <ActivityIndicator size="small" color={colors.primary} style={{ width: 14, height: 14 }} />
-                ) : (
-                  <>
-                    <Feather
-                      name={sortBy === "distance" ? "navigation" : sortBy === "popularity" ? "trending-up" : "clock"}
-                      size={12}
-                      color={colors.primary}
-                    />
-                    <Text style={styles.sortText}>
-                      {sortBy === "distance" ? "En Yakın" : sortBy === "popularity" ? "Popüler" : "Tarih"}
-                    </Text>
-                  </>
-                )}
-              </Pressable>
               <Pressable
                 style={[styles.sortPill, isMapView && { backgroundColor: colors.primaryMuted }]}
                 onPress={() => setIsMapView(!isMapView)}
@@ -480,6 +508,91 @@ export function DiscoverScreen() {
               <Text style={[typeScale.display, styles.title]}>
                 Bugün ne yapmak istersin, {user?.display_name ?? ""}?
               </Text>
+
+              {/* Event Search Bar & Sort Button Row */}
+              <View style={{ zIndex: 999 }}>
+                <View style={styles.searchSortRow}>
+                  <View style={styles.searchBar}>
+                    <Feather name="search" size={16} color={colors.textSecondary} />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Etkinlik veya mekan ara..."
+                      placeholderTextColor={colors.textSecondary}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.trim() ? (
+                      <Pressable onPress={() => setSearchQuery("")}>
+                        <Feather name="x-circle" size={16} color={colors.textSecondary} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+
+                  <Pressable style={styles.sortButton} onPress={openSortPicker} disabled={isLocating}>
+                    {isLocating ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <>
+                        <Feather name="sliders" size={14} color={colors.primary} />
+                        <Text style={styles.sortButtonText}>
+                          {sortBy === "distance" ? "En Yakın" : sortBy === "popularity" ? "Popüler" : "Sırala"}
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
+                </View>
+
+                {/* Instant Search Suggestions Dropdown Overlay */}
+                {searchQuery.trim() ? (
+                  <View style={styles.searchDropdownCard}>
+                    {filteredEvents.length === 0 ? (
+                      <View style={styles.dropdownEmptyBox}>
+                        <Feather name="alert-circle" size={18} color={colors.textSecondary} />
+                        <Text style={styles.dropdownEmptyText}>
+                          “{searchQuery}” ile eşleşen etkinlik bulunamadı.
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.dropdownList}>
+                        <Text style={styles.dropdownHeaderTitle}>
+                          Arama Sonuçları ({filteredEvents.length})
+                        </Text>
+                        {filteredEvents.slice(0, 5).map((event) => {
+                          const categoryMeta = getCategoryMeta(event.category);
+                          return (
+                            <Pressable
+                              key={event.id}
+                              style={styles.dropdownItem}
+                              onPress={() => {
+                                setSearchQuery("");
+                                goToDetail(event);
+                              }}
+                            >
+                              <View style={styles.dropdownItemIcon}>
+                                <Feather name="calendar" size={16} color={colors.primary} />
+                              </View>
+                              <View style={{ flex: 1, gap: 2 }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                  <Text style={[styles.dropdownItemTitle, { flex: 1 }]} numberOfLines={1}>
+                                    {event.title}
+                                  </Text>
+                                  <View style={styles.categoryBadgePill}>
+                                    <Text style={styles.categoryBadgeText}>{categoryMeta.label}</Text>
+                                  </View>
+                                </View>
+                                <Text style={styles.dropdownItemSub} numberOfLines={1}>
+                                  📍 {event.location_name}
+                                </Text>
+                              </View>
+                              <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                ) : null}
+              </View>
 
               <FlatList
                 horizontal
@@ -769,6 +882,118 @@ const styles = StyleSheet.create({
   aiMatchingBadgeText: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 12,
+    color: colors.primary,
+  },
+  searchSortRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    alignItems: "center",
+    marginTop: spacing.xs,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.soft,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textPrimary,
+    paddingVertical: 6,
+  },
+  sortButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.primaryMuted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  sortButtonText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
+  },
+  searchDropdownCard: {
+    position: "absolute",
+    top: 48,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    zIndex: 1000,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.card,
+  },
+  dropdownEmptyBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  dropdownEmptyText: {
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  dropdownList: {
+    gap: spacing.xs,
+  },
+  dropdownHeaderTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  dropdownItemIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.primaryMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dropdownItemTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  dropdownItemSub: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  categoryBadgePill: {
+    backgroundColor: colors.primaryMuted,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  categoryBadgeText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 10,
     color: colors.primary,
   },
 });
