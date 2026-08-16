@@ -18,7 +18,11 @@ interface OptionPickerModalProps {
   selectedKey?: string;
 }
 
+import { useAppTheme } from "../../context/ThemeContext";
+
 export function OptionPickerModal({ visible, title, options, onDismiss, selectedKey }: OptionPickerModalProps) {
+  const { t } = useAppTheme();
+
   function handleSelect(option: PickerOption): void {
     onDismiss();
     option.onPress();
@@ -62,7 +66,7 @@ export function OptionPickerModal({ visible, title, options, onDismiss, selected
             })}
           </View>
           <Pressable style={styles.cancelButton} onPress={onDismiss}>
-            <Text style={styles.cancelText}>Vazgeç</Text>
+            <Text style={styles.cancelText}>{t("cancel")}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

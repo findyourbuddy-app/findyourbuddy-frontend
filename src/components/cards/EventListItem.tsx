@@ -7,6 +7,8 @@ import { colors, fontFamily, radius, spacing, typeScale } from "../../theme";
 import { formatEventDate } from "../../utils/date";
 import type { Event } from "../../types";
 
+import { useAppTheme } from "../../context/ThemeContext";
+
 interface EventListItemProps {
   event: Event;
   bookmarked: boolean;
@@ -16,14 +18,15 @@ interface EventListItemProps {
 }
 
 export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, distanceLabel }: EventListItemProps) {
-  const category = getCategoryMeta(event.category);
+  const { language } = useAppTheme();
+  const category = getCategoryMeta(event.category, language);
 
   return (
     <Pressable
       style={styles.container}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${event.title}, ${formatEventDate(event.starts_at)}`}
+      accessibilityLabel={`${event.title}, ${formatEventDate(event.starts_at, language)}`}
     >
       <View style={styles.thumbnail}>
         {event.image_url ? (
@@ -49,12 +52,13 @@ export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, di
       </View>
       <View style={styles.textColumn}>
         <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
-          <Text style={styles.meta}>{formatEventDate(event.starts_at)}</Text>
+          <Text style={styles.meta}>{formatEventDate(event.starts_at, language)}</Text>
           {distanceLabel && (
             <Text style={[styles.meta, { color: colors.primary, fontFamily: fontFamily.bodySemiBold }]}>
               {"  ·  "}{distanceLabel}
             </Text>
           )}
+          {event.creator_id ? <Text style={styles.userEventTag}>{"  ·  "}{language === "en" ? "User Event" : "Kullanıcı Etkinliği"}</Text> : null}
         </View>
         <Text style={typeScale.h2}>{event.title}</Text>
       </View>
@@ -95,5 +99,10 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  userEventTag: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
   },
 });

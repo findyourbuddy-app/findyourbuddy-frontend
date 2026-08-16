@@ -1,24 +1,28 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { spacing, typeScale } from "../../theme";
+import { colors, fontFamily, spacing, typeScale } from "../../theme";
 
 interface SectionHeaderProps {
-  eyebrow?: string;
   title: string;
+  eyebrow?: string;
   actionLabel?: string;
   onActionPress?: () => void;
 }
 
-export function SectionHeader({ eyebrow, title, actionLabel, onActionPress }: SectionHeaderProps) {
+export function SectionHeader({ title, eyebrow, actionLabel, onActionPress }: SectionHeaderProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.textColumn}>
+      <View style={{ flex: 1 }}>
         {eyebrow ? <Text style={typeScale.eyebrow}>{eyebrow}</Text> : null}
-        <Text style={typeScale.h1}>{title}</Text>
+        <Text style={typeScale.h2}>{title}</Text>
       </View>
       {actionLabel ? (
-        <Pressable onPress={onActionPress}>
-          <Text style={typeScale.caption}>{actionLabel}</Text>
-        </Pressable>
+        onActionPress ? (
+          <Pressable onPress={onActionPress} accessibilityRole="button" accessibilityLabel={actionLabel}>
+            <Text style={styles.action}>{actionLabel}</Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.actionStatic}>{actionLabel}</Text>
+        )
       ) : null}
     </View>
   );
@@ -29,9 +33,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    marginBottom: spacing.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
   },
-  textColumn: {
-    gap: 2,
+  action: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.primary,
+  },
+  actionStatic: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 12,
+    color: colors.textSecondary,
   },
 });

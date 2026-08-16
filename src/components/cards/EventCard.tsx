@@ -9,6 +9,8 @@ import { colors, fontFamily, radius, spacing, typeScale } from "../../theme";
 import { formatEventDate, isToday } from "../../utils/date";
 import type { Event } from "../../types";
 
+import { useAppTheme } from "../../context/ThemeContext";
+
 interface EventCardProps {
   event: Event;
   bookmarked: boolean;
@@ -19,8 +21,9 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, onPress, distanceLabel }: EventCardProps) {
-  const category = getCategoryMeta(event.category);
-  const startLabel = formatEventDate(event.starts_at);
+  const { language, t } = useAppTheme();
+  const category = getCategoryMeta(event.category, language);
+  const startLabel = formatEventDate(event.starts_at, language);
 
   return (
     <Pressable style={styles.card} onPress={onPress} disabled={!onPress}>
@@ -34,9 +37,10 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
             </View>
           </LinearGradient>
         )}
-        {isToday(event.starts_at) ? (
+        {isToday(event.starts_at) || event.creator_id ? (
           <View style={styles.badgeSlot}>
-            <Badge label="Bu akşam" variant="yellow" icon="⚡" />
+            {isToday(event.starts_at) ? <Badge label={language === "en" ? "Tonight" : "Bu akşam"} variant="yellow" icon="⚡" /> : null}
+            {event.creator_id ? <Badge label={language === "en" ? "User Event" : "Kullanıcı Etkinliği"} variant="primary" /> : null}
           </View>
         ) : null}
         <Pressable style={styles.bookmark} onPress={onToggleBookmark}>
@@ -69,11 +73,14 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
           <View style={styles.metaRow}>
             <Feather name="users" size={14} color={colors.primary} />
             <Text style={styles.attendeeText}>
-              {event.attendee_count} kişi bu etkinliğe ilgi gösteriyor
+              {event.attendee_count} {t("personInterested")}
             </Text>
           </View>
         ) : null}
-        <PrimaryButton label="Kankaları Gör" onPress={onPressJoin} />
+        <PrimaryButton
+          label={event.is_attending ? t("seeBuddiesBtn") : t("imGoingToThisEvent")}
+          onPress={onPressJoin}
+        />
       </View>
     </Pressable>
   );
@@ -102,6 +109,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: spacing.md,
     left: spacing.md,
+    flexDirection: "row",
+    gap: spacing.xs,
   },
   bookmark: {
     position: "absolute",

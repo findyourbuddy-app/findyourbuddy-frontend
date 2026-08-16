@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Alert, FlatList, StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import { FlatList, StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { listMyNotifications, markMyNotificationsRead } from "../api/notifications";
@@ -7,9 +8,12 @@ import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import { formatRelativeTimestamp } from "../utils/date";
 import type { Notification } from "../types";
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function NotificationsScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { t, accentColor, bgGradient } = useAppTheme();
 
   const loadNotifications = useCallback(async () => {
     setIsLoading(true);
@@ -49,22 +53,22 @@ export function NotificationsScreen() {
 
   if (isLoading && notifications.length === 0) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.center, { backgroundColor: bgGradient[0] }]}>
+        <ActivityIndicator size="large" color={accentColor} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: bgGradient[0] }]}>
       <View style={styles.timelineLine} />
       <FlatList
-        style={styles.background}
+        style={[styles.background, { backgroundColor: bgGradient[0] }]}
         contentContainerStyle={styles.list}
         data={notifications}
         keyExtractor={(item) => String(item.id)}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>Henüz bir bildirimin yok.</Text>
+          <Text style={styles.emptyText}>{t("noNotificationsYet")}</Text>
         }
         renderItem={({ item }) => {
           const meta = getNotificationMeta(item.title, item.body);

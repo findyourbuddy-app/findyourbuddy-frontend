@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { AlertHost } from "../components/ui/AlertHost";
 import { FloatingTabBar } from "../components/navigation/FloatingTabBar";
 import { colors, spacing } from "../theme";
 import { LoginScreen } from "../screens/LoginScreen";
@@ -31,6 +32,7 @@ import { CommunityGuidelinesScreen } from "../screens/CommunityGuidelinesScreen"
 import { CallScreen } from "../screens/CallScreen";
 import { AIRecommendationsScreen } from "../screens/AIRecommendationsScreen";
 import { VerifyPhoneScreen } from "../screens/VerifyPhoneScreen";
+import { OnboardingScreen } from "../screens/OnboardingScreen";
 import type { User } from "../types";
 
 export type AuthStackParamList = {
@@ -49,6 +51,7 @@ export type MainTabParamList = {
 };
 
 export type MainStackParamList = {
+  Onboarding: undefined;
   Tabs: NavigatorScreenParams<MainTabParamList> | undefined;
   Chat: { matchId: number; otherUserId: number; otherUserName: string; needsFeedback?: boolean };
   Call: {
@@ -118,11 +121,25 @@ function MainTabNavigator() {
   );
 }
 
+import { useAppTheme } from "../context/ThemeContext";
+
 function MainNavigator() {
-  const { justRegistered } = useAuth();
+  const { user, justRegistered } = useAuth();
+  const { t, bgGradient } = useAppTheme();
+  const isNewOrIncomplete =
+    justRegistered ||
+    !user?.photo_url ||
+    (!user?.date_of_birth && !user?.age) ||
+    (!user?.hobbies || user.hobbies.length === 0);
 
   return (
-    <MainStack.Navigator initialRouteName={justRegistered ? "EditProfile" : "Tabs"}>
+    <MainStack.Navigator
+      initialRouteName={isNewOrIncomplete ? "Onboarding" : "Tabs"}
+      screenOptions={{
+        contentStyle: { backgroundColor: bgGradient[0] },
+      }}
+    >
+      <MainStack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
       <MainStack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false }} />
       <MainStack.Screen
         name="Chat"
@@ -137,18 +154,18 @@ function MainNavigator() {
       <MainStack.Screen
         name="AIRecommendations"
         component={AIRecommendationsScreen}
-        options={{ title: "AI Uyum Önerileri" }}
+        options={{ title: t("aiMatchTitle") }}
       />
       <MainStack.Screen
         name="Profile"
         component={ProfileScreen}
         options={({ navigation }) => ({
-          title: "Profil",
+          title: t("tabProfile"),
           headerRight: () => (
             <Pressable
               onPress={() => navigation.navigate("Settings")}
               accessibilityRole="button"
-              accessibilityLabel="Ayarlar"
+              accessibilityLabel={t("settings")}
               style={{ paddingHorizontal: spacing.sm }}
             >
               <Feather name="settings" size={22} color={colors.textPrimary} />
@@ -159,53 +176,53 @@ function MainNavigator() {
       <MainStack.Screen
         name="EditProfile"
         component={EditProfileScreen}
-        options={{ title: "Profili Düzenle" }}
+        options={{ title: t("editProfile") }}
       />
       <MainStack.Screen
         name="ViewProfile"
         component={ViewProfileScreen}
-        options={{ title: "Profilimi Görüntüle" }}
+        options={{ title: t("viewMyProfile") }}
       />
       <MainStack.Screen
         name="CommunityGuidelines"
         component={CommunityGuidelinesScreen}
-        options={{ title: "Topluluk Kuralları" }}
+        options={{ title: t("communityGuidelines") }}
       />
-      <MainStack.Screen name="Settings" component={SettingsScreen} options={{ title: "Ayarlar" }} />
+      <MainStack.Screen name="Settings" component={SettingsScreen} options={{ title: t("settingsTitle") }} />
       <MainStack.Screen
         name="ChangePassword"
         component={ChangePasswordScreen}
-        options={{ title: "Şifre Değiştir" }}
+        options={{ title: t("changePassword") }}
       />
       <MainStack.Screen
         name="SavedEvents"
         component={SavedEventsScreen}
-        options={{ title: "Kaydedilenler" }}
+        options={{ title: t("savedEvents") }}
       />
       <MainStack.Screen
         name="BlockedUsers"
         component={BlockedUsersScreen}
-        options={{ title: "Engellenen Kullanıcılar" }}
+        options={{ title: t("blockedUsers") }}
       />
       <MainStack.Screen
         name="CreateEvent"
         component={CreateEventScreen}
-        options={{ title: "Etkinlik Oluştur" }}
+        options={{ title: t("createEventTitle") }}
       />
       <MainStack.Screen
         name="EventDetail"
         component={EventDetailScreen}
-        options={{ title: "Etkinlik" }}
+        options={{ title: t("eventDetailsLabel") }}
       />
       <MainStack.Screen
         name="Notifications"
         component={NotificationsScreen}
-        options={{ title: "Bildirimler" }}
+        options={{ title: t("notificationsTitle") }}
       />
       <MainStack.Screen
         name="LikesReceived"
         component={LikesReceivedScreen}
-        options={{ title: "Seni Beğenenler" }}
+        options={{ title: t("likesReceivedTitle") }}
       />
       <MainStack.Screen
         name="CandidateProfile"
@@ -230,6 +247,7 @@ export function RootNavigator() {
   return (
     <NavigationContainer>
       {user ? (user.phone_verified ? <MainNavigator /> : <VerifyPhoneScreen />) : <AuthNavigator />}
+      <AlertHost />
     </NavigationContainer>
   );
 }

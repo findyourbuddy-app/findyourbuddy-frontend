@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert } from "../../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { MapLocationPicker } from "../maps/MapLocationPicker";
-import { searchLocations } from "../../api/geocoding";
+import { reverseGeocode, searchLocations } from "../../api/geocoding";
 import type { GeocodingResult } from "../../api/geocoding";
 import { colors, fontFamily, radius, spacing, typeScale } from "../../theme";
 
@@ -12,20 +13,57 @@ interface LocationPickerModalProps {
   visible: boolean;
   onSelect: (result: GeocodingResult) => void;
   onDismiss: () => void;
+  initialLatitude?: number;
+  initialLongitude?: number;
 }
 
-export function LocationPickerModal({ visible, onSelect, onDismiss }: LocationPickerModalProps) {
+// Istanbul city center -- used only as a starting point for the map when no
+// location has been picked yet, so the picker never opens on an empty ocean.
+const DEFAULT_CENTER = { latitude: 41.0082, longitude: 28.9784 };
+
+import { useAppTheme } from "../../context/ThemeContext";
+
+export function LocationPickerModal({
+  visible,
+  onSelect,
+  onDismiss,
+  initialLatitude,
+  initialLongitude,
+}: LocationPickerModalProps) {
+  const { language } = useAppTheme();
+  const [coords, setCoords] = useState({
+    latitude: initialLatitude ?? DEFAULT_CENTER.latitude,
+    longitude: initialLongitude ?? DEFAULT_CENTER.longitude,
+  });
+  const [knownDisplayName, setKnownDisplayName] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GeocodingResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<GeocodingResult | null>(null);
+
+  // Reset to the caller's known position (or the default) each time the
+  // picker is reopened, so a previous session's map pan doesn't linger.
+  useEffect(() => {
+    if (!visible) return;
+    setCoords({
+      latitude: initialLatitude ?? DEFAULT_CENTER.latitude,
+      longitude: initialLongitude ?? DEFAULT_CENTER.longitude,
+    });
+    setKnownDisplayName(null);
+    setIsSearchOpen(false);
+    setQuery("");
+    setResults([]);
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   async function handleSearch(): Promise<void> {
     const trimmed = query.trim();
     if (trimmed.length < 3) {
-      setError("En az 3 karakter yaz.");
+      setError(language === "en" ? "Type at least 3 characters." : "En az 3 karakter yaz.");
       return;
     }
     setError(null);
@@ -34,13 +72,21 @@ export function LocationPickerModal({ visible, onSelect, onDismiss }: LocationPi
       const found = await searchLocations(trimmed);
       setResults(found);
       if (found.length === 0) {
-        setError("Sonuç bulunamadı, farklı bir arama dener misin?");
+        setError(language === "en" ? "No results found, try a different search?" : "Sonuç bulunamadı, farklı bir arama dener misin?");
       }
     } catch {
-      setError("Arama yapılamadı. Lütfen tekrar dene.");
+      setError(language === "en" ? "Search failed. Please try again." : "Arama yapılamadı. Lütfen tekrar dene.");
     } finally {
       setIsSearching(false);
     }
+  }
+
+  function handleSelectResult(result: GeocodingResult): void {
+    setCoords({ latitude: result.latitude, longitude: result.longitude });
+    setKnownDisplayName(result.display_name);
+    setQuery("");
+    setResults([]);
+    setIsSearchOpen(false);
   }
 
   async function handleUseCurrentLocation(): Promise<void> {
@@ -49,108 +95,130 @@ export function LocationPickerModal({ visible, onSelect, onDismiss }: LocationPi
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Konum izni gerekli", "Mevcut konumunu kullanmak için izin vermen gerekiyor.");
+        Alert.alert(
+          language === "en" ? "Location Permission Required" : "Konum izni gerekli",
+          language === "en" ? "Please grant location permission to use current location." : "Mevcut konumunu kullanmak için izin vermen gerekiyor."
+        );
         return;
       }
       const position = await Location.getCurrentPositionAsync({});
-      handleSelectResult({
-        display_name: "Mevcut Konumum",
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
+      setCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+      setKnownDisplayName(null);
     } catch {
-      Alert.alert("Konum alınamadı", "Bir sorun oluştu, tekrar dener misin?");
+      Alert.alert(
+        language === "en" ? "Location Error" : "Konum alınamadı",
+        language === "en" ? "Something went wrong, please try again." : "Bir sorun oluştu, tekrar dener misin?"
+      );
     } finally {
       setIsLocating(false);
     }
   }
 
-  function handleSelectResult(result: GeocodingResult): void {
-    setQuery("");
-    setResults([]);
-    setPending(result);
+  function handlePinMove(next: { latitude: number; longitude: number }): void {
+    setCoords(next);
+    setKnownDisplayName(null);
   }
 
-  function handlePinMove(coords: { latitude: number; longitude: number }): void {
-    setPending((current) => (current ? { ...current, ...coords } : current));
-  }
-
-  function handleConfirm(): void {
-    if (!pending) return;
-    onSelect(pending);
-    setPending(null);
-  }
-
-  function handleBackToSearch(): void {
-    setPending(null);
+  async function handleConfirm(): Promise<void> {
+    if (knownDisplayName) {
+      onSelect({ ...coords, display_name: knownDisplayName });
+      return;
+    }
+    setIsConfirming(true);
+    try {
+      const reversed = await reverseGeocode(coords.latitude, coords.longitude);
+      onSelect(reversed);
+    } catch {
+      onSelect({
+        ...coords,
+        display_name: `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
+      });
+    } finally {
+      setIsConfirming(false);
+    }
   }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          {pending ? (
-            <>
-              <Text style={typeScale.h1}>Konumu Onayla</Text>
-              <Text style={styles.resultText} numberOfLines={2}>
-                {pending.display_name}
-              </Text>
-              <MapLocationPicker
-                latitude={pending.latitude}
-                longitude={pending.longitude}
-                onChange={handlePinMove}
-              />
-              <PrimaryButton label="Bu Konumu Kullan" onPress={handleConfirm} />
-              <PrimaryButton label="Aramaya Dön" variant="outline" onPress={handleBackToSearch} />
-            </>
-          ) : (
-            <>
-              <Text style={typeScale.h1}>Konum Seç</Text>
+          <View style={styles.headerRow}>
+            <Text style={typeScale.h1}>{language === "en" ? "Select Location" : "Konum Seç"}</Text>
+            <Pressable onPress={onDismiss} accessibilityRole="button" accessibilityLabel="Kapat">
+              <Feather name="x" size={22} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            <Text style={styles.hint}>{language === "en" ? "Tap a point on the map or drag the pin." : "Haritada bir noktaya dokun ya da pini sürükle."}</Text>
 
-              <View style={styles.searchRow}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Adres veya mekan ara (örn. Moda Sahil)"
-                  placeholderTextColor={colors.textSecondary}
-                  value={query}
-                  onChangeText={setQuery}
-                  onSubmitEditing={handleSearch}
-                  returnKeyType="search"
-                />
-                <Pressable style={styles.searchButton} onPress={handleSearch} disabled={isSearching}>
-                  {isSearching ? (
-                    <ActivityIndicator color={colors.surface} size="small" />
-                  ) : (
-                    <Feather name="search" size={18} color={colors.surface} />
-                  )}
-                </Pressable>
-              </View>
+            <MapLocationPicker latitude={coords.latitude} longitude={coords.longitude} onChange={handlePinMove} />
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
+            <Pressable style={styles.searchToggle} onPress={() => setIsSearchOpen((current) => !current)}>
+              <Feather name="search" size={16} color={colors.primary} />
+              <Text style={styles.searchToggleText}>{language === "en" ? "Search address or place (e.g. Times Square)" : "Adres veya mekan ara (örn. Taksim Meydanı)"}</Text>
+              <Feather name={isSearchOpen ? "chevron-up" : "chevron-down"} size={16} color={colors.primary} />
+            </Pressable>
 
-              <FlatList
-                data={results}
-                keyExtractor={(item, index) => `${item.latitude}-${item.longitude}-${index}`}
-                style={styles.resultsList}
-                renderItem={({ item }) => (
-                  <Pressable style={styles.resultRow} onPress={() => handleSelectResult(item)}>
+            {isSearchOpen ? (
+              <View style={styles.searchPanel}>
+                <View style={styles.searchRow}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder={language === "en" ? "e.g. Central Park" : "örn. Taksim Meydanı"}
+                    placeholderTextColor={colors.textSecondary}
+                    value={query}
+                    onChangeText={setQuery}
+                    onSubmitEditing={handleSearch}
+                    returnKeyType="search"
+                    autoFocus
+                  />
+                  <Pressable style={styles.searchButton} onPress={handleSearch} disabled={isSearching}>
+                    {isSearching ? (
+                      <ActivityIndicator color={colors.surface} size="small" />
+                    ) : (
+                      <Feather name="search" size={18} color={colors.surface} />
+                    )}
+                  </Pressable>
+                </View>
+
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+
+                {results.map((item, index) => (
+                  <Pressable
+                    key={`${item.latitude}-${item.longitude}-${index}`}
+                    style={styles.resultRow}
+                    onPress={() => handleSelectResult(item)}
+                  >
                     <Feather name="map-pin" size={16} color={colors.primary} />
                     <Text style={styles.resultText} numberOfLines={2}>
                       {item.display_name}
                     </Text>
                   </Pressable>
-                )}
-              />
+                ))}
+              </View>
+            ) : null}
 
-              <PrimaryButton
-                label={isLocating ? "Alınıyor..." : "Mevcut Konumumu Kullan"}
-                variant="outline"
-                onPress={handleUseCurrentLocation}
-                loading={isLocating}
-              />
-              <PrimaryButton label="Kapat" variant="outline" onPress={onDismiss} />
-            </>
-          )}
+            {knownDisplayName ? (
+              <View style={styles.selectedRow}>
+                <Feather name="map-pin" size={16} color={colors.primary} />
+                <Text style={styles.resultText} numberOfLines={2}>
+                  {knownDisplayName}
+                </Text>
+              </View>
+            ) : null}
+
+            <PrimaryButton
+              label={isLocating ? (language === "en" ? "Getting..." : "Alınıyor...") : (language === "en" ? "Use My Current Location" : "Mevcut Konumumu Kullan")}
+              variant="outline"
+              onPress={handleUseCurrentLocation}
+              loading={isLocating}
+            />
+            <PrimaryButton
+              label={isConfirming ? (language === "en" ? "Confirming..." : "Onaylanıyor...") : (language === "en" ? "Use This Location" : "Bu Konumu Kullan")}
+              onPress={handleConfirm}
+              loading={isConfirming}
+            />
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -168,8 +236,38 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.card,
     borderTopRightRadius: radius.card,
     padding: spacing.xl,
+    paddingBottom: spacing.md,
+    maxHeight: "90%",
+  },
+  scrollContent: {
     gap: spacing.md,
-    maxHeight: "85%",
+    paddingBottom: spacing.lg,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+  },
+  hint: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  searchToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  searchToggleText: {
+    flex: 1,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.primary,
+  },
+  searchPanel: {
+    gap: spacing.sm,
   },
   searchRow: {
     flexDirection: "row",
@@ -198,9 +296,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.accentRed,
   },
-  resultsList: {
-    maxHeight: 260,
-  },
   resultRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -208,6 +303,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  selectedRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
   },
   resultText: {
     flex: 1,

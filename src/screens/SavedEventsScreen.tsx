@@ -9,10 +9,13 @@ import { colors, fontFamily, spacing } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Bookmark } from "../types";
 
+import { useAppTheme } from "../context/ThemeContext";
+
 type SavedEventsNavigationProp = NativeStackNavigationProp<MainStackParamList, "SavedEvents">;
 
 export function SavedEventsScreen() {
   const navigation = useNavigation<SavedEventsNavigationProp>();
+  const { bgGradient, accentColor, language } = useAppTheme();
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,24 +45,26 @@ export function SavedEventsScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={[styles.center, { backgroundColor: bgGradient[0] }]}>
+        <ActivityIndicator color={accentColor} />
       </View>
     );
   }
 
   if (bookmarks.length === 0) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: bgGradient[0] }]}>
         <Feather name="bookmark" size={32} color={colors.textSecondary} />
-        <Text style={styles.emptyText}>Henüz kaydettiğin bir etkinlik yok.</Text>
+        <Text style={styles.emptyText}>
+          {language === "en" ? "You haven't saved any events yet." : "Henüz kaydettiğin bir etkinlik yok."}
+        </Text>
       </View>
     );
   }
 
   return (
     <FlatList
-      style={styles.background}
+      style={[styles.background, { backgroundColor: bgGradient[0] }]}
       contentContainerStyle={styles.content}
       data={bookmarks}
       keyExtractor={(item) => String(item.id)}

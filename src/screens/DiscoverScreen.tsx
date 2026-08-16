@@ -1,5 +1,6 @@
-import { useCallback, useState, useMemo } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert } from "../utils/alert";
 import * as Location from "expo-location";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -12,11 +13,17 @@ import { Chip } from "../components/ui/Chip";
 import { SectionHeader } from "../components/ui/SectionHeader";
 import { EventCard } from "../components/cards/EventCard";
 import { EventListItem } from "../components/cards/EventListItem";
+import { EventsMapView } from "../components/maps/EventsMapView";
 import { OptionPickerModal } from "../components/overlays/OptionPickerModal";
+import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
 import { createBookmark, deleteBookmark, listMyBookmarks } from "../api/bookmarks";
-import { listEvents } from "../api/events";
+import { reverseGeocode } from "../api/geocoding";
+import type { GeocodingResult } from "../api/geocoding";
+import { hasValidCoordinates } from "../utils/location";
+import { attendEvent, listEvents } from "../api/events";
+import { formatEventDate } from "../utils/date";
 import { useAuth } from "../context/AuthContext";
-import { CATEGORIES } from "../constants/categories";
+import { CATEGORIES, getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, spacing, typeScale, radius, shadows } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
@@ -28,9 +35,45 @@ type DiscoverNavigationProp = CompositeNavigationProp<
 
 const LIMIT = 15;
 
+function shortenPlaceLabel(displayName: string): string {
+  return displayName.split(",").slice(0, 2).join(",").trim();
+}
+
+function normalizeText(text: string): string {
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function isSmartMatch(text: string, query: string): boolean {
+  if (!query.trim() || !text) return false;
+  const normText = normalizeText(text);
+  const normQuery = normalizeText(query);
+  if (!normQuery) return true;
+  if (!normText) return false;
+
+  if (normText.includes(normQuery)) return true;
+
+  const queryTokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  return queryTokens.every((token) => {
+    const normToken = normalizeText(token);
+    return normText.includes(normToken);
+  });
+}
+
+import { useAppTheme } from "../context/ThemeContext";
+
 export function DiscoverScreen() {
   const navigation = useNavigation<DiscoverNavigationProp>();
   const { user } = useAuth();
+  const { t, accentColor, bgGradient, language } = useAppTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
@@ -38,13 +81,85 @@ export function DiscoverScreen() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // Sorting and Location States
+  // Sorting, Search and Location States
+  const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "distance" | "popularity" | undefined>(undefined);
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [sortPickerVisible, setSortPickerVisible] = useState(false);
   const [isMapView, setIsMapView] = useState(false);
   const [selectedMapEvent, setSelectedMapEvent] = useState<Event | null>(null);
+  const [cityLabel, setCityLabel] = useState("Konum Seç");
+  const [isCityPickerVisible, setIsCityPickerVisible] = useState(false);
+  const [mapEvents, setMapEvents] = useState<Event[]>([]);
+  const [isLoadingMapEvents, setIsLoadingMapEvents] = useState(false);
+  const [mapDateFilter, setMapDateFilter] = useState<"today" | "week" | "all">("all");
+
+  // The map view isn't limited by list-view pagination -- it loads a much
+  // larger batch once, on entry, so "haritada göster" actually means
+  // everything in the system with a location, not just the first page.
+  useEffect(() => {
+    if (!isMapView) return;
+    let cancelled = false;
+    setIsLoadingMapEvents(true);
+    listEvents(selectedCategory ?? undefined, true, 0, 200)
+      .then((result) => {
+        if (!cancelled) setMapEvents(result);
+      })
+      .catch(() => {
+        // Best-effort; the map just shows whatever loaded before the failure.
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingMapEvents(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isMapView, selectedCategory]);
+
+  const filteredMapEvents = useMemo(() => {
+    const withValidLocation = mapEvents.filter((event) => hasValidCoordinates(event.latitude, event.longitude));
+    if (mapDateFilter === "all") return withValidLocation;
+    const now = new Date();
+    const cutoff = new Date(now);
+    if (mapDateFilter === "today") {
+      cutoff.setHours(23, 59, 59, 999);
+    } else {
+      cutoff.setDate(cutoff.getDate() + 7);
+    }
+    return withValidLocation.filter((event) => new Date(event.starts_at) <= cutoff);
+  }, [mapEvents, mapDateFilter]);
+
+  // Ask for location up front so the app opens showing where the user
+  // actually is (old behavior hardcoded "İstanbul" for everyone). Also
+  // powers the map view's default center.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted" || cancelled) return;
+        const position = await Location.getCurrentPositionAsync({});
+        if (cancelled) return;
+        setUserCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        const result = await reverseGeocode(position.coords.latitude, position.coords.longitude);
+        if (cancelled) return;
+        setCityLabel(shortenPlaceLabel(result.display_name));
+      } catch {
+        // Best-effort; the pill stays tappable and defaults stay in place.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function handleCitySelect(result: GeocodingResult): void {
+    setCityLabel(shortenPlaceLabel(result.display_name));
+    setUserCoords({ latitude: result.latitude, longitude: result.longitude });
+    setSortBy("distance");
+    setIsCityPickerVisible(false);
+  }
 
   const getDistanceInKm = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; // Radius of the earth in km
@@ -85,13 +200,13 @@ export function DiscoverScreen() {
   const sortOptions = [
     {
       key: "date",
-      label: "Tarih ve Saat",
+      label: language === "en" ? "Date and Time" : "Tarih ve Saat",
       icon: "clock" as const,
       onPress: () => setSortBy(sortBy === "date" ? undefined : "date")
     },
     {
       key: "distance",
-      label: "En Yakın (Konuma Göre)",
+      label: language === "en" ? "Closest (By Distance)" : "En Yakın (Konuma Göre)",
       icon: "navigation" as const,
       onPress: () => {
         if (sortBy === "distance") {
@@ -103,7 +218,7 @@ export function DiscoverScreen() {
     },
     {
       key: "popularity",
-      label: "Popülerlik (Katılımcı Sayısı)",
+      label: language === "en" ? "Popularity (By Attendees)" : "Popülerlik (Katılımcı Sayısı)",
       icon: "trending-up" as const,
       onPress: () => setSortBy(sortBy === "popularity" ? undefined : "popularity"),
     },
@@ -127,17 +242,26 @@ export function DiscoverScreen() {
     return list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
   }, [events, sortBy, userCoords, getDistanceInKm]);
 
+  // Rapidly tapping category chips can fire overlapping requests -- without
+  // this guard, a slower older request resolving after a newer one would
+  // silently overwrite the list with the wrong category's events, which
+  // looks exactly like "filtering is broken" from the outside.
+  const loadEventsRequestIdRef = useRef(0);
+
   const loadEvents = useCallback(async (category: string | null) => {
+    const requestId = ++loadEventsRequestIdRef.current;
     setIsRefreshing(true);
     setHasMore(true);
     try {
       const result = await listEvents(category ?? undefined, true, 0, LIMIT);
+      if (requestId !== loadEventsRequestIdRef.current) return;
       setEvents(result);
       setHasMore(result.length === LIMIT);
     } catch {
+      if (requestId !== loadEventsRequestIdRef.current) return;
       Alert.alert("Bir sorun oluştu", "Etkinlikler yüklenemedi. Lütfen tekrar dene.");
     } finally {
-      setIsRefreshing(false);
+      if (requestId === loadEventsRequestIdRef.current) setIsRefreshing(false);
     }
   }, []);
 
@@ -218,14 +342,57 @@ export function DiscoverScreen() {
     navigation.navigate("Swipe", { eventId: event.id, eventTitle: event.title });
   }
 
+  async function handlePressJoin(event: Event): Promise<void> {
+    if (event.is_attending) {
+      goToSwipe(event);
+      return;
+    }
+    try {
+      const updated = await attendEvent(event.id);
+      // Stay put so the button visibly flips to "Kankaları Gör" instead of
+      // yanking the user straight into Swipe before they've even confirmed
+      // they're going -- same fix as EventDetailScreen's attend flow.
+      setEvents((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    } catch {
+      Alert.alert("Bir sorun oluştu", "Etkinliğe katılamadın. Lütfen tekrar dene.");
+    }
+  }
+
   function goToDetail(event: Event): void {
     navigation.navigate("EventDetail", { eventId: event.id });
   }
 
+  const filteredEvents = useMemo(() => {
+    if (!searchQuery.trim()) return sortedEvents;
+    const q = searchQuery.trim();
+    return sortedEvents.filter((event) => {
+      const categoryLabel = getCategoryMeta(event.category)?.label || "";
+      return (
+        isSmartMatch(event.title, q) ||
+        isSmartMatch(event.location_name, q) ||
+        isSmartMatch(event.description || "", q) ||
+        isSmartMatch(categoryLabel, q)
+      );
+    });
+  }, [sortedEvents, searchQuery]);
+
   const [featured, rest] = useMemo(() => {
-    const list = sortedEvents;
-    return [list[0] || null, list.slice(1)];
-  }, [sortedEvents]);
+    const list = filteredEvents;
+    if (list.length === 0) return [null, []] as const;
+    // Feature whichever near-term event has the most interest, not just
+    // whatever happens to be chronologically soonest -- a popular event in
+    // 3 days beats an empty one starting in 20 minutes.
+    const now = Date.now();
+    const nearTermWindowMs = 7 * 24 * 60 * 60 * 1000;
+    const nearTerm = list.filter(
+      (event) => new Date(event.starts_at).getTime() - now <= nearTermWindowMs
+    );
+    const candidates = nearTerm.length > 0 ? nearTerm : list;
+    const featuredEvent = candidates.reduce((best, event) =>
+      event.attendee_count > best.attendee_count ? event : best
+    );
+    return [featuredEvent, list.filter((event) => event.id !== featuredEvent.id)] as const;
+  }, [filteredEvents]);
 
   const getEventDistanceLabel = useCallback((event: Event) => {
     if (sortBy === "distance" && userCoords) {
@@ -241,7 +408,8 @@ export function DiscoverScreen() {
   return (
     <>
     <FlatList
-      style={styles.background}
+      key={selectedCategory ?? "all"}
+      style={[styles.background, { backgroundColor: bgGradient[0] }]}
       contentContainerStyle={styles.list}
       data={isMapView ? [] : rest}
       keyExtractor={(event) => String(event.id)}
@@ -251,105 +419,16 @@ export function DiscoverScreen() {
       onEndReached={isMapView ? undefined : loadMoreEvents}
       onEndReachedThreshold={0.4}
       ListFooterComponent={
-        isMapView ? (
-          <View style={styles.mapCanvasContainer}>
-            <Text style={styles.mapCanvasTitle}>📍 Etkinlik Haritası</Text>
-            <View style={styles.mapCanvas}>
-              {/* Radar pulse in center representing user */}
-              <View style={styles.userPulseOuter}>
-                <View style={styles.userPulseInner} />
-              </View>
-              {/* Event pins */}
-              {events.map((event) => {
-                const centerLat = userCoords?.latitude ?? 41.0082;
-                const centerLng = userCoords?.longitude ?? 28.9784;
-                
-                const latDiff = event.latitude - centerLat;
-                const lngDiff = event.longitude - centerLng;
-                
-                const leftOffset = 150 + lngDiff * 1200;
-                const topOffset = 140 - latDiff * 1200;
-                
-                const x = Math.max(10, Math.min(290, leftOffset));
-                const y = Math.max(10, Math.min(270, topOffset));
-
-                return (
-                  <Pressable
-                    key={event.id}
-                    style={[
-                      styles.mapPin,
-                      { left: x, top: y },
-                      selectedMapEvent?.id === event.id && styles.mapPinSelected
-                    ]}
-                    onPress={() => setSelectedMapEvent(event)}
-                  >
-                    <Feather
-                      name="map-pin"
-                      size={20}
-                      color={selectedMapEvent?.id === event.id ? colors.accentYellow : colors.primary}
-                    />
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {/* Selected Event Card Overlay */}
-            {selectedMapEvent && (
-              <View style={styles.mapCallout}>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={styles.calloutTitle}>{selectedMapEvent.title}</Text>
-                  <Text style={styles.calloutText} numberOfLines={1}>{selectedMapEvent.location_name}</Text>
-                  <Text style={styles.calloutText}>{getEventDistanceLabel(selectedMapEvent) || "Mesafe hesaplanamadı"}</Text>
-                </View>
-                <View style={{ gap: spacing.xs }}>
-                  <Pressable style={styles.calloutDetailBtn} onPress={() => goToDetail(selectedMapEvent)}>
-                    <Text style={styles.calloutDetailBtnText}>Detay</Text>
-                  </Pressable>
-                  <Pressable style={styles.calloutCloseBtn} onPress={() => setSelectedMapEvent(null)}>
-                    <Text style={styles.calloutCloseBtnText}>Kapat</Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-          </View>
-        ) : isLoadingMore ? (
+        isLoadingMore && !isMapView ? (
           <View style={styles.footerLoader}>
-            <ActivityIndicator color={colors.primary} />
+            <ActivityIndicator color={accentColor} />
           </View>
         ) : null
       }
       ListHeaderComponent={
         <View style={styles.headerArea}>
           <View style={styles.topRow}>
-            <View style={{ flexDirection: "row", gap: spacing.xs }}>
-              <View style={styles.locationPill}>
-                <Feather name="map-pin" size={14} color={colors.textPrimary} />
-                <Text style={styles.locationText}>İstanbul</Text>
-              </View>
-              <Pressable style={styles.sortPill} onPress={openSortPicker} disabled={isLocating}>
-                {isLocating ? (
-                  <ActivityIndicator size="small" color={colors.primary} style={{ width: 14, height: 14 }} />
-                ) : (
-                  <>
-                    <Feather
-                      name={sortBy === "distance" ? "navigation" : sortBy === "popularity" ? "trending-up" : "clock"}
-                      size={12}
-                      color={colors.primary}
-                    />
-                    <Text style={styles.sortText}>
-                      {sortBy === "distance" ? "En Yakın" : sortBy === "popularity" ? "Popüler" : "Tarih"}
-                    </Text>
-                  </>
-                )}
-              </Pressable>
-              <Pressable
-                style={[styles.sortPill, isMapView && { backgroundColor: colors.primaryMuted }]}
-                onPress={() => setIsMapView(!isMapView)}
-              >
-                <Feather name={isMapView ? "list" : "map"} size={12} color={colors.primary} />
-                <Text style={styles.sortText}>{isMapView ? "Liste" : "Harita"}</Text>
-              </Pressable>
-            </View>
+            <Text style={styles.brandTitle}>FindYourBuddy</Text>
             <View style={styles.headerActions}>
               <Pressable
                 style={styles.iconButton}
@@ -372,99 +451,255 @@ export function DiscoverScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Profilim"
               >
-                <Avatar name={user?.display_name ?? "?"} photoUrl={user?.photo_url} size={36} />
+                <Avatar name={user?.display_name ?? "?"} photoUrl={user?.photo_url} isVerified={user?.is_verified} size={36} />
               </Pressable>
             </View>
           </View>
 
           <Text style={[typeScale.display, styles.title]}>
-            Bugün ne yapmak istersin, {user?.display_name ?? ""}?
+            {t("greeting")}, {user?.display_name ?? ""}?
           </Text>
 
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={CATEGORIES}
-            keyExtractor={(category) => category.slug}
-            renderItem={({ item }) => (
-              <Chip
-                label={item.label}
-                active={selectedCategory === item.slug}
-                onPress={() => handleSelectCategory(item.slug)}
-              />
-            )}
-            style={styles.chipList}
-          />
+              {/* Event Search Bar */}
+              <View style={{ zIndex: 999 }}>
+                <View style={styles.searchBar}>
+                  <Feather name="search" size={16} color={colors.textSecondary} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder={t("searchPlaceholder")}
+                    placeholderTextColor={colors.textSecondary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                  {searchQuery.trim() ? (
+                    <Pressable onPress={() => setSearchQuery("")}>
+                      <Feather name="x-circle" size={16} color={colors.textSecondary} />
+                    </Pressable>
+                  ) : null}
+                </View>
 
-          <Pressable
-            style={styles.aiMatchingBanner}
-            onPress={() => navigation.navigate("AIRecommendations")}
-          >
-            <LinearGradient
-              colors={["#2D1B6B", "#6C5CE7"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.aiMatchingBannerGradient}
-            >
-              <View style={styles.aiMatchingTextCol}>
-                <Text style={styles.aiMatchingTitle}>✨ AI Kanka Eşleştirici</Text>
-                <Text style={styles.aiMatchingDesc}>Zodyak element ve ilgi alanı uyumunu hesapla!</Text>
+                {/* Instant Search Suggestions Dropdown Overlay */}
+                {searchQuery.trim() ? (
+                  <View style={styles.searchDropdownCard}>
+                    {filteredEvents.length === 0 ? (
+                      <View style={styles.dropdownEmptyBox}>
+                        <Feather name="alert-circle" size={18} color={colors.textSecondary} />
+                        <Text style={styles.dropdownEmptyText}>
+                          “{searchQuery}” {t("noMatchFound")}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.dropdownList}>
+                        <Text style={styles.dropdownHeaderTitle}>
+                          {t("searchResultTitle")} ({filteredEvents.length})
+                        </Text>
+                        {filteredEvents.slice(0, 5).map((event) => {
+                          const categoryMeta = getCategoryMeta(event.category, language);
+                          return (
+                            <Pressable
+                              key={event.id}
+                              style={styles.dropdownItem}
+                              onPress={() => {
+                                setSearchQuery("");
+                                goToDetail(event);
+                              }}
+                            >
+                              <View style={styles.dropdownItemIcon}>
+                                <Feather name="calendar" size={16} color={accentColor} />
+                              </View>
+                              <View style={{ flex: 1, gap: 2 }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                  <Text style={[styles.dropdownItemTitle, { flex: 1 }]} numberOfLines={1}>
+                                    {event.title}
+                                  </Text>
+                                  <View style={styles.categoryBadgePill}>
+                                    <Text style={styles.categoryBadgeText}>{categoryMeta.label}</Text>
+                                  </View>
+                                </View>
+                                <Text style={styles.dropdownItemSub} numberOfLines={1}>
+                                  📍 {event.location_name} · 🕒 {formatEventDate(event.starts_at, language)}
+                                </Text>
+                              </View>
+                              <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                ) : null}
               </View>
-              <View style={styles.aiMatchingBadge}>
-                <Text style={styles.aiMatchingBadgeText}>Hesapla</Text>
-                <Feather name="chevron-right" size={14} color={colors.primary} />
-              </View>
-            </LinearGradient>
-          </Pressable>
 
-          {featured ? (
-            <View style={styles.featuredWrapper}>
-              <EventCard
-                event={featured}
-                bookmarked={bookmarkedIds.has(featured.id)}
-                onToggleBookmark={() => toggleBookmark(featured.id)}
-                onPressJoin={() => goToSwipe(featured)}
-                onPress={() => goToDetail(featured)}
-                distanceLabel={getEventDistanceLabel(featured)}
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={CATEGORIES}
+                keyExtractor={(category) => category.slug}
+                renderItem={({ item }) => (
+                  <Chip
+                    label={language === "en" ? item.labelEn : item.label}
+                    active={selectedCategory === item.slug}
+                    onPress={() => handleSelectCategory(item.slug)}
+                  />
+                )}
+                style={styles.chipList}
               />
-            </View>
-          ) : null}
 
-          {rest.length > 0 ? (
-            <SectionHeader
-              eyebrow="Hafta Sonu Havası"
-              title="Yakınındaki Popüler Aktiviteler"
-              actionLabel="Sırala"
-              onActionPress={openSortPicker}
-            />
-          ) : null}
+              <Pressable
+                style={styles.aiMatchingBanner}
+                onPress={() => navigation.navigate("AIRecommendations")}
+              >
+                <LinearGradient
+                  colors={["#2D1B6B", accentColor]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.aiMatchingBannerGradient}
+                >
+                  <View style={styles.aiMatchingTextCol}>
+                    <Text style={styles.aiMatchingTitle}>{t("aiMatchTitle")}</Text>
+                    <Text style={styles.aiMatchingDesc}>{t("aiMatchDesc")}</Text>
+                  </View>
+                  <View style={styles.aiMatchingBadge}>
+                    <Text style={[styles.aiMatchingBadgeText, { color: accentColor }]}>{t("calculate")}</Text>
+                    <Feather name="chevron-right" size={14} color={accentColor} />
+                  </View>
+                </LinearGradient>
+              </Pressable>
+
+              {/* Sub-Header Location & Map View Controls Row */}
+              <View style={styles.subHeaderControlsRow}>
+                <Pressable style={styles.locationPill} onPress={() => setIsCityPickerVisible(true)}>
+                  <Feather name="map-pin" size={14} color={colors.textPrimary} />
+                  <Text style={styles.locationText}>{cityLabel}</Text>
+                </Pressable>
+                
+                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+                  <Pressable
+                    style={[styles.sortPill, isMapView && { backgroundColor: `${accentColor}20` }]}
+                    onPress={() => setIsMapView(!isMapView)}
+                  >
+                    <Feather name={isMapView ? "list" : "map"} size={12} color={accentColor} />
+                    <Text style={[styles.sortText, { color: accentColor }]}>{isMapView ? t("list") : t("map")}</Text>
+                  </Pressable>
+
+                  <Pressable style={styles.sortPill} onPress={openSortPicker} disabled={isLocating}>
+                    {isLocating ? (
+                      <ActivityIndicator size="small" color={accentColor} />
+                    ) : (
+                      <>
+                        <Feather name="sliders" size={12} color={accentColor} />
+                        <Text style={[styles.sortText, { color: accentColor }]}>
+                          {sortBy === "distance" ? t("sortByDistance") : sortBy === "popularity" ? t("sortByPopularity") : t("sort")}
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+
+              {isMapView ? (
+                <View style={styles.mapCanvasContainer}>
+                  <View style={styles.mapHeaderRow}>
+                    <Text style={styles.mapCanvasTitle}>📍 {t("map")} ({filteredMapEvents.length})</Text>
+                    {isLoadingMapEvents ? <ActivityIndicator size="small" color={accentColor} /> : null}
+                  </View>
+                  <View style={styles.mapDateFilterRow}>
+                    <Chip label={t("all")} active={mapDateFilter === "all"} onPress={() => setMapDateFilter("all")} />
+                    <Chip label={t("today")} active={mapDateFilter === "today"} onPress={() => setMapDateFilter("today")} />
+                    <Chip label={t("thisWeek")} active={mapDateFilter === "week"} onPress={() => setMapDateFilter("week")} />
+                  </View>
+                  <EventsMapView
+                    events={filteredMapEvents}
+                    centerLatitude={userCoords?.latitude ?? 41.0082}
+                    centerLongitude={userCoords?.longitude ?? 28.9784}
+                    onSelectEvent={setSelectedMapEvent}
+                    selectedEventId={selectedMapEvent?.id ?? null}
+                    height={380}
+                  />
+
+                  {/* Selected Event Callout Overlay */}
+                  {selectedMapEvent && (
+                    <View style={styles.mapCallout}>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={styles.calloutTitle}>{selectedMapEvent.title}</Text>
+                        <Text style={styles.calloutText} numberOfLines={1}>{selectedMapEvent.location_name}</Text>
+                        <Text style={styles.calloutText}>{getEventDistanceLabel(selectedMapEvent) || ""}</Text>
+                      </View>
+                      <View style={{ gap: spacing.xs }}>
+                        <Pressable style={[styles.calloutDetailBtn, { backgroundColor: accentColor }]} onPress={() => goToDetail(selectedMapEvent)}>
+                          <Text style={styles.calloutDetailBtnText}>Detay</Text>
+                        </Pressable>
+                        <Pressable style={styles.calloutCloseBtn} onPress={() => setSelectedMapEvent(null)}>
+                          <Text style={styles.calloutCloseBtnText}>Kapat</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <>
+                  {featured ? (
+                    <View style={styles.featuredWrapper}>
+                      <EventCard
+                        event={featured}
+                        bookmarked={bookmarkedIds.has(featured.id)}
+                        onToggleBookmark={() => toggleBookmark(featured.id)}
+                        onPressJoin={() => handlePressJoin(featured)}
+                        onPress={() => goToDetail(featured)}
+                        distanceLabel={getEventDistanceLabel(featured)}
+                      />
+                    </View>
+                  ) : null}
+
+                  {rest.length > 0 ? (
+                    <SectionHeader
+                      eyebrow={t("weekendVibe")}
+                      title={t("popularNearYou")}
+                      actionLabel={t("sort")}
+                      onActionPress={openSortPicker}
+                    />
+                  ) : null}
+                </>
+              )}
         </View>
       }
       ListEmptyComponent={
-        events.length === 0 && !isRefreshing ? (
+        !isMapView && events.length === 0 && !isRefreshing ? (
           <Text style={styles.emptyText}>
-            Şu an gösterilecek etkinlik yok. Daha sonra tekrar kontrol et!
+            {selectedCategory
+              ? `${getCategoryMeta(selectedCategory).label} kategorisinde şu an etkinlik yok. Başka bir kategori dener misin?`
+              : "Şu an gösterilecek etkinlik yok. Daha sonra tekrar kontrol et!"}
           </Text>
         ) : null
       }
-      renderItem={({ item }) => (
-        <View style={styles.listItemWrapper}>
-          <EventListItem
-            event={item}
-            bookmarked={bookmarkedIds.has(item.id)}
-            onToggleBookmark={() => toggleBookmark(item.id)}
-            onPress={() => goToDetail(item)}
-            distanceLabel={getEventDistanceLabel(item)}
-          />
-        </View>
-      )}
+      renderItem={({ item }) => {
+        if (isMapView) return null;
+        return (
+          <View style={styles.listItemWrapper}>
+            <EventListItem
+              event={item}
+              bookmarked={bookmarkedIds.has(item.id)}
+              onToggleBookmark={() => toggleBookmark(item.id)}
+              onPress={() => goToDetail(item)}
+              distanceLabel={getEventDistanceLabel(item)}
+            />
+          </View>
+        );
+      }}
     />
     <OptionPickerModal
       visible={sortPickerVisible}
-      title="Nasıl sıralansın?"
+      title={language === "en" ? "Sort By" : "Nasıl sıralansın?"}
       options={sortOptions}
       onDismiss={() => setSortPickerVisible(false)}
       selectedKey={sortBy || undefined}
+    />
+    <LocationPickerModal
+      visible={isCityPickerVisible}
+      onSelect={handleCitySelect}
+      onDismiss={() => setIsCityPickerVisible(false)}
+      initialLatitude={userCoords?.latitude}
+      initialLongitude={userCoords?.longitude}
     />
     </>
   );
@@ -568,42 +803,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textPrimary,
   },
-  mapCanvas: {
-    width: "100%",
-    height: 300,
-    backgroundColor: "#0F0B26",
-    borderRadius: radius.sm,
-    position: "relative",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  userPulseOuter: {
-    position: "absolute",
-    left: 150,
-    top: 140,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(108, 92, 231, 0.25)",
-    justifyContent: "center",
+  mapHeaderRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: spacing.sm,
   },
-  userPulseInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
-  },
-  mapPin: {
-    position: "absolute",
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  mapPinSelected: {
-    transform: [{ scale: 1.2 }],
+  mapDateFilterRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
   },
   mapCallout: {
     flexDirection: "row",
@@ -687,5 +894,128 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 12,
     color: colors.primary,
+  },
+  searchSortRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    alignItems: "center",
+    marginTop: spacing.xs,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.soft,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textPrimary,
+    paddingVertical: 6,
+  },
+  sortButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.primaryMuted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  sortButtonText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
+  },
+  searchDropdownCard: {
+    position: "absolute",
+    top: 48,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    zIndex: 1000,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.card,
+  },
+  dropdownEmptyBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  dropdownEmptyText: {
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  dropdownList: {
+    gap: spacing.xs,
+  },
+  dropdownHeaderTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  dropdownItemIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.primaryMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dropdownItemTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  dropdownItemSub: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  categoryBadgePill: {
+    backgroundColor: colors.primaryMuted,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  categoryBadgeText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 10,
+    color: colors.primary,
+  },
+  brandTitle: {
+    fontFamily: fontFamily.displayBold,
+    fontSize: 22,
+    color: colors.textPrimary,
+  },
+  subHeaderControlsRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    alignItems: "center",
+    marginTop: spacing.xs,
   },
 });

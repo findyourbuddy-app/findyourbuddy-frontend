@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
@@ -12,6 +13,8 @@ import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../them
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { User } from "../types";
 
+import { useAppTheme } from "../context/ThemeContext";
+
 interface Recommendation {
   user: User;
   match_score: number;
@@ -20,6 +23,7 @@ interface Recommendation {
 export function AIRecommendationsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { isPremium, refreshSubscription } = useAuth();
+  const { t, language, bgGradient, accentColor } = useAppTheme();
   
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -65,7 +69,6 @@ export function AIRecommendationsScreen() {
       setPlayingVoiceId(null);
     } else {
       setPlayingVoiceId(userId);
-      // Mock duration release
       setTimeout(() => {
         setPlayingVoiceId((current) => (current === userId ? null : current));
       }, 5000);
@@ -74,26 +77,36 @@ export function AIRecommendationsScreen() {
 
   if (!isPremium) {
     return (
-      <ScrollView contentContainerStyle={styles.premiumPromoContainer}>
+      <ScrollView style={{ backgroundColor: bgGradient[0] }} contentContainerStyle={styles.premiumPromoContainer}>
         <LinearGradient
           colors={["#2D1B6B", "#0F0B26"]}
           style={styles.promoHeaderGradient}
         >
           <Feather name="cpu" size={60} color="#FFD700" style={styles.promoIcon} />
-          <Text style={styles.promoTitle}>AI Kanka Eşleştirici</Text>
+          <Text style={styles.promoTitle}>
+            {language === "en" ? "AI Buddy Matcher" : "AI Kanka Eşleştirici"}
+          </Text>
           <Text style={styles.promoSubtitle}>
-            Gelişmiş yapay zeka algoritması ortak ilgi alanlarınızı, burç uyumunuzu ve konumunuzu analiz ederek en ideal kankalarınızı bulur.
+            {language === "en"
+              ? "Advanced AI algorithm analyzes your mutual interests, zodiac compatibility, and location to find your ideal buddies."
+              : "Gelişmiş yapay zeka algoritması ortak ilgi alanlarınızı, burç uyumunuzu ve konumunuzu analiz ederek en ideal kankalarınızı bulur."}
           </Text>
         </LinearGradient>
 
         <View style={styles.featuresList}>
           <View style={styles.featureItem}>
             <View style={styles.featureIconContainer}>
-              <Feather name="trending-up" size={20} color={colors.primary} />
+              <Feather name="target" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.featureItemTitle}>%99 Eşleşme Analizi</Text>
-              <Text style={styles.featureItemDesc}>Ortak hobiler ve aktivite sıklıklarına göre uyumluluk derecesi hesaplanır.</Text>
+              <Text style={styles.featureItemTitle}>
+                {language === "en" ? "99% Hobbies & Activity Synergy 🎯" : "%99 Hobiler & Aktivite Uyum Analizi 🎯"}
+              </Text>
+              <Text style={styles.featureItemDesc}>
+                {language === "en"
+                  ? "Friendship compatibility is calculated based on intersecting hobbies (Sports, Gaming, Movies, etc.) and shared activities."
+                  : "Ortak hobiler (Spor, Oyun, Sinema vb.) ve birlikte yapılmak istenen aktivitelerin kesişimine göre arkadaşlık denkliği hesaplanır."}
+              </Text>
             </View>
           </View>
 
@@ -102,8 +115,30 @@ export function AIRecommendationsScreen() {
               <Feather name="moon" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.featureItemTitle}>Astrolojik Element Uyumu</Text>
-              <Text style={styles.featureItemDesc}>Zodyak element gruplarına (Ateş, Toprak, Hava, Su) göre sinerji analizi yapılır.</Text>
+              <Text style={styles.featureItemTitle}>
+                {language === "en" ? "Astrological Element Synergy 🔮" : "Astrolojik Element Sinerjisi 🔮"}
+              </Text>
+              <Text style={styles.featureItemDesc}>
+                {language === "en"
+                  ? "Personal temperament and energy compatibility is analyzed based on Zodiac element groups (Fire, Earth, Air, Water)."
+                  : "Zodyak element gruplarına (Ateş, Toprak, Hava, Su) göre kişisel mizaç ve enerji uyumluluğu analiz edilir."}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <View style={styles.featureIconContainer}>
+              <Feather name="briefcase" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureItemTitle}>
+                {language === "en" ? "School, Occupation & Lifestyle Alignment 🎓" : "Okul, Meslek & Yaşam Tarzı Hizalaması 🎓"}
+              </Text>
+              <Text style={styles.featureItemDesc}>
+                {language === "en"
+                  ? "Buddies with matching universities, career goals, and social life paces are prioritized."
+                  : "Ortak üniversite, kariyer hedefleri ve sosyal yaşam temposuna en uygun kankalar önceliklendirilir."}
+              </Text>
             </View>
           </View>
 
@@ -112,8 +147,30 @@ export function AIRecommendationsScreen() {
               <Feather name="mic" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.featureItemTitle}>Profil Ses Kayıtları</Text>
-              <Text style={styles.featureItemDesc}>Kullanıcıların kendi seslerinden kendilerini tanıttığı kayıtları dinleyin.</Text>
+              <Text style={styles.featureItemTitle}>
+                {language === "en" ? "Profile Voice Intros 🎙️" : "Profil Ses Kayıtları 🎙️"}
+              </Text>
+              <Text style={styles.featureItemDesc}>
+                {language === "en"
+                  ? "Listen to your potential buddy's voice tone, warmth, and energy before meeting."
+                  : "Potansiyel kankanın ses tonunu, samimiyetini ve enerjisini buluşmadan önce dinleme olanağı sunar."}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <View style={styles.featureIconContainer}>
+              <Feather name="sliders" size={20} color="#FFD700" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureItemTitle}>
+                {language === "en" ? "Advanced Gender, Age & Distance Filters 🎛️" : "Gelişmiş Cinsiyet, Yaş & Konum Filtreleri 🎛️"}
+              </Text>
+              <Text style={styles.featureItemDesc}>
+                {language === "en"
+                  ? "Filtering by gender preference (Female / Male / Everyone), specific age range, and distance limit (km) is exclusive to Premium."
+                  : "Cinsiyet tercihi (Kadın / Erkek / Herkes), özel yaş aralığı ve mesafe sınırı (km) ile tam hedefindeki kişileri filtrelemek Premium'a özeldir."}
+              </Text>
             </View>
           </View>
         </View>
@@ -134,7 +191,9 @@ export function AIRecommendationsScreen() {
             ) : (
               <>
                 <Feather name="award" size={20} color={colors.surface} />
-                <Text style={styles.upgradeBtnText}>Premium Buddy Ol (💎 49 TL)</Text>
+                <Text style={styles.upgradeBtnText}>
+                  {language === "en" ? "Become Premium Buddy (💎 $4.99)" : "Premium Buddy Ol (💎 49 TL)"}
+                </Text>
               </>
             )}
           </LinearGradient>
@@ -144,18 +203,26 @@ export function AIRecommendationsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={[typeScale.h1, styles.headerTitle]}>🌟 Yapay Zeka Uyum Önerileri</Text>
+    <View style={[styles.container, { backgroundColor: bgGradient[0] }]}>
+      <Text style={[typeScale.h1, styles.headerTitle]}>
+        {language === "en" ? "🌟 AI Match Recommendations" : "🌟 Yapay Zeka Uyum Önerileri"}
+      </Text>
       
       {loading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loaderText}>En uygun kankaların hesaplanıyor...</Text>
+          <Text style={styles.loaderText}>
+            {language === "en" ? "Calculating your best matched buddies..." : "En uygun kankaların hesaplanıyor..."}
+          </Text>
         </View>
       ) : recommendations.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Feather name="users" size={48} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>Henüz yeni bir öneri bulunamadı. Lütfen daha sonra tekrar deneyin.</Text>
+          <Text style={styles.emptyText}>
+            {language === "en"
+              ? "No new recommendations found. Please try again later."
+              : "Henüz yeni bir öneri bulunamadı. Lütfen daha sonra tekrar deneyin."}
+          </Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.listContainer}>
@@ -167,7 +234,9 @@ export function AIRecommendationsScreen() {
                   <Text style={styles.nameText}>
                     {user.display_name}, {user.age || "N/A"}
                   </Text>
-                  <Text style={styles.uniText}>{user.university || "Üniversite Belirtilmedi"}</Text>
+                  <Text style={styles.uniText}>
+                    {user.university || (language === "en" ? "University Not Specified" : "Üniversite Belirtilmedi")}
+                  </Text>
                   
                   {/* Zodiac Element Tag */}
                   {user.zodiac_sign && (
@@ -183,7 +252,9 @@ export function AIRecommendationsScreen() {
                   colors={["#FFD700", "#FFA500"]}
                   style={styles.scoreBadge}
                 >
-                  <Text style={styles.scoreText}>%{match_score} Uyum</Text>
+                  <Text style={styles.scoreText}>
+                    {language === "en" ? `${match_score}% Match` : `%${match_score} Uyum`}
+                  </Text>
                 </LinearGradient>
               </View>
 
@@ -210,7 +281,9 @@ export function AIRecommendationsScreen() {
                       playingVoiceId === user.id && { color: colors.surface }
                     ]}
                   >
-                    {playingVoiceId === user.id ? "Ses Kaydı Oynatılıyor..." : "Ses Tanıtımını Dinle"}
+                    {playingVoiceId === user.id
+                      ? (language === "en" ? "Playing Voice Note..." : "Ses Kaydı Oynatılıyor...")
+                      : (language === "en" ? "Listen to Voice Intro" : "Ses Tanıtımını Dinle")}
                   </Text>
                 </Pressable>
               )}
@@ -227,7 +300,7 @@ export function AIRecommendationsScreen() {
                   });
                 }}
               >
-                <Text style={styles.viewProfileText}>Profili Görüntüle</Text>
+                <Text style={styles.viewProfileText}>{t("viewMyProfile")}</Text>
                 <Feather name="chevron-right" size={16} color={colors.primary} />
               </Pressable>
             </View>

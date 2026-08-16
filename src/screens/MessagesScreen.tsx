@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { CompositeNavigationProp } from "@react-navigation/native";
@@ -21,10 +22,13 @@ type MessagesNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<MainStackParamList>
 >;
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function MessagesScreen() {
   const navigation = useNavigation<MessagesNavigationProp>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
+  const { t, accentColor, bgGradient } = useAppTheme();
   const [matches, setMatches] = useState<Match[]>([]);
   const [query, setQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -68,7 +72,7 @@ export function MessagesScreen() {
 
   return (
     <FlatList
-      style={styles.background}
+      style={[styles.background, { backgroundColor: bgGradient[0] }]}
       contentContainerStyle={styles.list}
       data={allMatches}
       keyExtractor={(match) => String(match.id)}
@@ -77,15 +81,23 @@ export function MessagesScreen() {
         <View style={styles.headerArea}>
           <View style={styles.topRow}>
             <View>
-              <Text style={typeScale.eyebrow}>Sohbete Devam Et</Text>
-              <Text style={typeScale.h1}>Mesajlar</Text>
+              <Text style={typeScale.eyebrow}>{t("tabMessages")}</Text>
+              <Text style={typeScale.h1}>{t("messagesHeader")}</Text>
             </View>
+            <Pressable
+              style={styles.iconButton}
+              onPress={() => navigation.navigate("Settings")}
+              accessibilityRole="button"
+              accessibilityLabel={t("settings")}
+            >
+              <Feather name="settings" size={18} color={colors.textPrimary} />
+            </Pressable>
           </View>
 
           <View style={styles.searchBar}>
             <Feather name="search" size={16} color={colors.textSecondary} />
             <TextInput
-              placeholder="Kanka ara"
+              placeholder={t("searchPlaceholder")}
               placeholderTextColor={colors.textSecondary}
               value={query}
               onChangeText={setQuery}
@@ -95,7 +107,7 @@ export function MessagesScreen() {
 
           {newMatches.length > 0 ? (
             <View style={styles.section}>
-              <SectionHeader title="Yeni Eşleşme" actionLabel="Bugün" />
+              <SectionHeader title={t("newMatchesTitle")} actionLabel={t("today")} />
               {newMatches.map((match) => (
                 <View key={match.id} style={styles.matchCardWrapper}>
                   <MatchPreviewCard match={match} onPressMessage={() => openChat(match)} />
@@ -104,11 +116,11 @@ export function MessagesScreen() {
             </View>
           ) : null}
 
-          <SectionHeader title="Sohbetlerin" actionLabel="Tümünü gör" />
+          <SectionHeader title={t("conversations")} actionLabel={t("seeAll")} />
         </View>
       }
       ListEmptyComponent={
-        <Text style={styles.emptyText}>Henüz bir eşleşmen yok. Keşfet'ten yeni etkinlikler bul!</Text>
+        <Text style={styles.emptyText}>{t("noMatchesYetFindEvents")}</Text>
       }
       renderItem={({ item }) => (
         <View style={styles.chatItemWrapper}>
@@ -140,7 +152,20 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
+  },
+  iconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   searchBar: {
     flexDirection: "row",

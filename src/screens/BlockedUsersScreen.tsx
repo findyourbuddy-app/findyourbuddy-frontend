@@ -1,12 +1,16 @@
 import { useCallback, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert } from "../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
 import { Avatar } from "../components/ui/Avatar";
 import { listMyBlocks, unblockUser } from "../api/safety";
 import { colors, fontFamily, radius, spacing } from "../theme";
 import type { BlockedUser } from "../types";
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function BlockedUsersScreen() {
+  const { bgGradient, language } = useAppTheme();
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -29,12 +33,12 @@ export function BlockedUsersScreen() {
 
   function confirmUnblock(item: BlockedUser): void {
     Alert.alert(
-      "Engeli Kaldır",
-      `${item.blocked_user.display_name} adlı kullanıcının engelini kaldırmak istediğine emin misin?`,
+      language === "en" ? "Unblock User" : "Engeli Kaldır",
+      language === "en" ? `Are you sure you want to unblock ${item.blocked_user.display_name}?` : `${item.blocked_user.display_name} adlı kullanıcının engelini kaldırmak istediğine emin misin?`,
       [
-        { text: "Vazgeç", style: "cancel" },
+        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
         {
-          text: "Engeli Kaldır",
+          text: language === "en" ? "Unblock" : "Engeli Kaldır",
           onPress: async () => {
             try {
               await unblockUser(item.blocked_user.id);
@@ -50,12 +54,12 @@ export function BlockedUsersScreen() {
 
   return (
     <FlatList
-      style={styles.background}
+      style={[styles.background, { backgroundColor: bgGradient[0] }]}
       contentContainerStyle={styles.list}
       data={blockedUsers}
       keyExtractor={(item) => String(item.id)}
       ListEmptyComponent={
-        !isLoading ? <Text style={styles.emptyText}>Engellediğin kimse yok.</Text> : null
+        !isLoading ? <Text style={styles.emptyText}>{language === "en" ? "No blocked users." : "Engellediğin kimse yok."}</Text> : null
       }
       renderItem={({ item }) => (
         <View style={styles.row}>

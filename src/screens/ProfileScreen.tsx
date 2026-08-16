@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert } from "../utils/alert";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -7,30 +8,54 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Avatar } from "../components/ui/Avatar";
 import { Badge } from "../components/ui/Badge";
+import { IconSectionHeader } from "../components/ui/IconSectionHeader";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { useAuth } from "../context/AuthContext";
 import { getInterestLabel } from "../constants/interests";
+import { getHobbyLabel } from "../constants/hobbies";
 import { formatEventDate, formatMemberSince, isNewMember } from "../utils/date";
 import { listMyAttendingEvents } from "../api/events";
-import { activateBoost } from "../api/users";
+import { activateBoost, getCurrentUser } from "../api/users";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
+
+import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
+
+import { useAppTheme } from "../context/ThemeContext";
 
 type ProfileNavigationProp = NativeStackNavigationProp<MainStackParamList, "Profile">;
 
 export function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
   const { user, signOut, isPremium, updateUser } = useAuth();
+  const { t, accentColor, bgGradient, language } = useAppTheme();
   const [attendingEvents, setAttendingEvents] = useState<Event[]>([]);
+  const [pastEvents, setPastEvents] = useState<Event[]>([]);
+  const [locationName, setLocationName] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      listMyAttendingEvents()
+      getCurrentUser()
+        .then((u) => {
+          updateUser(u);
+          if (hasValidCoordinates(u.latitude, u.longitude)) {
+            resolveCityDistrict(u.latitude, u.longitude).then(setLocationName);
+          }
+        })
+        .catch(() => {});
+
+      if (user && hasValidCoordinates(user.latitude, user.longitude)) {
+        resolveCityDistrict(user.latitude, user.longitude).then(setLocationName);
+      }
+
+      listMyAttendingEvents(true)
         .then(setAttendingEvents)
-        .catch(() => {
-          // Non-critical enhancement; profile still works without it.
-        });
+        .catch(() => {});
+
+      listMyAttendingEvents(false)
+        .then((all) => setPastEvents(all.filter((event) => new Date(event.starts_at) < new Date())))
+        .catch(() => {});
     }, [])
   );
 
@@ -78,13 +103,15 @@ export function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.background} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
       <LinearGradient
-        colors={[colors.primary, "#9B7BFF"]}
+        colors={[accentColor, "#9B7BFF"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.heroCard}
       >
+        <View style={styles.heroDecorLarge} />
+        <View style={styles.heroDecorSmall} />
         <View style={styles.avatarRing}>
           <Avatar name={user.display_name} photoUrl={user.photo_url} size={88} />
         </View>
@@ -92,26 +119,49 @@ export function ProfileScreen() {
           {user.display_name}
           {user.age ? `, ${user.age}` : ""}
         </Text>
+        {locationName ? (
+          <View style={styles.heroLocationRow}>
+            <Feather name="map-pin" size={13} color="rgba(255,255,255,0.9)" />
+            <Text style={styles.heroLocationText}>{locationName}</Text>
+          </View>
+        ) : null}
         <Text style={styles.heroEmail}>{user.email}</Text>
         <View style={styles.heroBadgeRow}>
-          {isPremium ? <Badge label="Premium Üye" variant="yellow" icon="⭐" /> : null}
+          {isPremium ? <Badge label={language === "en" ? "Premium Member" : "Premium Üye"} variant="yellow" icon="⭐" /> : null}
           {isNewMember(user.created_at) ? (
-            <Badge label="Yeni Üye" variant="green" icon="✨" />
+            <Badge label={t("newMember")} variant="green" />
           ) : null}
         </View>
-        <Text style={styles.memberSince}>{formatMemberSince(user.created_at)}</Text>
+        <View style={styles.heroStatsRow}>
+          <View style={styles.heroStat}>
+            <Feather name="shield" size={14} color={colors.surface} />
+            <Text style={styles.heroStatText}>{t("trustScore")} {user.trust_score}</Text>
+          </View>
+          <View style={styles.heroStatDivider} />
+          <View style={styles.heroStat}>
+            <Feather name="calendar" size={14} color={colors.surface} />
+            <Text style={styles.heroStatText}>{formatMemberSince(user.created_at, language)}</Text>
+          </View>
+        </View>
       </LinearGradient>
 
+      {hasValidCoordinates(user.latitude, user.longitude) ? (
+        <View style={[styles.card, styles.cardAccentBlue]}>
+          <IconSectionHeader icon="map-pin" color="#2E7FC9" label={t("location")} />
+          <Text style={styles.bio}>{locationName || (language === "en" ? "Location Saved" : "Konum Kaydedildi")}</Text>
+        </View>
+      ) : null}
+
       {user.occupation ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Meslek</Text>
+        <View style={[styles.card, styles.cardAccentBlue]}>
+          <IconSectionHeader icon="briefcase" color="#2E7FC9" label={t("occupation")} />
           <Text style={styles.bio}>{user.occupation}</Text>
         </View>
       ) : null}
 
       {user.photos.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Fotoğraflarım</Text>
+        <View style={[styles.card, styles.cardAccentPink]}>
+          <IconSectionHeader icon="image" color="#D9427F" label={t("myPhotos")} />
           <FlatList
             data={user.photos}
             keyExtractor={(photo) => String(photo.id)}
@@ -126,19 +176,32 @@ export function ProfileScreen() {
       ) : null}
 
       {user.bio ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Hakkında</Text>
+        <View style={[styles.card, styles.cardAccentPurple]}>
+          <IconSectionHeader icon="feather" color={colors.primary} label={t("aboutMe")} />
           <Text style={styles.bio}>{user.bio}</Text>
         </View>
       ) : null}
 
+      {user.hobbies && user.hobbies.length > 0 ? (
+        <View style={[styles.card, styles.cardAccentPurple]}>
+          <IconSectionHeader icon="star" color="#8A2BE2" label={t("hobbies")} />
+          <View style={styles.chipRow}>
+            {user.hobbies.map((hobby) => (
+              <View key={hobby} style={[styles.chip, { backgroundColor: "#F3E8FF" }]}>
+                <Text style={[styles.chipText, { color: "#8A2BE2" }]}>{getHobbyLabel(hobby, language)}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
       {user.interests.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>İlgi Alanları</Text>
+        <View style={[styles.card, styles.cardAccentYellow]}>
+          <IconSectionHeader icon="heart" color="#E0A800" label={t("interests")} />
           <View style={styles.chipRow}>
             {user.interests.map((interest) => (
               <View key={interest} style={styles.chip}>
-                <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
+                <Text style={styles.chipText}>{getInterestLabel(interest, language)}</Text>
               </View>
             ))}
           </View>
@@ -146,8 +209,8 @@ export function ProfileScreen() {
       ) : null}
 
       {attendingEvents.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={typeScale.eyebrow}>Katılacağı Etkinlikler</Text>
+        <View style={[styles.card, styles.cardAccentGreen]}>
+          <IconSectionHeader icon="calendar" color={colors.accentGreen} label={language === "en" ? "Attending Events" : "Katılacağı Etkinlikler"} />
           {attendingEvents.map((event) => (
             <Pressable
               key={event.id}
@@ -162,7 +225,7 @@ export function ProfileScreen() {
                 </View>
                 <View>
                   <Text style={styles.eventTitle}>{event.title}</Text>
-                  <Text style={styles.eventDate}>{formatEventDate(event.starts_at)}</Text>
+                  <Text style={styles.eventDate}>{formatEventDate(event.starts_at, language)}</Text>
                 </View>
               </View>
               <Feather name="chevron-right" size={18} color={colors.textSecondary} />
@@ -171,13 +234,32 @@ export function ProfileScreen() {
         </View>
       ) : null}
 
+      {pastEvents.length > 0 ? (
+        <View style={[styles.card, styles.cardAccentBlue]}>
+          <IconSectionHeader icon="clock" color="#2E7FC9" label={t("pastEvents")} />
+          {pastEvents.map((event) => (
+            <View key={event.id} style={styles.eventRow}>
+              <View style={styles.eventRowLeft}>
+                <View style={[styles.eventIcon, styles.eventIconPast]}>
+                  <Feather name="calendar" size={16} color={colors.textSecondary} />
+                </View>
+                <View>
+                  <Text style={[styles.eventTitle, styles.eventTitlePast]}>{event.title}</Text>
+                  <Text style={styles.eventDate}>{formatEventDate(event.starts_at, language)}</Text>
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       <View style={styles.actionsCard}>
-        <PrimaryButton label="Profili Düzenle" onPress={() => navigation.navigate("EditProfile")} />
+        <PrimaryButton label={t("editProfile")} onPress={() => navigation.navigate("EditProfile")} />
         <Pressable
           style={styles.actionRow}
           onPress={handleBoostClick}
           accessibilityRole="button"
-          accessibilityLabel="Spotlight Öne Çıkar"
+          accessibilityLabel={t("spotlightBoost")}
         >
           <View style={styles.actionRowLeft}>
             <View style={[styles.actionIcon, styles.actionIconBoost]}>
@@ -186,13 +268,13 @@ export function ProfileScreen() {
             <View style={{ gap: 1 }}>
               <Text style={styles.actionLabel}>
                 {user.boosted_until && new Date(user.boosted_until).getTime() > Date.now()
-                  ? "Spotlight Aktif! 🚀"
-                  : "Spotlight Öne Çıkar"}
+                  ? "Spotlight Active! 🚀"
+                  : t("spotlightBoost")}
               </Text>
               <Text style={styles.actionSublabel}>
                 {user.boosted_until && new Date(user.boosted_until).getTime() > Date.now()
-                  ? "Şu an en üst sıradasın!"
-                  : `Mevcut Hak: ${user.boosts_balance ?? 0}`}
+                  ? "Currently top listed!"
+                  : `${t("creditsLeft")}: ${user.boosts_balance ?? 0}`}
               </Text>
             </View>
           </View>
@@ -202,13 +284,13 @@ export function ProfileScreen() {
           style={styles.actionRow}
           onPress={signOut}
           accessibilityRole="button"
-          accessibilityLabel="Çıkış Yap"
+          accessibilityLabel={t("signOut")}
         >
           <View style={styles.actionRowLeft}>
             <View style={[styles.actionIcon, styles.actionIconDanger]}>
               <Feather name="log-out" size={16} color={colors.accentRed} />
             </View>
-            <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Çıkış Yap</Text>
+            <Text style={[styles.actionLabel, styles.actionLabelDanger]}>{t("signOut")}</Text>
           </View>
         </Pressable>
       </View>
@@ -231,7 +313,27 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     paddingVertical: spacing.xxl,
     paddingHorizontal: spacing.lg,
+    overflow: "hidden",
+    position: "relative",
     ...shadows.card,
+  },
+  heroDecorLarge: {
+    position: "absolute",
+    top: -60,
+    right: -50,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  heroDecorSmall: {
+    position: "absolute",
+    bottom: -30,
+    left: -30,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   avatarRing: {
     padding: 4,
@@ -243,6 +345,18 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 22,
     color: colors.surface,
+  },
+  heroLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  heroLocationText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.95)",
   },
   heroEmail: {
     fontFamily: fontFamily.body,
@@ -260,12 +374,54 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.75)",
     marginTop: spacing.xs,
   },
+  heroStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    marginTop: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  heroStat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  heroStatDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: "rgba(255,255,255,0.3)",
+  },
+  heroStatText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 12,
+    color: colors.surface,
+  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.card,
     padding: spacing.lg,
     gap: spacing.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: "transparent",
     ...shadows.soft,
+  },
+  cardAccentBlue: {
+    borderLeftColor: "#2E7FC9",
+  },
+  cardAccentPink: {
+    borderLeftColor: "#D9427F",
+  },
+  cardAccentPurple: {
+    borderLeftColor: colors.primary,
+  },
+  cardAccentYellow: {
+    borderLeftColor: "#E0A800",
+  },
+  cardAccentGreen: {
+    borderLeftColor: colors.accentGreen,
   },
   galleryImage: {
     width: 96,
@@ -316,6 +472,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 14,
     color: colors.textPrimary,
+  },
+  eventIconPast: {
+    backgroundColor: colors.background,
+  },
+  eventTitlePast: {
+    color: colors.textSecondary,
   },
   eventDate: {
     fontFamily: fontFamily.body,
