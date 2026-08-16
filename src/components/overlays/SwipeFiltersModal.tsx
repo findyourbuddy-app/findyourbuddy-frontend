@@ -7,6 +7,8 @@ import { createCheckoutSession } from "../../api/subscriptions";
 import { colors, fontFamily, radius, spacing, typeScale } from "../../theme";
 import type { SwipeCandidateFilters } from "../../api/swipes";
 
+import { useAppTheme } from "../../context/ThemeContext";
+
 interface SwipeFiltersModalProps {
   visible: boolean;
   initialFilters: SwipeCandidateFilters;
@@ -26,12 +28,6 @@ function toNumber(text: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-const GENDER_PREFERENCES = [
-  { id: "all", label: "Herkes 👥" },
-  { id: "female", label: "Kadın 👩" },
-  { id: "male", label: "Erkek 👨" },
-];
-
 export function SwipeFiltersModal({
   visible,
   initialFilters,
@@ -39,10 +35,17 @@ export function SwipeFiltersModal({
   onApply,
   onDismiss,
 }: SwipeFiltersModalProps) {
+  const { t, language } = useAppTheme();
   const [minAge, setMinAge] = useState(toText(initialFilters.minAge));
   const [maxAge, setMaxAge] = useState(toText(initialFilters.maxAge));
   const [maxDistanceKm, setMaxDistanceKm] = useState(toText(initialFilters.maxDistanceKm));
   const [genderPreference, setGenderPreference] = useState(initialFilters.genderPreference || "all");
+
+  const GENDER_PREFERENCES = [
+    { id: "all", label: language === "en" ? "Everyone 👥" : "Herkes 👥" },
+    { id: "female", label: language === "en" ? "Female 👩" : "Kadın 👩" },
+    { id: "male", label: language === "en" ? "Male 👨" : "Erkek 👨" },
+  ];
 
   useEffect(() => {
     if (visible) {
@@ -98,39 +101,39 @@ export function SwipeFiltersModal({
           <View style={styles.card}>
             <View style={{ alignItems: "center", gap: spacing.xs, marginVertical: spacing.xs }}>
               <Feather name="sliders" size={36} color={colors.primary} />
-              <Text style={typeScale.h1}>Gelişmiş Kanka Filtreleri 🎛️</Text>
+              <Text style={typeScale.h1}>{language === "en" ? "Advanced Buddy Filters 🎛️" : "Gelişmiş Kanka Filtreleri 🎛️"}</Text>
               <Text style={[styles.upsellText, { textAlign: "center", lineHeight: 20 }]}>
-                Tam hayalindeki kankayı bulmak için cinsiyet, özel yaş aralığı ve mesafe sınırı filtreleri **Premium üyelere özeldir!**
+                {t("premiumFilterNotice")}
               </Text>
             </View>
 
             <View style={styles.perksList}>
               <View style={styles.perkItem}>
                 <Feather name="user-check" size={16} color={colors.primary} />
-                <Text style={styles.perkText}>Cinsiyet Tercihi (Kadın / Erkek / Herkes)</Text>
+                <Text style={styles.perkText}>{t("genderPreferenceLabel")}</Text>
               </View>
               <View style={styles.perkItem}>
                 <Feather name="calendar" size={16} color={colors.primary} />
-                <Text style={styles.perkText}>Spesifik Yaş Aralığı Seçimi (Örn: 20 - 28 yaş)</Text>
+                <Text style={styles.perkText}>{t("specificAgeRangeLabel")}</Text>
               </View>
               <View style={styles.perkItem}>
                 <Feather name="navigation" size={16} color={colors.primary} />
-                <Text style={styles.perkText}>Mesafe Sınırı (km) (Örn: Sadece 10 km yakınındakiler)</Text>
+                <Text style={styles.perkText}>{t("distanceLimitLabel")}</Text>
               </View>
               <View style={styles.perkItem}>
                 <Feather name="heart" size={16} color={colors.primary} />
-                <Text style={styles.perkText}>Sınırsız Kaydırma & Beğeni Hakkı</Text>
+                <Text style={styles.perkText}>{t("unlimitedSwipesAndLikes")}</Text>
               </View>
             </View>
 
             <View style={styles.actions}>
               <PrimaryButton
-                label={isUpgrading ? "Yükleniyor..." : "Hemen Premium'a Geç 🚀 (49 TL)"}
+                label={isUpgrading ? (language === "en" ? "Loading..." : "Yükleniyor...") : t("getPremiumNowBtn")}
                 variant="accent"
                 onPress={handleUpgrade}
                 loading={isUpgrading}
               />
-              <PrimaryButton label="Kapat" variant="outline" onPress={onDismiss} disabled={isUpgrading} />
+              <PrimaryButton label={t("close")} variant="outline" onPress={onDismiss} disabled={isUpgrading} />
             </View>
           </View>
         </View>
@@ -142,11 +145,11 @@ export function SwipeFiltersModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={typeScale.h1}>Gelişmiş Filtreler 🎛️</Text>
+          <Text style={typeScale.h1}>{language === "en" ? "Advanced Filters 🎛️" : "Gelişmiş Filtreler 🎛️"}</Text>
 
           {/* Gender Preference Chips */}
           <View style={styles.field}>
-            <Text style={styles.label}>Cinsiyet Tercihi</Text>
+            <Text style={styles.label}>{language === "en" ? "Gender Preference" : "Cinsiyet Tercihi"}</Text>
             <View style={styles.genderRow}>
               {GENDER_PREFERENCES.map((g) => {
                 const isSelected = genderPreference === g.id;
@@ -167,7 +170,7 @@ export function SwipeFiltersModal({
 
           <View style={styles.row}>
             <View style={styles.field}>
-              <Text style={styles.label}>Min Yaş</Text>
+              <Text style={styles.label}>{language === "en" ? "Min Age" : "Min Yaş"}</Text>
               <TextInput
                 style={styles.input}
                 keyboardType="number-pad"
@@ -178,7 +181,7 @@ export function SwipeFiltersModal({
               />
             </View>
             <View style={styles.field}>
-              <Text style={styles.label}>Maks Yaş</Text>
+              <Text style={styles.label}>{language === "en" ? "Max Age" : "Maks Yaş"}</Text>
               <TextInput
                 style={styles.input}
                 keyboardType="number-pad"
@@ -191,7 +194,7 @@ export function SwipeFiltersModal({
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Maksimum Mesafe (km)</Text>
+            <Text style={styles.label}>{language === "en" ? "Max Distance (km)" : "Maksimum Mesafe (km)"}</Text>
             <TextInput
               style={styles.input}
               keyboardType="number-pad"
@@ -203,9 +206,9 @@ export function SwipeFiltersModal({
           </View>
 
           <View style={styles.actions}>
-            <PrimaryButton label="Uygula" onPress={handleApply} />
-            <PrimaryButton label="Filtreleri Temizle" variant="outline" onPress={handleClear} />
-            <PrimaryButton label="Kapat" variant="outline" onPress={onDismiss} />
+            <PrimaryButton label={language === "en" ? "Apply" : "Uygula"} onPress={handleApply} />
+            <PrimaryButton label={language === "en" ? "Clear Filters" : "Filtreleri Temizle"} variant="outline" onPress={handleClear} />
+            <PrimaryButton label={t("close")} variant="outline" onPress={onDismiss} />
           </View>
         </View>
       </View>

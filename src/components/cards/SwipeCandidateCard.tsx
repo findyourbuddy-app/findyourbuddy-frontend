@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Animated, PanResponder, StyleSheet, Text, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 import { getInterestLabel } from "../../constants/interests";
+import { hasValidCoordinates, resolveCityDistrict } from "../../utils/location";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 import type { User } from "../../types";
 
@@ -29,6 +30,8 @@ function candidatePhotoUrls(candidate: User): string[] {
   return Array.from(new Set(urls));
 }
 
+import { useAppTheme } from "../../context/ThemeContext";
+
 export function SwipeCandidateCard({
   candidate,
   onSwipeLeft,
@@ -36,11 +39,19 @@ export function SwipeCandidateCard({
   onSwipeUp,
   onPressProfile,
 }: SwipeCandidateCardProps) {
+  const { language } = useAppTheme();
   const photoUrls = candidatePhotoUrls(candidate);
   const [activeIndex, setActiveIndex] = useState(0);
   const [cardWidth, setCardWidth] = useState(0);
   const [cardHeight, setCardHeight] = useState(0);
+  const [locationName, setLocationName] = useState<string | null>(null);
   const position = useRef(new Animated.ValueXY()).current;
+
+  useEffect(() => {
+    if (hasValidCoordinates(candidate.latitude, candidate.longitude)) {
+      resolveCityDistrict(candidate.latitude, candidate.longitude).then(setLocationName);
+    }
+  }, [candidate.latitude, candidate.longitude]);
 
   function handleLayout(event: LayoutChangeEvent): void {
     setCardWidth(event.nativeEvent.layout.width);
@@ -161,13 +172,13 @@ export function SwipeCandidateCard({
       ) : null}
 
       <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]} pointerEvents="none">
-        <Text style={styles.stampText}>BEĞEN</Text>
+        <Text style={styles.stampText}>{language === "en" ? "LIKE" : "BEĞEN"}</Text>
       </Animated.View>
       <Animated.View style={[styles.stamp, styles.stampPass, { opacity: passOpacity }]} pointerEvents="none">
-        <Text style={styles.stampText}>GEÇ</Text>
+        <Text style={styles.stampText}>{language === "en" ? "PASS" : "GEÇ"}</Text>
       </Animated.View>
       <Animated.View style={[styles.stamp, styles.stampSuper, { opacity: superOpacity }]} pointerEvents="none">
-        <Text style={styles.stampText}>SÜPER</Text>
+        <Text style={styles.stampText}>{language === "en" ? "SUPER" : "SÜPER"}</Text>
       </Animated.View>
 
       <LinearGradient
@@ -175,16 +186,39 @@ export function SwipeCandidateCard({
         style={styles.overlay}
         pointerEvents="none"
       >
-        <Text style={styles.name}>
-          {candidate.display_name}
-          {candidate.age ? `, ${candidate.age}` : ""}
-        </Text>
-        {candidate.bio ? <Text style={styles.bio}>"{candidate.bio}"</Text> : null}
+
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>
+            {candidate.display_name}
+            {candidate.age ? `, ${candidate.age}` : ""}
+          </Text>
+          {candidate.is_verified && (
+            <View style={styles.verifiedBadge}>
+              <Feather name="check" size={10} color="#FFF" />
+            </View>
+          )}
+        </View>
+
+        {locationName ? (
+          <View style={styles.locationRow}>
+            <Feather name="map-pin" size={12} color="rgba(255,255,255,0.9)" />
+            <Text style={styles.locationText}>{locationName}</Text>
+          </View>
+        ) : null}
+
+        {candidate.bio || candidate.about_me_prompt ? (
+          <View style={styles.bioBox}>
+            <Text style={styles.bioText} numberOfLines={2}>
+              "{candidate.bio || candidate.about_me_prompt}"
+            </Text>
+          </View>
+        ) : null}
+
         {candidate.interests.length > 0 ? (
           <View style={styles.chipRow}>
             {candidate.interests.slice(0, 3).map((interest) => (
               <View key={interest} style={styles.chip}>
-                <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
+                <Text style={styles.chipText}>{getInterestLabel(interest, language)}</Text>
               </View>
             ))}
           </View>
@@ -262,16 +296,51 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.sm,
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
   name: {
     fontFamily: fontFamily.displayBold,
     fontSize: 22,
     color: colors.surface,
   },
-  bio: {
+  verifiedBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#1DA1F2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: -2,
+    marginBottom: 2,
+  },
+  locationText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.95)",
+  },
+  bioBox: {
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  bioText: {
     fontFamily: fontFamily.body,
-    fontSize: 14,
+    fontSize: 13,
     fontStyle: "italic",
-    color: "rgba(255,255,255,0.9)",
+    color: "rgba(255, 255, 255, 0.95)",
+    lineHeight: 18,
   },
   chipRow: {
     flexDirection: "row",

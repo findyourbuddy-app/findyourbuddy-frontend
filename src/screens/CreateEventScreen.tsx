@@ -45,8 +45,11 @@ function parseLocalDateTime(dateText: string, timeText: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function CreateEventScreen() {
   const navigation = useNavigation<CreateEventNavigationProp>();
+  const { t, accentColor, bgGradient, language } = useAppTheme();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0].slug);
@@ -225,12 +228,12 @@ export function CreateEventScreen() {
   }
 
   return (
-    <ScrollView style={styles.background} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>Başlık</Text>
+        <Text style={typeScale.eyebrow}>{t("eventTitleLabel")}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Örn. Kadıköy Akşam Koşusu"
+          placeholder={t("eventTitlePlaceholder")}
           placeholderTextColor={colors.textSecondary}
           value={title}
           onChangeText={setTitle}
@@ -238,10 +241,10 @@ export function CreateEventScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>Açıklama</Text>
+        <Text style={typeScale.eyebrow}>{t("descriptionLabel")}</Text>
         <TextInput
           style={[styles.input, styles.multilineInput]}
-          placeholder="Etkinlik hakkında kısa bilgi..."
+          placeholder={t("descriptionPlaceholder")}
           placeholderTextColor={colors.textSecondary}
           value={description}
           onChangeText={setDescription}
@@ -250,12 +253,12 @@ export function CreateEventScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>Kategori</Text>
+        <Text style={typeScale.eyebrow}>{t("categoryLabel")}</Text>
         <View style={styles.chipGrid}>
           {CATEGORIES.map((item) => (
             <Chip
               key={item.slug}
-              label={item.label}
+              label={language === "en" ? item.labelEn : item.label}
               active={category === item.slug}
               onPress={() => setCategory(item.slug)}
             />
@@ -264,15 +267,15 @@ export function CreateEventScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>Katılım Türü</Text>
+        <Text style={typeScale.eyebrow}>{t("participationType")}</Text>
         <View style={styles.chipGrid}>
           <Chip
-            label="Birebir Kanka Eşleşmesi"
+            label={t("oneOnOne")}
             active={!isGroupEvent}
             onPress={() => setIsGroupEvent(false)}
           />
           <Chip
-            label="Grup Etkinliği (Onaylı Katılım)"
+            label={t("groupEvent")}
             active={isGroupEvent}
             onPress={() => setIsGroupEvent(true)}
           />
@@ -280,35 +283,32 @@ export function CreateEventScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>Bilet</Text>
+        <Text style={typeScale.eyebrow}>{t("ticket")}</Text>
         <View style={styles.chipGrid}>
-          <Chip label="Ücretsiz" active={!isPaid} onPress={() => setIsPaid(false)} />
-          <Chip label="Ücretli (Biletli)" active={isPaid} onPress={() => setIsPaid(true)} />
+          <Chip label={t("free")} active={!isPaid} onPress={() => setIsPaid(false)} />
+          <Chip label={t("paidTicket")} active={isPaid} onPress={() => setIsPaid(true)} />
         </View>
         {isPaid ? (
           <>
             <TextInput
               style={styles.input}
               keyboardType="decimal-pad"
-              placeholder="Bilet fiyatı (₺)"
+              placeholder={language === "en" ? "Ticket Price ($)" : "Bilet fiyatı (₺)"}
               placeholderTextColor={colors.textSecondary}
               value={ticketPrice}
               onChangeText={setTicketPrice}
             />
-            <Text style={styles.helperText}>
-              Ücretli etkinliklerde katılım, konuma yakınlık yerine bilet QR kodu yüklenerek doğrulanır.
-            </Text>
           </>
         ) : null}
       </View>
 
       {isGroupEvent && (
         <View style={styles.field}>
-          <Text style={typeScale.eyebrow}>Maksimum Katılımcı Sayısı</Text>
+          <Text style={typeScale.eyebrow}>{t("maxParticipantsLabel")}</Text>
           <TextInput
             style={styles.input}
             keyboardType="number-pad"
-            placeholder="Maksimum kişi sayısı örn. 15 (Sınırsız için boş bırakın)"
+            placeholder={language === "en" ? "Max attendees (e.g. 15)" : "Maksimum kişi sayısı örn. 15"}
             placeholderTextColor={colors.textSecondary}
             value={maxAttendees}
             onChangeText={setMaxAttendees}
@@ -317,10 +317,10 @@ export function CreateEventScreen() {
       )}
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>Konum Adı</Text>
+        <Text style={typeScale.eyebrow}>{t("locationLabel")}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Örn. Moda Sahil"
+          placeholder={t("locationPlaceholder")}
           placeholderTextColor={colors.textSecondary}
           value={locationName}
           onChangeText={setLocationName}
@@ -328,9 +328,9 @@ export function CreateEventScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>Harita Konumu</Text>
+        <Text style={typeScale.eyebrow}>{t("mapLocationHeader")}</Text>
         <PrimaryButton
-          label={coordinates ? "Konum Seçildi ✓" : "Haritadan Konum Seç"}
+          label={coordinates ? (language === "en" ? "Location Selected ✓" : "Konum Seçildi ✓") : t("selectLocationMap")}
           onPress={() => setIsLocationPickerVisible(true)}
           variant="outline"
         />
@@ -338,19 +338,19 @@ export function CreateEventScreen() {
 
       <View style={styles.row}>
         <View style={[styles.field, styles.rowItem]}>
-          <Text style={typeScale.eyebrow}>Tarih</Text>
+          <Text style={typeScale.eyebrow}>{t("dateHeader")}</Text>
           <Pressable style={styles.pickerTrigger} onPress={() => setIsCalendarVisible(true)}>
             <Text style={[styles.pickerTriggerText, !dateText && { color: colors.textSecondary }]}>
-              {dateText || "Tarih Seç"}
+              {dateText || t("selectDate")}
             </Text>
             <Feather name="calendar" size={16} color={colors.textSecondary} />
           </Pressable>
         </View>
         <View style={[styles.field, styles.rowItem]}>
-          <Text style={typeScale.eyebrow}>Saat</Text>
+          <Text style={typeScale.eyebrow}>{t("timeHeader")}</Text>
           <Pressable style={styles.pickerTrigger} onPress={() => setIsTimeVisible(true)}>
             <Text style={[styles.pickerTriggerText, !timeText && { color: colors.textSecondary }]}>
-              {timeText || "Saat Seç"}
+              {timeText || t("selectTime")}
             </Text>
             <Feather name="clock" size={16} color={colors.textSecondary} />
           </Pressable>
@@ -360,14 +360,14 @@ export function CreateEventScreen() {
       {quota && !quota.is_premium && quota.weekly_limit !== null ? (
         <View style={styles.quotaCard}>
           <Text style={styles.helperText}>
-            Bu hafta kalan etkinlik oluşturma hakkın: {Math.max(quota.weekly_limit - quota.events_created_this_week, 0)}/
-            {quota.weekly_limit}. Premium ile sınırsız etkinlik oluşturabilirsin.
+            {t("createQuotaNotice")} {Math.max(quota.weekly_limit - quota.events_created_this_week, 0)}/
+            {quota.weekly_limit}. {t("unlimitedQuotaNotice")}
           </Text>
           {quota.credits_balance > 0 ? (
-            <Text style={styles.helperText}>Ekstra satın alınmış hakkın: {quota.credits_balance}</Text>
+            <Text style={styles.helperText}>{t("creditsLeft")}: {quota.credits_balance}</Text>
           ) : null}
           <PrimaryButton
-            label={isBuyingCredits ? "Yönlendiriliyor..." : "3 Ekstra Hak Satın Al (49 ₺)"}
+            label={t("buyExtraCredits")}
             onPress={handleBuyCredits}
             loading={isBuyingCredits}
             variant="outline"
@@ -377,7 +377,7 @@ export function CreateEventScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <PrimaryButton label="Etkinliği Oluştur" onPress={handleSave} loading={isSaving} />
+      <PrimaryButton label={t("publishEventBtn")} onPress={handleSave} loading={isSaving} />
 
       <LocationPickerModal
         visible={isLocationPickerVisible}

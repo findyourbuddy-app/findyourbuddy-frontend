@@ -30,11 +30,14 @@ const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
   { reason: "other", label: "Diğer" },
 ];
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function ChatScreen({ route }: Props) {
   const { matchId, otherUserId, otherUserName, needsFeedback } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
+  const { t, accentColor, bgGradient } = useAppTheme();
   const [historicalMessages, setHistoricalMessages] = useState<Message[]>([]);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -444,7 +447,7 @@ export function ChatScreen({ route }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.background}
+      style={[styles.background, { backgroundColor: bgGradient[0] }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={80}
     >

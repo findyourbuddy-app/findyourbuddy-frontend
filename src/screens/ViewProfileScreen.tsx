@@ -12,10 +12,15 @@ import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../them
 import { apiClient } from "../api/client";
 import type { User } from "../types";
 
+import { useAppTheme } from "../context/ThemeContext";
+import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
+
 export function ViewProfileScreen() {
+  const { bgGradient, accentColor, language } = useAppTheme();
   const [profile, setProfile] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
+  const [locationName, setLocationName] = useState<string | null>(null);
 
   function handlePlayVoice() {
     setIsPlayingVoice(!isPlayingVoice);
@@ -32,7 +37,12 @@ export function ViewProfileScreen() {
       setIsLoading(true);
       apiClient.get<User>("/users/me")
         .then((res) => {
-          if (active) setProfile(res.data);
+          if (active) {
+            setProfile(res.data);
+            if (hasValidCoordinates(res.data.latitude, res.data.longitude)) {
+              resolveCityDistrict(res.data.latitude, res.data.longitude).then(setLocationName);
+            }
+          }
         })
         .catch(() => {})
         .finally(() => {
@@ -47,8 +57,8 @@ export function ViewProfileScreen() {
 
   if (isLoading || !profile) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={[styles.center, { backgroundColor: bgGradient[0] }]}>
+        <ActivityIndicator color={accentColor} />
       </View>
     );
   }
@@ -70,7 +80,7 @@ export function ViewProfileScreen() {
   const remainingPhotos = allPhotoUrls.slice(3);
 
   return (
-    <ScrollView style={styles.background} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {/* Photo 1 Hero Header */}
       <View style={styles.mainPhotoCard}>
         {photo1 ? (
@@ -89,12 +99,21 @@ export function ViewProfileScreen() {
               {profile.display_name}
               {profile.age ? `, ${profile.age}` : ""}
             </Text>
-            {profile.verification_status === "verified" ? (
-              <Feather name="check-circle" size={20} color="#20E290" style={{ marginLeft: 6 }} />
+            {profile.is_verified || profile.verification_status === "verified" ? (
+              <Feather name="check-circle" size={20} color="#1DA1F2" style={{ marginLeft: 6 }} />
             ) : profile.verification_status === "pending" ? (
               <Feather name="clock" size={18} color="#FFD15C" style={{ marginLeft: 6 }} />
             ) : null}
           </View>
+
+          {locationName ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
+              <Feather name="map-pin" size={13} color="rgba(255,255,255,0.9)" />
+              <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
+                {locationName}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.badgeRow}>
             {profile.trust_score > 0 ? (
@@ -105,7 +124,7 @@ export function ViewProfileScreen() {
             ) : null}
             {profile.zodiac_sign ? (
               <View style={styles.trustBadge}>
-                <Text style={styles.trustText}>🔮 {profile.zodiac_sign}</Text>
+                <Text style={styles.trustText}>{profile.zodiac_sign}</Text>
               </View>
             ) : null}
           </View>

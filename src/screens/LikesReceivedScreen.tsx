@@ -12,6 +12,8 @@ import { createCheckoutSession } from "../api/subscriptions";
 import { useAuth } from "../context/AuthContext";
 import { colors, fontFamily, radius, spacing } from "../theme";
 
+import { useAppTheme } from "../context/ThemeContext";
+
 function maskName(name: string): string {
   const trimmed = name.trim();
   if (trimmed.length === 0) return trimmed;
@@ -20,6 +22,7 @@ function maskName(name: string): string {
 
 export function LikesReceivedScreen() {
   const { isPremium } = useAuth();
+  const { t, language, bgGradient, accentColor } = useAppTheme();
   const [likers, setLikers] = useState<LikerResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpgrading, setIsUpgrading] = useState(false);
@@ -28,7 +31,6 @@ export function LikesReceivedScreen() {
     setIsLoading(true);
     try {
       const results = await getIncomingLikes();
-      // Remove duplicates by user id if any
       const seen = new Map<number, LikerResponse>();
       for (const item of results) {
         if (!seen.has(item.user.id)) {
@@ -54,13 +56,12 @@ export function LikesReceivedScreen() {
   const handleLike = async (item: LikerResponse) => {
     if (!isPremium) {
       Alert.alert(
-        "Premium Özellik",
-        "Bu kullanıcıyı beğenmek ve eşleşmek için Premium üye olmalısın."
+        language === "en" ? "Premium Feature" : "Premium Özellik",
+        language === "en" ? "Upgrade to Premium to like and match with this user." : "Bu kullanıcıyı beğenmek ve eşleşmek için Premium üye olmalısın."
       );
       return;
     }
     
-    // Optimistic update
     const previousLikers = [...likers];
     setLikers((prev) => prev.filter((l) => l.user.id !== item.user.id));
     
@@ -71,7 +72,7 @@ export function LikesReceivedScreen() {
         direction: "like",
       });
       if (result.match_id !== null) {
-        Alert.alert("Eşleşme Gerçekleşti!", `${item.user.display_name} ile yeni bir kankan oldu!`);
+        Alert.alert(language === "en" ? "It's a Match!" : "Eşleşme Gerçekleşti!", `${item.user.display_name} ${language === "en" ? "is your new buddy!" : "ile yeni bir kankan oldu!"}`);
       }
     } catch (error) {
       setLikers(previousLikers);
@@ -82,13 +83,12 @@ export function LikesReceivedScreen() {
   const handlePass = async (item: LikerResponse) => {
     if (!isPremium) {
       Alert.alert(
-        "Premium Özellik",
-        "Bu kullanıcıyı geçmek için Premium üye olmalısın."
+        language === "en" ? "Premium Feature" : "Premium Özellik",
+        language === "en" ? "Upgrade to Premium to pass this user." : "Bu kullanıcıyı geçmek için Premium üye olmalısın."
       );
       return;
     }
     
-    // Optimistic update
     const previousLikers = [...likers];
     setLikers((prev) => prev.filter((l) => l.user.id !== item.user.id));
     
@@ -129,20 +129,24 @@ export function LikesReceivedScreen() {
     return (
       <View style={styles.headerContainer}>
         <Text style={styles.countText}>
-          Seni beğenen <Text style={styles.countNumber}>{likers.length}</Text> kişi var!
+          {language === "en" ? "People who liked you: " : "Seni beğenen "}
+          <Text style={styles.countNumber}>{likers.length}</Text>
+          {language === "en" ? "!" : " kişi var!"}
         </Text>
 
         {!isPremium && (
           <View style={styles.premiumCard}>
             <View style={styles.premiumCardHeader}>
               <Feather name="star" size={20} color={colors.accentYellow} style={{ marginRight: spacing.xs }} />
-              <Text style={styles.premiumCardTitle}>Premium Üyelik</Text>
+              <Text style={styles.premiumCardTitle}>{language === "en" ? "Premium Membership" : "Premium Üyelik"}</Text>
             </View>
             <Text style={styles.premiumCardBody}>
-              Fotoğrafları netleştirmek ve seni beğenen kişilerle anında eşleşip sohbete başlamak için Premium'a yükselt!
+              {language === "en"
+                ? "Unblur photos and match instantly with people who liked you by upgrading to Premium!"
+                : "Fotoğrafları netleştirmek ve seni beğenen kişilerle anında eşleşip sohbete başlamak için Premium'a yükselt!"}
             </Text>
             <PrimaryButton
-              label={isUpgrading ? "Yükleniyor..." : "Premium'a Yükselt"}
+              label={isUpgrading ? (language === "en" ? "Loading..." : "Yükleniyor...") : t("upgradeToPremium")}
               variant="accent"
               onPress={handleUpgrade}
               loading={isUpgrading}
@@ -155,15 +159,15 @@ export function LikesReceivedScreen() {
 
   if (isLoading && likers.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.loadingContainer, { backgroundColor: bgGradient[0] }]}>
+        <ActivityIndicator size="large" color={accentColor} />
       </View>
     );
   }
 
   return (
     <FlatList
-      style={styles.background}
+      style={[styles.background, { backgroundColor: bgGradient[0] }]}
       contentContainerStyle={styles.list}
       data={likers}
       keyExtractor={(item) => String(item.user.id)}
@@ -172,7 +176,7 @@ export function LikesReceivedScreen() {
         !isLoading ? (
           <View style={styles.emptyContainer}>
             <Feather name="heart" size={48} color={colors.textSecondary} style={{ marginBottom: spacing.md }} />
-            <Text style={styles.emptyText}>Henüz seni beğenen kimse yok.</Text>
+            <Text style={styles.emptyText}>{t("noLikesYet")}</Text>
           </View>
         ) : null
       }

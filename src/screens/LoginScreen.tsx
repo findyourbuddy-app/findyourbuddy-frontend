@@ -19,8 +19,9 @@ export function LoginScreen() {
 
   async function handleSubmit(): Promise<void> {
     setError(null);
+    const cleanEmail = email.trim().toLowerCase();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
+    if (!emailRegex.test(cleanEmail)) {
       setError("Lütfen geçerli bir e-posta adresi girin.");
       return;
     }
@@ -30,9 +31,14 @@ export function LoginScreen() {
     }
     setIsSubmitting(true);
     try {
-      await signIn({ email, password });
-    } catch {
-      setError("Giriş başarısız. E-posta veya şifre hatalı.");
+      await signIn({ email: cleanEmail, password });
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      if (typeof detail === "string") {
+        setError(detail);
+      } else {
+        setError("Giriş başarısız. E-posta veya şifre hatalı.");
+      }
     } finally {
       setIsSubmitting(false);
     }

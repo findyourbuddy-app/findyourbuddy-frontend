@@ -32,15 +32,23 @@ export function isValidBirthDate(day: number, month: number, year: number): bool
 
 export function validateBirthDateString(dateStr: string): { valid: boolean; error?: string } {
   const trimmed = dateStr.trim();
-  const regex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!regex.test(trimmed)) {
-    return { valid: false, error: "Doğum tarihiniz YYYY-AA-GG formatında olmalıdır (Örn: 1998-05-15)." };
-  }
+  const digits = trimmed.replace(/\D/g, "");
+  let year = 0;
+  let month = 0;
+  let day = 0;
 
-  const parts = trimmed.split("-").map(Number);
-  const year = parts[0];
-  const month = parts[1];
-  const day = parts[2];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const parts = trimmed.split("-").map(Number);
+    year = parts[0];
+    month = parts[1];
+    day = parts[2];
+  } else if (/^\d{2}-\d{2}-\d{4}$/.test(trimmed) || digits.length === 8) {
+    day = parseInt(digits.slice(0, 2), 10);
+    month = parseInt(digits.slice(2, 4), 10);
+    year = parseInt(digits.slice(4, 8), 10);
+  } else {
+    return { valid: false, error: "Doğum tarihiniz GG-AA-YYYY formatında olmalıdır (Örn: 25-04-1998)." };
+  }
 
   const date = new Date(year, month - 1, day);
   const isRealDate =

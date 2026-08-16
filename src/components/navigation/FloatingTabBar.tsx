@@ -6,27 +6,31 @@ import { useMessagesContext } from "../../context/MessagesContext";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 import type { FeatherIconName } from "../../constants/categories";
 
+import { useAppTheme } from "../../context/ThemeContext";
+
 const TAB_ICON: Record<string, FeatherIconName> = {
   Discover: "compass",
   Swipe: "heart",
   Messages: "message-circle",
 };
 
-const TAB_LABEL: Record<string, string> = {
-  Discover: "Keşfet",
-  Swipe: "Eşleş",
-  Messages: "Mesajlar",
-};
-
 export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { hasUnreadMessages } = useMessagesContext();
+  const { t, accentColor } = useAppTheme();
+
+  const tabLabels: Record<string, string> = {
+    Discover: t("tabDiscover"),
+    Swipe: t("tabSwipe"),
+    Messages: t("tabMessages"),
+  };
 
   return (
     <View style={[styles.container, { bottom: insets.bottom + spacing.md }]}>
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
         const icon = TAB_ICON[route.name] ?? "circle";
+        const label = tabLabels[route.name] ?? route.name;
 
         function handlePress(): void {
           const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
@@ -41,14 +45,16 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
             onPress={handlePress}
             style={styles.tab}
             accessibilityRole="tab"
-            accessibilityLabel={TAB_LABEL[route.name] ?? route.name}
+            accessibilityLabel={label}
             accessibilityState={{ selected: isFocused }}
           >
-            <View style={[styles.iconWrapper, isFocused && styles.iconWrapperActive]}>
+            <View style={[styles.iconWrapper, isFocused && { backgroundColor: accentColor }]}>
               <Feather name={icon} size={20} color={isFocused ? colors.surface : colors.textSecondary} />
               {route.name === "Messages" && hasUnreadMessages ? <View style={styles.unreadDot} /> : null}
             </View>
-            <Text style={[styles.label, isFocused && styles.labelActive]}>{TAB_LABEL[route.name]}</Text>
+            <Text style={[styles.label, isFocused && { color: accentColor, fontFamily: fontFamily.bodySemiBold }]}>
+              {label}
+            </Text>
           </Pressable>
         );
       })}

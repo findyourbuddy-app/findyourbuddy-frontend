@@ -4,6 +4,8 @@ import { PrimaryButton } from "../ui/PrimaryButton";
 import { colors, fontFamily, radius, spacing, typeScale } from "../../theme";
 import type { UserPublic } from "../../types";
 
+import { useAppTheme } from "../../context/ThemeContext";
+
 interface MatchCelebrationModalProps {
   matchedUser: UserPublic | null;
   onSendMessage: () => void;
@@ -15,19 +17,25 @@ export function MatchCelebrationModal({
   onSendMessage,
   onDismiss,
 }: MatchCelebrationModalProps) {
+  const { t, language } = useAppTheme();
+
   return (
     <Modal visible={matchedUser !== null} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.eyebrow}>🎉 Eşleştin!</Text>
+          <Text style={styles.eyebrow}>{language === "en" ? "🎉 It's a Match!" : "🎉 Eşleştin!"}</Text>
           {matchedUser ? (
             <>
               <Avatar name={matchedUser.display_name} photoUrl={matchedUser.photo_url} size={88} />
-              <Text style={[typeScale.h1, styles.title]}>{matchedUser.display_name} ile eşleştin</Text>
-              <Text style={styles.subtitle}>Hadi bir mesaj atıp buluşmayı planlayın.</Text>
+              <Text style={[typeScale.h1, styles.title]}>
+                {language === "en" ? `You matched with ${matchedUser.display_name}` : `${matchedUser.display_name} ile eşleştin`}
+              </Text>
+              <Text style={styles.subtitle}>
+                {language === "en" ? "Send a message and plan a meetup!" : "Hadi bir mesaj atıp buluşmayı planlayın."}
+              </Text>
               <View style={styles.actions}>
-                <PrimaryButton label="Mesaj Gönder" onPress={onSendMessage} />
-                <PrimaryButton label="Kapat" variant="outline" onPress={onDismiss} />
+                <PrimaryButton label={language === "en" ? "Send Message" : "Mesaj Gönder"} onPress={onSendMessage} />
+                <PrimaryButton label={t("close")} variant="outline" onPress={onDismiss} />
               </View>
             </>
           ) : null}

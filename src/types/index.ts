@@ -36,6 +36,7 @@ export interface User {
   event_credits_balance?: number;
   phone_number?: string | null;
   phone_verified: boolean;
+  is_verified?: boolean;
 }
 
 export interface UserUpdate {
@@ -145,6 +146,7 @@ export interface UserPublic {
   photo_url: string | null;
   trust_score: number;
   university: string | null;
+  is_verified?: boolean;
 }
 
 export interface Message {
@@ -207,6 +209,8 @@ export interface SubscriptionStatus {
 export interface Match {
   id: number;
   event_id: number;
+  event_title?: string | null;
+  event_category?: string | null;
   user_a_id: number;
   user_b_id: number;
   score: number;

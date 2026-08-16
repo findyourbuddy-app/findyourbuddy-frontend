@@ -21,6 +21,7 @@ import { reverseGeocode } from "../api/geocoding";
 import type { GeocodingResult } from "../api/geocoding";
 import { hasValidCoordinates } from "../utils/location";
 import { attendEvent, listEvents } from "../api/events";
+import { formatEventDate } from "../utils/date";
 import { useAuth } from "../context/AuthContext";
 import { CATEGORIES, getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, spacing, typeScale, radius, shadows } from "../theme";
@@ -67,9 +68,12 @@ function isSmartMatch(text: string, query: string): boolean {
   });
 }
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function DiscoverScreen() {
   const navigation = useNavigation<DiscoverNavigationProp>();
   const { user } = useAuth();
+  const { t, accentColor, bgGradient, language } = useAppTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
@@ -196,13 +200,13 @@ export function DiscoverScreen() {
   const sortOptions = [
     {
       key: "date",
-      label: "Tarih ve Saat",
+      label: language === "en" ? "Date and Time" : "Tarih ve Saat",
       icon: "clock" as const,
       onPress: () => setSortBy(sortBy === "date" ? undefined : "date")
     },
     {
       key: "distance",
-      label: "En Yakın (Konuma Göre)",
+      label: language === "en" ? "Closest (By Distance)" : "En Yakın (Konuma Göre)",
       icon: "navigation" as const,
       onPress: () => {
         if (sortBy === "distance") {
@@ -214,7 +218,7 @@ export function DiscoverScreen() {
     },
     {
       key: "popularity",
-      label: "Popülerlik (Katılımcı Sayısı)",
+      label: language === "en" ? "Popularity (By Attendees)" : "Popülerlik (Katılımcı Sayısı)",
       icon: "trending-up" as const,
       onPress: () => setSortBy(sortBy === "popularity" ? undefined : "popularity"),
     },
@@ -405,7 +409,7 @@ export function DiscoverScreen() {
     <>
     <FlatList
       key={selectedCategory ?? "all"}
-      style={styles.background}
+      style={[styles.background, { backgroundColor: bgGradient[0] }]}
       contentContainerStyle={styles.list}
       data={isMapView ? [] : rest}
       keyExtractor={(event) => String(event.id)}
@@ -415,67 +419,16 @@ export function DiscoverScreen() {
       onEndReached={isMapView ? undefined : loadMoreEvents}
       onEndReachedThreshold={0.4}
       ListFooterComponent={
-        isMapView ? (
-          <View style={styles.mapCanvasContainer}>
-            <View style={styles.mapHeaderRow}>
-              <Text style={styles.mapCanvasTitle}>📍 Etkinlik Haritası</Text>
-              {isLoadingMapEvents ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-            </View>
-            <View style={styles.mapDateFilterRow}>
-              <Chip label="Tümü" active={mapDateFilter === "all"} onPress={() => setMapDateFilter("all")} />
-              <Chip label="Bugün" active={mapDateFilter === "today"} onPress={() => setMapDateFilter("today")} />
-              <Chip label="Bu Hafta" active={mapDateFilter === "week"} onPress={() => setMapDateFilter("week")} />
-            </View>
-            <EventsMapView
-              events={filteredMapEvents}
-              centerLatitude={userCoords?.latitude ?? 41.0082}
-              centerLongitude={userCoords?.longitude ?? 28.9784}
-              onSelectEvent={setSelectedMapEvent}
-              selectedEventId={selectedMapEvent?.id ?? null}
-              height={360}
-            />
-
-            {/* Selected Event Card Overlay */}
-            {selectedMapEvent && (
-              <View style={styles.mapCallout}>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={styles.calloutTitle}>{selectedMapEvent.title}</Text>
-                  <Text style={styles.calloutText} numberOfLines={1}>{selectedMapEvent.location_name}</Text>
-                  <Text style={styles.calloutText}>{getEventDistanceLabel(selectedMapEvent) || "Mesafe hesaplanamadı"}</Text>
-                </View>
-                <View style={{ gap: spacing.xs }}>
-                  <Pressable style={styles.calloutDetailBtn} onPress={() => goToDetail(selectedMapEvent)}>
-                    <Text style={styles.calloutDetailBtnText}>Detay</Text>
-                  </Pressable>
-                  <Pressable style={styles.calloutCloseBtn} onPress={() => setSelectedMapEvent(null)}>
-                    <Text style={styles.calloutCloseBtnText}>Kapat</Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-          </View>
-        ) : isLoadingMore ? (
+        isLoadingMore && !isMapView ? (
           <View style={styles.footerLoader}>
-            <ActivityIndicator color={colors.primary} />
+            <ActivityIndicator color={accentColor} />
           </View>
         ) : null
       }
       ListHeaderComponent={
         <View style={styles.headerArea}>
           <View style={styles.topRow}>
-            <View style={{ flexDirection: "row", gap: spacing.xs }}>
-              <Pressable style={styles.locationPill} onPress={() => setIsCityPickerVisible(true)}>
-                <Feather name="map-pin" size={14} color={colors.textPrimary} />
-                <Text style={styles.locationText}>{cityLabel}</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.sortPill, isMapView && { backgroundColor: colors.primaryMuted }]}
-                onPress={() => setIsMapView(!isMapView)}
-              >
-                <Feather name={isMapView ? "list" : "map"} size={12} color={colors.primary} />
-                <Text style={styles.sortText}>{isMapView ? "Liste" : "Harita"}</Text>
-              </Pressable>
-            </View>
+            <Text style={styles.brandTitle}>FindYourBuddy</Text>
             <View style={styles.headerActions}>
               <Pressable
                 style={styles.iconButton}
@@ -498,48 +451,31 @@ export function DiscoverScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Profilim"
               >
-                <Avatar name={user?.display_name ?? "?"} photoUrl={user?.photo_url} size={36} />
+                <Avatar name={user?.display_name ?? "?"} photoUrl={user?.photo_url} isVerified={user?.is_verified} size={36} />
               </Pressable>
             </View>
           </View>
 
-          {!isMapView ? (
-            <>
-              <Text style={[typeScale.display, styles.title]}>
-                Bugün ne yapmak istersin, {user?.display_name ?? ""}?
-              </Text>
+          <Text style={[typeScale.display, styles.title]}>
+            {t("greeting")}, {user?.display_name ?? ""}?
+          </Text>
 
-              {/* Event Search Bar & Sort Button Row */}
+              {/* Event Search Bar */}
               <View style={{ zIndex: 999 }}>
-                <View style={styles.searchSortRow}>
-                  <View style={styles.searchBar}>
-                    <Feather name="search" size={16} color={colors.textSecondary} />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Etkinlik veya mekan ara..."
-                      placeholderTextColor={colors.textSecondary}
-                      value={searchQuery}
-                      onChangeText={setSearchQuery}
-                    />
-                    {searchQuery.trim() ? (
-                      <Pressable onPress={() => setSearchQuery("")}>
-                        <Feather name="x-circle" size={16} color={colors.textSecondary} />
-                      </Pressable>
-                    ) : null}
-                  </View>
-
-                  <Pressable style={styles.sortButton} onPress={openSortPicker} disabled={isLocating}>
-                    {isLocating ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    ) : (
-                      <>
-                        <Feather name="sliders" size={14} color={colors.primary} />
-                        <Text style={styles.sortButtonText}>
-                          {sortBy === "distance" ? "En Yakın" : sortBy === "popularity" ? "Popüler" : "Sırala"}
-                        </Text>
-                      </>
-                    )}
-                  </Pressable>
+                <View style={styles.searchBar}>
+                  <Feather name="search" size={16} color={colors.textSecondary} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder={t("searchPlaceholder")}
+                    placeholderTextColor={colors.textSecondary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                  {searchQuery.trim() ? (
+                    <Pressable onPress={() => setSearchQuery("")}>
+                      <Feather name="x-circle" size={16} color={colors.textSecondary} />
+                    </Pressable>
+                  ) : null}
                 </View>
 
                 {/* Instant Search Suggestions Dropdown Overlay */}
@@ -549,16 +485,16 @@ export function DiscoverScreen() {
                       <View style={styles.dropdownEmptyBox}>
                         <Feather name="alert-circle" size={18} color={colors.textSecondary} />
                         <Text style={styles.dropdownEmptyText}>
-                          “{searchQuery}” ile eşleşen etkinlik bulunamadı.
+                          “{searchQuery}” {t("noMatchFound")}
                         </Text>
                       </View>
                     ) : (
                       <View style={styles.dropdownList}>
                         <Text style={styles.dropdownHeaderTitle}>
-                          Arama Sonuçları ({filteredEvents.length})
+                          {t("searchResultTitle")} ({filteredEvents.length})
                         </Text>
                         {filteredEvents.slice(0, 5).map((event) => {
-                          const categoryMeta = getCategoryMeta(event.category);
+                          const categoryMeta = getCategoryMeta(event.category, language);
                           return (
                             <Pressable
                               key={event.id}
@@ -569,7 +505,7 @@ export function DiscoverScreen() {
                               }}
                             >
                               <View style={styles.dropdownItemIcon}>
-                                <Feather name="calendar" size={16} color={colors.primary} />
+                                <Feather name="calendar" size={16} color={accentColor} />
                               </View>
                               <View style={{ flex: 1, gap: 2 }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -581,7 +517,7 @@ export function DiscoverScreen() {
                                   </View>
                                 </View>
                                 <Text style={styles.dropdownItemSub} numberOfLines={1}>
-                                  📍 {event.location_name}
+                                  📍 {event.location_name} · 🕒 {formatEventDate(event.starts_at, language)}
                                 </Text>
                               </View>
                               <Feather name="chevron-right" size={18} color={colors.textSecondary} />
@@ -601,7 +537,7 @@ export function DiscoverScreen() {
                 keyExtractor={(category) => category.slug}
                 renderItem={({ item }) => (
                   <Chip
-                    label={item.label}
+                    label={language === "en" ? item.labelEn : item.label}
                     active={selectedCategory === item.slug}
                     onPress={() => handleSelectCategory(item.slug)}
                   />
@@ -614,49 +550,121 @@ export function DiscoverScreen() {
                 onPress={() => navigation.navigate("AIRecommendations")}
               >
                 <LinearGradient
-                  colors={["#2D1B6B", "#6C5CE7"]}
+                  colors={["#2D1B6B", accentColor]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.aiMatchingBannerGradient}
                 >
                   <View style={styles.aiMatchingTextCol}>
-                    <Text style={styles.aiMatchingTitle}>✨ AI Kanka Eşleştirici</Text>
-                    <Text style={styles.aiMatchingDesc}>Zodyak element ve ilgi alanı uyumunu hesapla!</Text>
+                    <Text style={styles.aiMatchingTitle}>{t("aiMatchTitle")}</Text>
+                    <Text style={styles.aiMatchingDesc}>{t("aiMatchDesc")}</Text>
                   </View>
                   <View style={styles.aiMatchingBadge}>
-                    <Text style={styles.aiMatchingBadgeText}>Hesapla</Text>
-                    <Feather name="chevron-right" size={14} color={colors.primary} />
+                    <Text style={[styles.aiMatchingBadgeText, { color: accentColor }]}>{t("calculate")}</Text>
+                    <Feather name="chevron-right" size={14} color={accentColor} />
                   </View>
                 </LinearGradient>
               </Pressable>
 
-              {featured ? (
-                <View style={styles.featuredWrapper}>
-                  <EventCard
-                    event={featured}
-                    bookmarked={bookmarkedIds.has(featured.id)}
-                    onToggleBookmark={() => toggleBookmark(featured.id)}
-                    onPressJoin={() => handlePressJoin(featured)}
-                    onPress={() => goToDetail(featured)}
-                    distanceLabel={getEventDistanceLabel(featured)}
-                  />
-                </View>
-              ) : null}
+              {/* Sub-Header Location & Map View Controls Row */}
+              <View style={styles.subHeaderControlsRow}>
+                <Pressable style={styles.locationPill} onPress={() => setIsCityPickerVisible(true)}>
+                  <Feather name="map-pin" size={14} color={colors.textPrimary} />
+                  <Text style={styles.locationText}>{cityLabel}</Text>
+                </Pressable>
+                
+                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+                  <Pressable
+                    style={[styles.sortPill, isMapView && { backgroundColor: `${accentColor}20` }]}
+                    onPress={() => setIsMapView(!isMapView)}
+                  >
+                    <Feather name={isMapView ? "list" : "map"} size={12} color={accentColor} />
+                    <Text style={[styles.sortText, { color: accentColor }]}>{isMapView ? t("list") : t("map")}</Text>
+                  </Pressable>
 
-              {rest.length > 0 ? (
-                <SectionHeader
-                  eyebrow="Hafta Sonu Havası"
-                  title="Yakınındaki Popüler Aktiviteler"
-                  actionLabel="Sırala"
-                  onActionPress={openSortPicker}
-                />
-              ) : null}
-            </>
-          ) : null}
+                  <Pressable style={styles.sortPill} onPress={openSortPicker} disabled={isLocating}>
+                    {isLocating ? (
+                      <ActivityIndicator size="small" color={accentColor} />
+                    ) : (
+                      <>
+                        <Feather name="sliders" size={12} color={accentColor} />
+                        <Text style={[styles.sortText, { color: accentColor }]}>
+                          {sortBy === "distance" ? t("sortByDistance") : sortBy === "popularity" ? t("sortByPopularity") : t("sort")}
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+
+              {isMapView ? (
+                <View style={styles.mapCanvasContainer}>
+                  <View style={styles.mapHeaderRow}>
+                    <Text style={styles.mapCanvasTitle}>📍 {t("map")} ({filteredMapEvents.length})</Text>
+                    {isLoadingMapEvents ? <ActivityIndicator size="small" color={accentColor} /> : null}
+                  </View>
+                  <View style={styles.mapDateFilterRow}>
+                    <Chip label={t("all")} active={mapDateFilter === "all"} onPress={() => setMapDateFilter("all")} />
+                    <Chip label={t("today")} active={mapDateFilter === "today"} onPress={() => setMapDateFilter("today")} />
+                    <Chip label={t("thisWeek")} active={mapDateFilter === "week"} onPress={() => setMapDateFilter("week")} />
+                  </View>
+                  <EventsMapView
+                    events={filteredMapEvents}
+                    centerLatitude={userCoords?.latitude ?? 41.0082}
+                    centerLongitude={userCoords?.longitude ?? 28.9784}
+                    onSelectEvent={setSelectedMapEvent}
+                    selectedEventId={selectedMapEvent?.id ?? null}
+                    height={380}
+                  />
+
+                  {/* Selected Event Callout Overlay */}
+                  {selectedMapEvent && (
+                    <View style={styles.mapCallout}>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={styles.calloutTitle}>{selectedMapEvent.title}</Text>
+                        <Text style={styles.calloutText} numberOfLines={1}>{selectedMapEvent.location_name}</Text>
+                        <Text style={styles.calloutText}>{getEventDistanceLabel(selectedMapEvent) || ""}</Text>
+                      </View>
+                      <View style={{ gap: spacing.xs }}>
+                        <Pressable style={[styles.calloutDetailBtn, { backgroundColor: accentColor }]} onPress={() => goToDetail(selectedMapEvent)}>
+                          <Text style={styles.calloutDetailBtnText}>Detay</Text>
+                        </Pressable>
+                        <Pressable style={styles.calloutCloseBtn} onPress={() => setSelectedMapEvent(null)}>
+                          <Text style={styles.calloutCloseBtnText}>Kapat</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <>
+                  {featured ? (
+                    <View style={styles.featuredWrapper}>
+                      <EventCard
+                        event={featured}
+                        bookmarked={bookmarkedIds.has(featured.id)}
+                        onToggleBookmark={() => toggleBookmark(featured.id)}
+                        onPressJoin={() => handlePressJoin(featured)}
+                        onPress={() => goToDetail(featured)}
+                        distanceLabel={getEventDistanceLabel(featured)}
+                      />
+                    </View>
+                  ) : null}
+
+                  {rest.length > 0 ? (
+                    <SectionHeader
+                      eyebrow={t("weekendVibe")}
+                      title={t("popularNearYou")}
+                      actionLabel={t("sort")}
+                      onActionPress={openSortPicker}
+                    />
+                  ) : null}
+                </>
+              )}
         </View>
       }
       ListEmptyComponent={
-        events.length === 0 && !isRefreshing ? (
+        !isMapView && events.length === 0 && !isRefreshing ? (
           <Text style={styles.emptyText}>
             {selectedCategory
               ? `${getCategoryMeta(selectedCategory).label} kategorisinde şu an etkinlik yok. Başka bir kategori dener misin?`
@@ -664,21 +672,24 @@ export function DiscoverScreen() {
           </Text>
         ) : null
       }
-      renderItem={({ item }) => (
-        <View style={styles.listItemWrapper}>
-          <EventListItem
-            event={item}
-            bookmarked={bookmarkedIds.has(item.id)}
-            onToggleBookmark={() => toggleBookmark(item.id)}
-            onPress={() => goToDetail(item)}
-            distanceLabel={getEventDistanceLabel(item)}
-          />
-        </View>
-      )}
+      renderItem={({ item }) => {
+        if (isMapView) return null;
+        return (
+          <View style={styles.listItemWrapper}>
+            <EventListItem
+              event={item}
+              bookmarked={bookmarkedIds.has(item.id)}
+              onToggleBookmark={() => toggleBookmark(item.id)}
+              onPress={() => goToDetail(item)}
+              distanceLabel={getEventDistanceLabel(item)}
+            />
+          </View>
+        );
+      }}
     />
     <OptionPickerModal
       visible={sortPickerVisible}
-      title="Nasıl sıralansın?"
+      title={language === "en" ? "Sort By" : "Nasıl sıralansın?"}
       options={sortOptions}
       onDismiss={() => setSortPickerVisible(false)}
       selectedKey={sortBy || undefined}
@@ -995,5 +1006,16 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 10,
     color: colors.primary,
+  },
+  brandTitle: {
+    fontFamily: fontFamily.displayBold,
+    fontSize: 22,
+    color: colors.textPrimary,
+  },
+  subHeaderControlsRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    alignItems: "center",
+    marginTop: spacing.xs,
   },
 });

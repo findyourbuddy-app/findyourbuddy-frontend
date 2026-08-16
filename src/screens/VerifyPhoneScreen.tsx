@@ -6,8 +6,11 @@ import { getCurrentUser } from "../api/users";
 import { useAuth } from "../context/AuthContext";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function VerifyPhoneScreen() {
   const { user, updateUser, signOut } = useAuth();
+  const { bgGradient } = useAppTheme();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,7 +48,7 @@ export function VerifyPhoneScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: bgGradient[0] }]}>
       <Text style={styles.title}>Telefon Numaranı Doğrula</Text>
       <Text style={styles.subtitle}>
         {user?.phone_number} numarasına gönderilen 6 haneli doğrulama kodunu gir.

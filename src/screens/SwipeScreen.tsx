@@ -32,10 +32,13 @@ type SwipeNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<MainStackParamList>
 >;
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function SwipeScreen() {
   const navigation = useNavigation<SwipeNavigationProp>();
   const route = useRoute<RouteProp<MainTabParamList, "Swipe">>();
   const { isPremium, user, updateUser } = useAuth();
+  const { t, language, accentColor, bgGradient } = useAppTheme();
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
   const [candidates, setCandidates] = useState<User[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -252,11 +255,11 @@ export function SwipeScreen() {
   }
 
   return (
-    <View style={styles.background}>
+    <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={typeScale.eyebrow}>Yakınındaki Kankalar</Text>
-          <Text style={typeScale.h1}>Bir sonraki kankan kim?</Text>
+          <Text style={typeScale.eyebrow}>{t("buddiesNearYou")}</Text>
+          <Text style={typeScale.h1}>{t("whoIsNextBuddy")}</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable
@@ -304,20 +307,20 @@ export function SwipeScreen() {
           style={[styles.tabButton, activeTab === "system" && styles.tabButtonActive]}
           onPress={() => setActiveTab("system")}
           accessibilityRole="button"
-          accessibilityLabel="Sistem Etkinlikleri"
+          accessibilityLabel={t("systemEvents")}
         >
           <Text style={[styles.tabButtonText, activeTab === "system" && styles.tabButtonTextActive]}>
-            Sistem Etkinlikleri
+            {t("systemEvents")}
           </Text>
         </Pressable>
         <Pressable
           style={[styles.tabButton, activeTab === "user" && styles.tabButtonActive]}
           onPress={() => setActiveTab("user")}
           accessibilityRole="button"
-          accessibilityLabel="Kullanıcı Etkinlikleri"
+          accessibilityLabel={t("userEvents")}
         >
           <Text style={[styles.tabButtonText, activeTab === "user" && styles.tabButtonTextActive]}>
-            Kullanıcı Etkinlikleri
+            {t("userEvents")}
           </Text>
         </Pressable>
       </View>
@@ -330,7 +333,7 @@ export function SwipeScreen() {
           >
             <Feather name="user" size={13} color={userSubTab === "birebir" ? colors.primary : colors.textSecondary} />
             <Text style={[styles.subTabButtonText, userSubTab === "birebir" && styles.subTabButtonTextActive]}>
-              Birebir (1-on-1)
+              {language === "en" ? "1-on-1 Buddy" : "Birebir (1-on-1)"}
             </Text>
           </Pressable>
           <Pressable
@@ -339,7 +342,7 @@ export function SwipeScreen() {
           >
             <Feather name="users" size={13} color={userSubTab === "group" ? colors.primary : colors.textSecondary} />
             <Text style={[styles.subTabButtonText, userSubTab === "group" && styles.subTabButtonTextActive]}>
-              Grup Etkinlikleri
+              {language === "en" ? "Group Events" : "Grup Etkinlikleri"}
             </Text>
           </Pressable>
         </View>
@@ -378,10 +381,14 @@ export function SwipeScreen() {
             </View>
           ) : userGroupEvents.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyText}>Henüz kullanıcılar tarafından grup etkinliği oluşturulmadı.</Text>
+              <Text style={styles.emptyText}>
+                {language === "en"
+                  ? "No group events have been created by users yet."
+                  : "Henüz kullanıcılar tarafından grup etkinliği oluşturulmadı."}
+              </Text>
               <View style={{ marginTop: spacing.md }}>
                 <PrimaryButton
-                  label="Grup Etkinliği Oluştur"
+                  label={language === "en" ? "Create Group Event" : "Grup Etkinliği Oluştur"}
                   onPress={() => navigation.navigate("CreateEvent")}
                 />
               </View>
@@ -395,7 +402,9 @@ export function SwipeScreen() {
                     <View style={styles.attendeesBadge}>
                       <Feather name="users" size={12} color={colors.primary} />
                       <Text style={styles.attendeesBadgeText}>
-                        Max {event.max_attendees ?? "∞"} Katılımcı ({event.attendee_count} Katıldı)
+                        {language === "en"
+                          ? `Max ${event.max_attendees ?? "∞"} Attendees (${event.attendee_count} Joined)`
+                          : `Max ${event.max_attendees ?? "∞"} Katılımcı (${event.attendee_count} Katıldı)`}
                       </Text>
                     </View>
                   </View>
@@ -406,15 +415,19 @@ export function SwipeScreen() {
                   <View style={styles.groupCardFooter}>
                     <View style={styles.creatorInfo}>
                       <Avatar
-                        name={event.creator?.display_name ?? "Kullanıcı"}
+                        name={event.creator?.display_name ?? (language === "en" ? "User" : "Kullanıcı")}
                         photoUrl={isPremium || !event.creator ? (event.creator?.photo_url ?? null) : null}
                         size={36}
                       />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.creatorNameText}>
-                          {isPremium ? (event.creator?.display_name ?? "Kullanıcı") : "🔒 Gizli Oluşturan (Premium)"}
+                          {isPremium
+                            ? (event.creator?.display_name ?? (language === "en" ? "User" : "Kullanıcı"))
+                            : (language === "en" ? "🔒 Hidden Organizer (Premium)" : "🔒 Gizli Oluşturan (Premium)")}
                         </Text>
-                        <Text style={styles.creatorSubText}>Etkinlik Oluşturanı</Text>
+                        <Text style={styles.creatorSubText}>
+                          {language === "en" ? "Event Organizer" : "Etkinlik Oluşturanı"}
+                        </Text>
                       </View>
                     </View>
 
@@ -423,7 +436,9 @@ export function SwipeScreen() {
                       onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
                     >
                       <Text style={styles.groupCardActionText}>
-                        {event.is_attending ? "Detaylar & Sohbet" : "Başvur / Katıl"}
+                        {event.is_attending
+                          ? (language === "en" ? "Details & Chat" : "Detaylar & Sohbet")
+                          : (language === "en" ? "Apply / Join" : "Başvur / Katıl")}
                       </Text>
                     </Pressable>
                   </View>
@@ -440,18 +455,20 @@ export function SwipeScreen() {
             {activeTab === "user" ? (
               <>
                 <Text style={styles.emptyText}>
-                  Bu sekmede kaydırabilmek için önce bir kullanıcı etkinliğine katıldığını belirtmen gerekiyor.
+                  {language === "en"
+                    ? "To swipe in this tab, you need to join a user event first."
+                    : "Bu sekmede kaydırabilmek için önce bir kullanıcı etkinliğine katıldığını belirtmen gerekiyor."}
                 </Text>
                 <View style={{ marginTop: spacing.md }}>
                   <PrimaryButton
-                    label="Etkinlik Bul"
+                    label={language === "en" ? "Find Events" : "Etkinlik Bul"}
                     onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
                   />
                 </View>
               </>
             ) : (
               <Text style={styles.emptyText}>
-                Yaklaşan etkinlik yok. Önce Keşfet sekmesinden bir etkinlik seç.
+                {t("noUpcomingEventsChooseInDiscover")}
               </Text>
             )}
           </View>
@@ -522,7 +539,7 @@ export function SwipeScreen() {
 
       <OptionPickerModal
         visible={eventPickerVisible}
-        title="Etkinlik Değiştir"
+        title={language === "en" ? "Change Event" : "Etkinlik Değiştir"}
         options={eventPickerOptions}
         onDismiss={() => setEventPickerVisible(false)}
       />
@@ -538,9 +555,9 @@ export function SwipeScreen() {
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeaderRow}>
               <Feather name="shopping-bag" size={22} color={colors.primary} />
-              <Text style={typeScale.h1}>Buddy Mağazası 💎</Text>
+              <Text style={typeScale.h1}>{t("buddyStore")}</Text>
             </View>
-            <Text style={styles.storeSubtitle}>Ekstra güçlerle kankaları daha hızlı bul ve öne çık!</Text>
+            <Text style={styles.storeSubtitle}>{t("buddyStoreSub")}</Text>
 
             <View style={styles.storeList}>
               <View style={styles.storeItem}>
@@ -549,12 +566,12 @@ export function SwipeScreen() {
                     <Feather name="zap" size={18} color="#F1C40F" />
                   </View>
                   <View>
-                    <Text style={styles.storeItemTitle}>1 Adet Spotlight (Boost)</Text>
-                    <Text style={styles.storeItemDesc}>Profilini 30 dk boyunca en üste taşır.</Text>
+                    <Text style={styles.storeItemTitle}>{t("oneSpotlight")}</Text>
+                    <Text style={styles.storeItemDesc}>{t("spotlightBoostDesc")}</Text>
                   </View>
                 </View>
                 <Pressable style={styles.purchaseBtn} onPress={() => handlePurchase("boost")}>
-                  <Text style={styles.purchaseBtnText}>39 TL</Text>
+                  <Text style={styles.purchaseBtnText}>{language === "en" ? "$3.99" : "39 ₺"}</Text>
                 </Pressable>
               </View>
 
@@ -564,12 +581,12 @@ export function SwipeScreen() {
                     <Feather name="star" size={18} color="#2E7FC9" />
                   </View>
                   <View>
-                    <Text style={styles.storeItemTitle}>5 Adet Süper Beğeni</Text>
-                    <Text style={styles.storeItemDesc}>Kankalarına anında fark edil.</Text>
+                    <Text style={styles.storeItemTitle}>{t("fiveSuperLikes")}</Text>
+                    <Text style={styles.storeItemDesc}>{t("superLikesDesc")}</Text>
                   </View>
                 </View>
                 <Pressable style={styles.purchaseBtn} onPress={() => handlePurchase("super_likes")}>
-                  <Text style={styles.purchaseBtnText}>19 TL</Text>
+                  <Text style={styles.purchaseBtnText}>{language === "en" ? "$1.99" : "19 ₺"}</Text>
                 </Pressable>
               </View>
 
@@ -579,18 +596,18 @@ export function SwipeScreen() {
                     <Feather name="heart" size={18} color={colors.primary} />
                   </View>
                   <View>
-                    <Text style={styles.storeItemTitle}>50 Ekstra Kaydırma</Text>
-                    <Text style={styles.storeItemDesc}>Limitlerini anında sıfırla.</Text>
+                    <Text style={styles.storeItemTitle}>{t("fiftyExtraSwipes")}</Text>
+                    <Text style={styles.storeItemDesc}>{t("extraSwipesDesc")}</Text>
                   </View>
                 </View>
                 <Pressable style={styles.purchaseBtn} onPress={() => handlePurchase("swipes")}>
-                  <Text style={styles.purchaseBtnText}>29 TL</Text>
+                  <Text style={styles.purchaseBtnText}>{language === "en" ? "$2.99" : "29 ₺"}</Text>
                 </Pressable>
               </View>
             </View>
 
             <Pressable style={styles.closeBtn} onPress={() => setStoreVisible(false)}>
-              <Text style={styles.closeBtnText}>Kapat</Text>
+              <Text style={styles.closeBtnText}>{t("close")}</Text>
             </Pressable>
           </Pressable>
         </Pressable>

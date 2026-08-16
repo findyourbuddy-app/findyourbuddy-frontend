@@ -121,14 +121,33 @@ export function ChatListItem({ match, currentUserId, onPress, onBlocked }: ChatL
       </View>
       <Animated.View style={[styles.container, { transform: [{ translateX }] }]} {...panResponder.panHandlers}>
         <Pressable style={styles.pressableContent} onPress={isOpen ? closeReveal : onPress}>
-          <Avatar name={match.other_user.display_name} photoUrl={match.other_user.photo_url} size={48} />
+          <Avatar
+            name={match.other_user.display_name}
+            photoUrl={match.other_user.photo_url}
+            isVerified={match.other_user.is_verified}
+            size={48}
+          />
           <View style={styles.textColumn}>
             <View style={styles.topRow}>
-              <Text style={[styles.name, isUnread && styles.unreadText]}>{match.other_user.display_name}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 4 }}>
+                <Text style={[styles.name, isUnread && styles.unreadText]} numberOfLines={1}>
+                  {match.other_user.display_name}
+                </Text>
+              </View>
               {lastMessage ? (
                 <Text style={styles.time}>{formatRelativeTimestamp(lastMessage.created_at)}</Text>
               ) : null}
             </View>
+
+            {match.event_title ? (
+              <View style={styles.eventPill}>
+                <Feather name="calendar" size={10} color={colors.primary} />
+                <Text style={styles.eventPillText} numberOfLines={1}>
+                  {match.event_title}
+                </Text>
+              </View>
+            ) : null}
+
             <Text style={[styles.preview, isUnread && styles.unreadText]} numberOfLines={1}>
               {lastMessage ? lastMessage.content : "Henüz mesaj yok, ilk sen yaz!"}
             </Text>
@@ -214,5 +233,21 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: colors.accentRed,
+  },
+  eventPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: colors.primaryMuted,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    marginVertical: 2,
+  },
+  eventPillText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 10,
+    color: colors.primary,
   },
 });

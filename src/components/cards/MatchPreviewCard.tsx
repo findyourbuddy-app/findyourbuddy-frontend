@@ -7,6 +7,8 @@ import { colors, fontFamily, radius, spacing } from "../../theme";
 import { formatMatchScore } from "../../utils/match";
 import type { Match } from "../../types";
 
+import { useAppTheme } from "../../context/ThemeContext";
+
 interface MatchPreviewCardProps {
   match: Match;
   subtitle?: string;
@@ -14,6 +16,8 @@ interface MatchPreviewCardProps {
 }
 
 export function MatchPreviewCard({ match, subtitle, onPressMessage }: MatchPreviewCardProps) {
+  const { language } = useAppTheme();
+
   return (
     <LinearGradient colors={[colors.primary, "#4E32C4"]} style={styles.card}>
       <View style={styles.topRow}>
@@ -26,7 +30,7 @@ export function MatchPreviewCard({ match, subtitle, onPressMessage }: MatchPrevi
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
       </View>
-      <PrimaryButton label="📍 Mesaj Gönder" onPress={onPressMessage} variant="outline" />
+      <PrimaryButton label={language === "en" ? "📍 Send Message" : "📍 Mesaj Gönder"} onPress={onPressMessage} variant="outline" />
     </LinearGradient>
   );
 }

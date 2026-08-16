@@ -22,13 +22,17 @@ import {
   uploadEventTicket,
 } from "../api/events";
 import { Avatar } from "../components/ui/Avatar";
+import { FormattedHtmlText } from "../components/ui/FormattedHtmlText";
 import { getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
+import { cleanHtmlText } from "../utils/text";
 import { formatEventDate } from "../utils/date";
 import { hasValidCoordinates } from "../utils/location";
 import { useAuth } from "../context/AuthContext";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event, User } from "../types";
+
+import { useAppTheme } from "../context/ThemeContext";
 
 type Props = NativeStackScreenProps<MainStackParamList, "EventDetail">;
 
@@ -36,6 +40,7 @@ export function EventDetailScreen({ route }: Props) {
   const { eventId } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user, isPremium } = useAuth();
+  const { t, accentColor, bgGradient, language } = useAppTheme();
   const [event, setEvent] = useState<Event | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -229,10 +234,10 @@ export function EventDetailScreen({ route }: Props) {
     );
   }
 
-  const category = getCategoryMeta(event.category);
+  const category = getCategoryMeta(event.category, language);
 
   return (
-    <ScrollView style={styles.background} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
       <View style={styles.banner}>
         {event.image_url ? (
           <Image source={{ uri: event.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -245,7 +250,7 @@ export function EventDetailScreen({ route }: Props) {
         )}
         {event.creator_id ? (
           <View style={styles.badgeSlot}>
-            <Badge label="Kullanıcı Etkinliği" variant="primary" />
+            <Badge label={language === "en" ? "User Event" : "Kullanıcı Etkinliği"} variant="primary" />
           </View>
         ) : null}
         <Pressable style={styles.bookmark} onPress={toggleBookmark}>
@@ -262,7 +267,7 @@ export function EventDetailScreen({ route }: Props) {
 
         <View style={styles.metaRow}>
           <Feather name="clock" size={16} color={colors.textSecondary} />
-          <Text style={styles.metaText}>{formatEventDate(event.starts_at)}</Text>
+          <Text style={styles.metaText}>{formatEventDate(event.starts_at, language)}</Text>
         </View>
         {hasValidCoordinates(event.latitude, event.longitude) ? (
           <Pressable style={styles.metaRow} onPress={handleOpenMap}>
@@ -310,7 +315,7 @@ export function EventDetailScreen({ route }: Props) {
           </View>
         ) : null}
 
-        {event.description ? <Text style={styles.description}>{event.description}</Text> : null}
+        {event.description ? <FormattedHtmlText html={event.description} /> : null}
 
         {event.creator && (
           <View style={styles.creatorSection}>

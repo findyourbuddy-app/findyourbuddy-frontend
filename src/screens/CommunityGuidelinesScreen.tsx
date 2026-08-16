@@ -47,15 +47,18 @@ const GUIDELINES: GuidelineItem[] = [
   },
 ];
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function CommunityGuidelinesScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { bgGradient, language } = useAppTheme();
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
   };
 
   return (
-    <ScrollView style={styles.background} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
       <Text style={typeScale.display}>Topluluk Kuralları</Text>
       <Text style={styles.subtitle}>
         FindYourBuddy topluluğunun tüm üyeleri için daha güvenli, samimi ve keyifli bir ortam yaratmak adına lütfen aşağıdaki kurallara özen gösterin.

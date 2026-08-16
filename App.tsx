@@ -23,6 +23,8 @@ Notifications.setNotificationHandler({
   }),
 });
 
+import { ThemeProvider } from "./src/context/ThemeContext";
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     Baloo2_700Bold,
@@ -45,11 +47,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <AuthProvider>
-          <MessagesProvider>
-            <RootNavigator />
-          </MessagesProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <MessagesProvider>
+              <RootNavigator />
+            </MessagesProvider>
+          </AuthProvider>
+        </ThemeProvider>
         <StatusBar style="dark" />
       </View>
     </SafeAreaProvider>

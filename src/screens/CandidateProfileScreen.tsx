@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
@@ -8,14 +8,17 @@ import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-n
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
 import { formatMemberSince, isNewMember } from "../utils/date";
+import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
+import { useAppTheme } from "../context/ThemeContext";
 
 type Props = NativeStackScreenProps<MainStackParamList, "CandidateProfile">;
 
 export function CandidateProfileScreen({ route }: Props) {
   const { candidate, onSwipeLeft, onSwipeRight, onSwipeUp } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { bgGradient, language } = useAppTheme();
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
 
   function act(action: () => void): void {
@@ -30,24 +33,34 @@ export function CandidateProfileScreen({ route }: Props) {
     }
   }
 
+  const [locationName, setLocationName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (hasValidCoordinates(candidate.latitude, candidate.longitude)) {
+      resolveCityDistrict(candidate.latitude, candidate.longitude).then(setLocationName);
+    }
+  }, [candidate.latitude, candidate.longitude]);
+
   // Extract all photos (main photo_url + photos array)
   const allPhotoUrls: string[] = [];
   if (candidate.photo_url) {
     allPhotoUrls.push(candidate.photo_url);
   }
-  candidate.photos.forEach((p) => {
-    if (p.photo_url && !allPhotoUrls.includes(p.photo_url)) {
-      allPhotoUrls.push(p.photo_url);
-    }
-  });
+  if (candidate.photos && candidate.photos.length > 0) {
+    candidate.photos.forEach((p) => {
+      if (p.photo_url && !allPhotoUrls.includes(p.photo_url)) {
+        allPhotoUrls.push(p.photo_url);
+      }
+    });
+  }
 
-  const photo1 = allPhotoUrls[0];
-  const photo2 = allPhotoUrls[1];
-  const photo3 = allPhotoUrls[2];
+  const photo1 = allPhotoUrls[0] || null;
+  const photo2 = allPhotoUrls[1] || null;
+  const photo3 = allPhotoUrls[2] || null;
   const remainingPhotos = allPhotoUrls.slice(3);
 
   return (
-    <View style={styles.background}>
+    <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* SECTION 1: Main Photo 1 Hero with overlay */}
         <View style={styles.mainPhotoCard}>
@@ -67,10 +80,19 @@ export function CandidateProfileScreen({ route }: Props) {
                 {candidate.display_name}
                 {candidate.age ? `, ${candidate.age}` : ""}
               </Text>
-              {candidate.verification_status === "verified" ? (
-                <Feather name="check-circle" size={20} color="#20E290" style={{ marginLeft: 6 }} />
+              {candidate.is_verified || candidate.verification_status === "verified" ? (
+                <Feather name="check-circle" size={20} color="#1DA1F2" style={{ marginLeft: 6 }} />
               ) : null}
             </View>
+
+            {locationName ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                <Feather name="map-pin" size={13} color="rgba(255,255,255,0.9)" />
+                <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
+                  {locationName}
+                </Text>
+              </View>
+            ) : null}
 
             <View style={styles.badgeRow}>
               {candidate.trust_score > 0 ? (
@@ -88,7 +110,7 @@ export function CandidateProfileScreen({ route }: Props) {
               ) : null}
               {candidate.zodiac_sign ? (
                 <View style={styles.trustBadge}>
-                  <Text style={styles.trustText}>🔮 {candidate.zodiac_sign}</Text>
+                  <Text style={styles.trustText}>{candidate.zodiac_sign}</Text>
                 </View>
               ) : null}
             </View>

@@ -54,9 +54,30 @@ const LOOKING_FOR_OPTIONS = [
 
 const MAX_PHOTOS = 6;
 
+export function formatBirthDateInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+}
+
+export function parseBirthDateToISO(formatted: string): string {
+  const digits = formatted.replace(/\D/g, "");
+  if (digits.length === 8) {
+    const day = digits.slice(0, 2);
+    const month = digits.slice(2, 4);
+    const year = digits.slice(4, 8);
+    return `${year}-${month}-${day}`;
+  }
+  return formatted;
+}
+
+import { useAppTheme } from "../context/ThemeContext";
+
 export function OnboardingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, updateUser, clearJustRegistered } = useAuth();
+  const { bgGradient } = useAppTheme();
 
   const [step, setStep] = useState(1);
   const [displayName, setDisplayName] = useState(user?.display_name || "");
@@ -274,7 +295,7 @@ export function OnboardingScreen() {
     try {
       const res = await apiClient.patch<User>("/users/me", {
         display_name: displayName.trim(),
-        date_of_birth: dateOfBirth.trim(),
+        date_of_birth: parseBirthDateToISO(dateOfBirth.trim()),
         gender: gender || undefined,
         zodiac_sign: zodiacSign || undefined,
         looking_for: lookingFor || undefined,
@@ -310,7 +331,7 @@ export function OnboardingScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: bgGradient[0] }]}>
       {/* Header Progress Bar */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profilini Oluştur ✨</Text>
@@ -345,13 +366,15 @@ export function OnboardingScreen() {
 
             {/* Birth Date */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Doğum Tarihi (YYYY-AA-GG)</Text>
+              <Text style={styles.fieldLabel}>Doğum Tarihi (GG-AA-YYYY)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Örn. 1998-05-15"
+                placeholder="Örn. 25-04-1998"
                 placeholderTextColor={colors.textSecondary}
+                keyboardType="number-pad"
+                maxLength={10}
                 value={dateOfBirth}
-                onChangeText={setDateOfBirth}
+                onChangeText={(text) => setDateOfBirth(formatBirthDateInput(text))}
               />
             </View>
 
@@ -371,7 +394,7 @@ export function OnboardingScreen() {
 
             {/* Zodiac Sign Picker Button */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Burç 🔮</Text>
+              <Text style={styles.fieldLabel}>Burç</Text>
               <TouchableOpacity
                 style={styles.selectButton}
                 onPress={() => setZodiacPickerVisible(true)}

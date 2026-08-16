@@ -47,9 +47,12 @@ const MAX_GALLERY_PHOTOS = 6;
 
 type EditProfileNavigationProp = NativeStackNavigationProp<MainStackParamList, "EditProfile">;
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function EditProfileScreen() {
   const navigation = useNavigation<EditProfileNavigationProp>();
   const { user, updateUser, justRegistered, clearJustRegistered } = useAuth();
+  const { t, accentColor, bgGradient, language } = useAppTheme();
 
   const initialBirthDate = user?.date_of_birth ? new Date(user.date_of_birth) : null;
   const [birthDay, setBirthDay] = useState(
@@ -199,6 +202,60 @@ export function EditProfileScreen() {
     setLocationPickerVisible(false);
   }
 
+  const [isVerifyingPhoto, setIsVerifyingPhoto] = useState(false);
+
+  async function handleVerifyPhoto(): Promise<void> {
+    if (!user?.photo_url) {
+      Alert.alert("Profil Fotoğrafı Gerekli", "Doğrulama yapabilmek için lütfen önce ana profil fotoğrafı yükleyin.");
+      return;
+    }
+
+    try {
+      const cameraPerm = await ImagePicker.requestCameraPermissionsAsync();
+      if (cameraPerm.status !== "granted") {
+        Alert.alert(
+          "Kamera İzni Gerekli",
+          "Mavi Tik 🔵 doğrulaması için ön kamera ile anlık selfie çekilmesi zorunludur. Lütfen kamera iznini onaylayın."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        cameraType: ImagePicker.CameraType.front,
+        quality: 0.8,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+
+      if (result.canceled || !result.assets?.[0]) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      setIsVerifyingPhoto(true);
+      const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "selfie.jpg";
+      const uploadedUser = await uploadProfilePhoto(asset.uri, fileName);
+      const res = await apiClient.post("/users/me/verify-photo", {
+        selfie_photo_url: uploadedUser.photo_url,
+      });
+
+      if (res.data?.verified) {
+        updateUser({ ...uploadedUser, is_verified: true });
+        Alert.alert(
+          "Doğrulama Başarılı! 🔵",
+          `${res.data.message || "Profiliniz başarıyla doğrulandı!"}\n\nE-posta adresinize (${user.email}) doğrulama onay mesajı gönderilmiştir.`
+        );
+      } else {
+        Alert.alert("Doğrulama Başarısız", res.data?.message || "Selfie profil fotoğrafınızla uyuşmadı.");
+      }
+    } catch {
+      Alert.alert("Hata", "Fotoğraf doğrulaması sırasında bir sorun oluştu. Lütfen tekrar deneyin.");
+    } finally {
+      setIsVerifyingPhoto(false);
+    }
+  }
+
   async function handlePickPhoto(): Promise<void> {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
@@ -244,6 +301,8 @@ export function EditProfileScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.8,
+      allowsEditing: true,
+      aspect: [1, 1],
     });
     const asset = result.assets?.[0];
     if (result.canceled || !asset) {
@@ -350,7 +409,7 @@ export function EditProfileScreen() {
         setError("Lütfen geçerli bir doğum tarihi gir (18-99 yaş arası).");
         return;
       }
-      birthDateIso = new Date(year, month - 1, day).toISOString().slice(0, 10);
+      birthDateIso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     }
 
     setIsSaving(true);
@@ -380,7 +439,7 @@ export function EditProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.background} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
       {justRegistered ? (
         <View style={styles.welcomeHeader}>
           <Text style={typeScale.h1}>Hoş geldin, {user.display_name}! 👋</Text>
@@ -396,7 +455,7 @@ export function EditProfileScreen() {
 
       <View style={styles.avatarSection}>
         <Pressable onPress={handlePickPhoto} disabled={isUploadingPhoto}>
-          <Avatar name={user.display_name} photoUrl={user.photo_url} size={96} />
+          <Avatar name={user.display_name} photoUrl={user.photo_url} isVerified={user.is_verified} size={96} />
           <View style={styles.avatarBadge}>
             <Feather name={isUploadingPhoto ? "loader" : "camera"} size={14} color={colors.surface} />
           </View>
@@ -404,33 +463,33 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentBlue]}>
-        <IconSectionHeader icon="user" color="#2E7FC9" label="Kimlik" />
+        <IconSectionHeader icon="user" color="#2E7FC9" label={t("identity")} />
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>İsim</Text>
+          <Text style={styles.fieldLabel}>{t("name")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Adın Soyadın"
+            placeholder={language === "en" ? "Full Name" : "Adın Soyadın"}
             placeholderTextColor={colors.textSecondary}
             value={displayName}
             onChangeText={setDisplayName}
           />
         </View>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Cinsiyet</Text>
+          <Text style={styles.fieldLabel}>{t("gender")}</Text>
           <Pressable style={styles.inputPressable} onPress={() => setGenderPickerVisible(true)}>
             <Text style={[styles.inputText, !gender && { color: colors.textSecondary }]}>
-              {gender || "Cinsiyetini seç..."}
+              {gender ? (gender === "Kadın" && language === "en" ? t("female") : gender === "Erkek" && language === "en" ? t("male") : gender) : (language === "en" ? "Select gender..." : "Cinsiyetini seç...")}
             </Text>
             <Feather name="chevron-down" size={16} color={colors.textSecondary} />
           </Pressable>
         </View>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Doğum Tarihi</Text>
+          <Text style={styles.fieldLabel}>{t("birthDate")}</Text>
           <View style={styles.birthDateRow}>
             <TextInput
               style={[styles.input, styles.birthDateInput]}
               keyboardType="number-pad"
-              placeholder="GG"
+              placeholder="DD"
               placeholderTextColor={colors.textSecondary}
               value={birthDay}
               onChangeText={setBirthDay}
@@ -439,7 +498,7 @@ export function EditProfileScreen() {
             <TextInput
               style={[styles.input, styles.birthDateInput]}
               keyboardType="number-pad"
-              placeholder="AA"
+              placeholder="MM"
               placeholderTextColor={colors.textSecondary}
               value={birthMonth}
               onChangeText={setBirthMonth}
@@ -457,7 +516,7 @@ export function EditProfileScreen() {
           </View>
           {birthDay && birthMonth && birthYear && isValidBirthDate(Number(birthDay), Number(birthMonth), Number(birthYear)) ? (
             <Text style={styles.charCount}>
-              Yaş: {calculateAge(new Date(Number(birthYear), Number(birthMonth) - 1, Number(birthDay)))}
+              {t("age")}: {calculateAge(new Date(Number(birthYear), Number(birthMonth) - 1, Number(birthDay)))}
             </Text>
           ) : null}
         </View>
@@ -465,7 +524,7 @@ export function EditProfileScreen() {
 
       <View style={[styles.groupCard, styles.cardAccentPink]}>
         <View style={styles.bioHeader}>
-          <IconSectionHeader icon="image" color="#D9427F" label="Fotoğraflar" />
+          <IconSectionHeader icon="image" color="#D9427F" label={t("photos")} />
           <Text style={styles.charCount}>
             {photos.length}/{MAX_GALLERY_PHOTOS}
           </Text>
@@ -499,12 +558,12 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentTeal]}>
-        <IconSectionHeader icon="briefcase" color="#2FA88B" label="Eğitim & Kariyer" />
+        <IconSectionHeader icon="briefcase" color="#2FA88B" label={t("careerAndEdu")} />
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Meslek</Text>
+          <Text style={styles.fieldLabel}>{t("occupation")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Örn. Yazılım Mühendisi"
+            placeholder={language === "en" ? "e.g. Software Engineer" : "Örn. Yazılım Mühendisi"}
             placeholderTextColor={colors.textSecondary}
             value={occupation}
             onChangeText={(text) => setOccupation(text.slice(0, MAX_OCCUPATION_LENGTH))}
@@ -512,10 +571,10 @@ export function EditProfileScreen() {
           />
         </View>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Üniversite / Okul</Text>
+          <Text style={styles.fieldLabel}>{t("universityOrSchool")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Örn. İstanbul Üniversitesi"
+            placeholder={language === "en" ? "e.g. Istanbul University" : "Örn. İstanbul Üniversitesi"}
             placeholderTextColor={colors.textSecondary}
             value={university}
             onChangeText={setUniversity}
@@ -524,21 +583,21 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentPurple]}>
-        <IconSectionHeader icon="compass" color={colors.primary} label="Kişilik & Tercihler" />
+        <IconSectionHeader icon="compass" color={colors.primary} label={t("personalityAndPreferences")} />
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Burç</Text>
+          <Text style={styles.fieldLabel}>{t("zodiacSign")}</Text>
           <Pressable style={styles.inputPressable} onPress={() => setZodiacPickerVisible(true)}>
             <Text style={[styles.inputText, !zodiacSign && { color: colors.textSecondary }]}>
-              {zodiacSign || "Burcunu seç..."}
+              {zodiacSign || (language === "en" ? "Select zodiac sign..." : "Burcunu seç...")}
             </Text>
             <Feather name="compass" size={16} color={colors.textSecondary} />
           </Pressable>
         </View>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Beklenti / Ne Arıyorsun?</Text>
+          <Text style={styles.fieldLabel}>{t("lookingForIntention")}</Text>
           <Pressable style={styles.inputPressable} onPress={() => setLookingForPickerVisible(true)}>
             <Text style={[styles.inputText, !lookingFor && { color: colors.textSecondary }]}>
-              {lookingFor || "Uygulamada ne aradığını belirt..."}
+              {lookingFor ? (lookingFor === "Sadece Eğlence" && language === "en" ? t("justHavingFun") : lookingFor) : (language === "en" ? "Select intention..." : "Uygulamada ne aradığını belirt...")}
             </Text>
             <Feather name="target" size={16} color={colors.textSecondary} />
           </Pressable>
@@ -546,12 +605,12 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentYellow]}>
-        <IconSectionHeader icon="feather" color="#E0A800" label="Kendini Tanıt" />
+        <IconSectionHeader icon="feather" color="#E0A800" label={t("introduceYourself")} />
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Eğlenceli Detay (Beni yakından tanımak istersen:)</Text>
+          <Text style={styles.fieldLabel}>{t("funDetailPrompt")}</Text>
           <TextInput
             style={[styles.input, styles.bioInput]}
-            placeholder="Örn: Hafta sonları kamp yapmayı ve yeni diller öğrenmeyi severim..."
+            placeholder={language === "en" ? "e.g. I love weekend camping and learning new languages..." : "Örn: Hafta sonları kamp yapmayı ve yeni diller öğrenmeyi severim..."}
             placeholderTextColor={colors.textSecondary}
             value={aboutMePrompt}
             onChangeText={setAboutMePrompt}
@@ -560,14 +619,14 @@ export function EditProfileScreen() {
         </View>
         <View style={styles.field}>
           <View style={styles.bioHeader}>
-            <Text style={styles.fieldLabel}>Hakkında</Text>
+            <Text style={styles.fieldLabel}>{t("aboutMe")}</Text>
             <Text style={styles.charCount}>
               {bio.length}/{MAX_BIO_LENGTH}
             </Text>
           </View>
           <TextInput
             style={[styles.input, styles.bioInput]}
-            placeholder="Kendinden kısaca bahset..."
+            placeholder={language === "en" ? "Tell us briefly about yourself..." : "Kendinden kısaca bahset..."}
             placeholderTextColor={colors.textSecondary}
             value={bio}
             onChangeText={(text) => setBio(text.slice(0, MAX_BIO_LENGTH))}
@@ -578,12 +637,12 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentPurple]}>
-        <IconSectionHeader icon="star" color="#8A2BE2" label="Hobilerim (En Fazla 4 Seçim)" />
+        <IconSectionHeader icon="star" color="#8A2BE2" label={t("hobbies")} />
         <View style={styles.chipGrid}>
           {HOBBIES.map((hobby) => (
             <Chip
               key={hobby.slug}
-              label={hobby.label}
+              label={language === "en" ? hobby.labelEn : hobby.label}
               active={selectedHobbies.has(hobby.slug)}
               onPress={() => toggleHobby(hobby.slug)}
             />
@@ -592,12 +651,12 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentGreen]}>
-        <IconSectionHeader icon="heart" color={colors.accentGreen} label="Yapmak İstediğim Aktiviteler" />
+        <IconSectionHeader icon="heart" color={colors.accentGreen} label={t("interests")} />
         <View style={styles.chipGrid}>
           {INTERESTS.map((interest) => (
             <Chip
               key={interest.slug}
-              label={interest.label}
+              label={language === "en" ? interest.labelEn : interest.label}
               active={selectedInterests.has(interest.slug)}
               onPress={() => toggleInterest(interest.slug)}
             />
@@ -606,12 +665,12 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentPink]}>
-        <IconSectionHeader icon="mic" color="#D9427F" label="Ses Tanıtımı" />
+        <IconSectionHeader icon="mic" color="#D9427F" label={t("voiceIntro")} />
         {voiceNoteUrl ? (
           <View style={styles.voiceNoteCard}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 }}>
               <Feather name="mic" size={20} color={colors.primary} />
-              <Text style={styles.voiceNoteTitle}>Ses Tanıtımın Yüklendi</Text>
+              <Text style={styles.voiceNoteTitle}>{language === "en" ? "Voice Intro Uploaded" : "Ses Tanıtımın Yüklendi"}</Text>
             </View>
             <Pressable style={styles.voiceNoteDeleteBtn} onPress={handleDeleteVoiceNote}>
               <Feather name="trash-2" size={16} color={colors.accentRed} />
@@ -620,13 +679,13 @@ export function EditProfileScreen() {
         ) : (
           <Pressable style={styles.voiceNotePlaceholder} onPress={() => setShowRecorderModal(true)}>
             <Feather name="mic" size={20} color={colors.primary} />
-            <Text style={styles.voiceNotePlaceholderText}>Ses Tanıtımı Kaydet (Max 10sn)</Text>
+            <Text style={styles.voiceNotePlaceholderText}>{t("recordVoiceIntro")}</Text>
           </Pressable>
         )}
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentBlue]}>
-        <IconSectionHeader icon="map-pin" color="#2E7FC9" label="Konum" />
+        <IconSectionHeader icon="map-pin" color="#2E7FC9" label={t("location")} />
         {location ? (
           <MapLocationPicker
             latitude={location.latitude}
@@ -635,15 +694,59 @@ export function EditProfileScreen() {
           />
         ) : null}
         <PrimaryButton
-          label={location ? "Konumu Değiştir" : "Konum Seç"}
+          label={location ? t("changeLocation") : (language === "en" ? "Select Location" : "Konum Seç")}
           onPress={() => setLocationPickerVisible(true)}
           variant="outline"
         />
       </View>
+      <View style={[styles.groupCard, styles.cardAccentBlue]}>
+        <IconSectionHeader icon="shield" color="#1DA1F2" label={t("accountVerification")} />
+        <Pressable
+          style={styles.settingsMenuRow}
+          onPress={user.is_verified ? undefined : handleVerifyPhoto}
+          disabled={isVerifyingPhoto}
+        >
+          <View style={styles.settingsMenuLeft}>
+            <View style={[styles.settingsIconBox, { backgroundColor: "rgba(29, 161, 242, 0.1)" }]}>
+              <Feather name="check-circle" size={18} color="#1DA1F2" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingsMenuTitle}>{t("verifyProfile")}</Text>
+              <Text style={styles.settingsMenuSub}>
+                {user.is_verified
+                  ? (language === "en" ? "Your account is verified with Blue Badge 🔵" : "Hesabınız Mavi Tik 🔵 ile onaylanmıştır")
+                  : user.verification_status === "rejected"
+                  ? (language === "en" ? "Verification rejected. Tap to retake live selfie" : "Doğrulama reddedildi. Yeniden canlı selfie çekmek için tıkla")
+                  : user.verification_status === "pending"
+                  ? t("verificationPendingTapToRetake")
+                  : (language === "en" ? "Take a live selfie to get a blue badge" : "Anlık ön kamera selfie'si çekerek mavi tik al")}
+              </Text>
+            </View>
+          </View>
+
+          {isVerifyingPhoto ? (
+            <ActivityIndicator size="small" color="#1DA1F2" />
+          ) : user.is_verified ? (
+            <View style={styles.verifiedPill}>
+              <Text style={styles.verifiedPillText}>{language === "en" ? "Verified" : "Onaylı"}</Text>
+            </View>
+          ) : user.verification_status === "rejected" ? (
+            <View style={[styles.verifiedPill, { backgroundColor: "rgba(235, 87, 87, 0.15)" }]}>
+              <Text style={[styles.verifiedPillText, { color: colors.accentRed }]}>{language === "en" ? "Rejected" : "Reddedildi"}</Text>
+            </View>
+          ) : user.verification_status === "pending" ? (
+            <View style={[styles.verifiedPill, { backgroundColor: "rgba(241, 196, 15, 0.15)" }]}>
+              <Text style={[styles.verifiedPillText, { color: "#D4AC0D" }]}>{language === "en" ? "Pending" : "Bekliyor"}</Text>
+            </View>
+          ) : (
+            <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+          )}
+        </Pressable>
+      </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <PrimaryButton label="Kaydet" onPress={handleSave} loading={isSaving} />
+      <PrimaryButton label={t("save")} onPress={handleSave} loading={isSaving} />
 
       {/* Voice Recorder Modal */}
       <Modal
@@ -1024,5 +1127,81 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 14,
     color: colors.surface,
+  },
+  verificationBox: {
+    marginTop: spacing.sm,
+    alignItems: "center",
+  },
+  verifiedBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: "rgba(29, 161, 242, 0.1)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: "#1DA1F2",
+  },
+  verifiedBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: "#1DA1F2",
+  },
+  verifyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: "#1DA1F2",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+  },
+  verifyButtonText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.surface,
+  },
+  settingsMenuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.sm,
+  },
+  settingsMenuLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    flex: 1,
+  },
+  settingsIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+  },
+  settingsMenuTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  settingsMenuSub: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  verifiedPill: {
+    backgroundColor: "rgba(29, 161, 242, 0.15)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+  },
+  verifiedPillText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: "#1DA1F2",
   },
 });

@@ -71,11 +71,14 @@ Kişisel verileriniz, yetkisiz erişime, kayba veya kötüye kullanıma karşı 
 9. İletişim
 Haklarınızı kullanmak veya sorularınız için Ayarlar > Destek bölümünden bize ulaşabilirsiniz.`;
 
+import { useAppTheme } from "../context/ThemeContext";
+
 export function LegalScreen({ route }: Props) {
   const isTerms = route.params.kind === "terms";
+  const { bgGradient } = useAppTheme();
 
   return (
-    <ScrollView style={styles.background} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
       <Text style={typeScale.h1}>{isTerms ? "Kullanım Şartları" : "Gizlilik Politikası"}</Text>
       <Text style={styles.body}>{isTerms ? TERMS_TEXT : PRIVACY_TEXT}</Text>
     </ScrollView>
