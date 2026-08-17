@@ -56,15 +56,19 @@ export function LikesReceivedScreen() {
   const handleLike = async (item: LikerResponse) => {
     if (!isPremium) {
       Alert.alert(
-        language === "en" ? "Premium Feature" : "Premium Özellik",
-        language === "en" ? "Upgrade to Premium to like and match with this user." : "Bu kullanıcıyı beğenmek ve eşleşmek için Premium üye olmalısın."
+        t("premiumFeature"),
+        t("upgradeToMatchDesc"),
+        [
+          { text: t("cancel"), style: "cancel" },
+          { text: t("upgradeToPremium"), onPress: handleUpgrade },
+        ]
       );
       return;
     }
-    
+
     const previousLikers = [...likers];
     setLikers((prev) => prev.filter((l) => l.user.id !== item.user.id));
-    
+
     try {
       const result = await createSwipe({
         target_id: item.user.id,
@@ -72,7 +76,10 @@ export function LikesReceivedScreen() {
         direction: "like",
       });
       if (result.match_id !== null) {
-        Alert.alert(language === "en" ? "It's a Match!" : "Eşleşme Gerçekleşti!", `${item.user.display_name} ${language === "en" ? "is your new buddy!" : "ile yeni bir kankan oldu!"}`);
+        Alert.alert(
+          language === "en" ? "It's a Match!" : "Eşleşme Gerçekleşti!",
+          `${item.user.display_name} ${language === "en" ? "is your new buddy!" : "ile yeni bir kankan oldu!"}`
+        );
       }
     } catch (error) {
       setLikers(previousLikers);
@@ -83,8 +90,12 @@ export function LikesReceivedScreen() {
   const handlePass = async (item: LikerResponse) => {
     if (!isPremium) {
       Alert.alert(
-        language === "en" ? "Premium Feature" : "Premium Özellik",
-        language === "en" ? "Upgrade to Premium to pass this user." : "Bu kullanıcıyı geçmek için Premium üye olmalısın."
+        t("premiumFeature"),
+        t("upgradeToPassDesc"),
+        [
+          { text: t("cancel"), style: "cancel" },
+          { text: t("upgradeToPremium"), onPress: handleUpgrade },
+        ]
       );
       return;
     }
@@ -195,7 +206,7 @@ export function LikesReceivedScreen() {
             {!isPremium && (
               <View style={styles.lockRow}>
                 <Feather name="lock" size={12} color={colors.textSecondary} style={{ marginRight: 2 }} />
-                <Text style={styles.lockText}>Premium ile Kilidi Aç</Text>
+                <Text style={styles.lockText}>{t("unlockWithPremium")}</Text>
               </View>
             )}
           </View>

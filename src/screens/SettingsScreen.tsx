@@ -15,6 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import { getExpoPushToken } from "../utils/pushNotifications";
 import { apiClient } from "../api/client";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
+import { PhotoVerificationModal } from "../components/overlays/PhotoVerificationModal";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { User } from "../types";
 
@@ -43,30 +44,13 @@ export function SettingsScreen() {
   const [isUpgrading, setIsUpgrading] = useState(false);
 
   const [verificationModalVisible, setVerificationModalVisible] = useState(false);
-  const [isRequestingVerify, setIsRequestingVerify] = useState(false);
 
   const handleVerifyPress = () => {
     if (!user) return;
-    if (user.verification_status === "verified") {
-      Alert.alert("Profil Doğrulanmış", "Profilin zaten doğrulanmış. Mavi tikin keyfini çıkar!");
-    } else if (user.verification_status === "pending") {
-      Alert.alert("Talebin İnceleniyor", "Profil doğrulama talebin alındı ve onay sürecinde. En kısa sürede onaylanacaktır.");
+    if (user.is_verified || user.verification_status === "verified") {
+      Alert.alert("Profil Doğrulanmış 🔵", "Profilin zaten doğrulanmış. Mavi tikin keyfini çıkar!");
     } else {
       setVerificationModalVisible(true);
-    }
-  };
-
-  const handleSendVerificationRequest = async () => {
-    setIsRequestingVerify(true);
-    try {
-      const res = await apiClient.post<User>("/users/me/verify");
-      updateUser(res.data);
-      setVerificationModalVisible(false);
-      Alert.alert("Talep Gönderildi", "Profil doğrulama talebiniz başarıyla alındı.");
-    } catch {
-      Alert.alert("Hata", "Talep gönderilirken bir sorun oluştu.");
-    } finally {
-      setIsRequestingVerify(false);
     }
   };
 
@@ -184,6 +168,46 @@ export function SettingsScreen() {
       setIsUpgrading(false);
     }
   };
+
+  const [isGhostMode, setIsGhostMode] = useState(false);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+
+  function handleToggleGhostMode(val: boolean) {
+    if (!isPremium && val) {
+      Alert.alert(
+        language === "en" ? "⭐ Premium Ghost Mode" : "⭐ Premium Gizli Mod",
+        language === "en"
+          ? "Ghost Mode allows you to browse profiles invisibly! Upgrade to Premium to enable."
+          : "Gizli Mod (Ghost Mode 👻) sayesinde profillerde tamamen gizli gezebilirsin! Açmak için Premium'a yükselt.",
+        [
+          { text: t("cancel"), style: "cancel" },
+          { text: t("upgradeToPremium"), onPress: handleUpgrade },
+        ]
+      );
+      return;
+    }
+    setIsGhostMode(val);
+  }
+
+  function handlePassportPress() {
+    if (!isPremium) {
+      Alert.alert(
+        language === "en" ? "✈️ Premium Passport" : "✈️ Premium Pasaport",
+        language === "en"
+          ? "Travel Passport lets you teleport to any city in the world to find buddies! Upgrade to Premium."
+          : "Pasaport (Passport ✈️) özelliğiyle Türkiye'nin veya dünyanın istediğin şehrine ışınlanıp oradaki kankalarla eşleşebilirsin! Premium'a yükselt.",
+        [
+          { text: t("cancel"), style: "cancel" },
+          { text: t("upgradeToPremium"), onPress: handleUpgrade },
+        ]
+      );
+      return;
+    }
+    Alert.alert(
+      language === "en" ? "✈️ Passport Active" : "✈️ Pasaport Modu",
+      language === "en" ? "You can teleport to any city from the Discover map!" : "Işınlanmak istediğin şehri Keşfet haritasından veya arama çubuğundan seçebilirsin!"
+    );
+  }
 
   return (
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
@@ -332,6 +356,58 @@ export function SettingsScreen() {
         </Pressable>
       </View>
 
+      {/* Privacy & Special Power-Ups Card */}
+      <View style={styles.card}>
+        <Text style={typeScale.eyebrow}>
+          {language === "en" ? "Privacy & Power-Ups 👑" : "Gizlilik & Özel Yetenekler 👑"}
+        </Text>
+
+        <Pressable style={styles.notifModuleBox} onPress={handlePassportPress}>
+          <View style={[styles.notifIconContainer, { backgroundColor: `${accentColor}18` }]}>
+            <Feather name="navigation" size={20} color={accentColor} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+              <Text style={styles.notifTitle}>
+                {language === "en" ? "Travel Passport ✈️" : "Sanal Konum / Pasaport ✈️"}
+              </Text>
+              {!isPremium && <Text style={{ fontSize: 10 }}>👑</Text>}
+            </View>
+            <Text style={styles.notifSubText}>
+              {language === "en"
+                ? "Teleport to any city in the world to meet new buddies!"
+                : "İstediğin şehre ışınlanıp oradaki kankalarla eşleş!"}
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+        </Pressable>
+
+        <Pressable style={styles.notifModuleBox} onPress={() => handleToggleGhostMode(!isGhostMode)}>
+          <View style={[styles.notifIconContainer, { backgroundColor: `${accentColor}18` }]}>
+            <Feather name="eye-off" size={20} color={accentColor} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+              <Text style={styles.notifTitle}>
+                {language === "en" ? "Ghost Mode 👻" : "Gizli Gezinme (Ghost Mode 👻)"}
+              </Text>
+              {!isPremium && <Text style={{ fontSize: 10 }}>👑</Text>}
+            </View>
+            <Text style={styles.notifSubText}>
+              {language === "en"
+                ? "Browse profiles completely invisibly. Only people you like can see you."
+                : "Profilleri tamamen gizli gez. Sadece beğendiğin kişiler seni görebilsin."}
+            </Text>
+          </View>
+          <Switch
+            value={isGhostMode}
+            onValueChange={handleToggleGhostMode}
+            trackColor={{ false: colors.border, true: `${accentColor}40` }}
+            thumbColor={isGhostMode ? accentColor : colors.textSecondary}
+          />
+        </Pressable>
+      </View>
+
       <View style={styles.card}>
         <Text style={typeScale.eyebrow}>{t("profileAndRules")}</Text>
         <SettingsRow
@@ -343,6 +419,11 @@ export function SettingsScreen() {
           icon="eye"
           label={t("viewMyProfile")}
           onPress={() => navigation.navigate("ViewProfile")}
+        />
+        <SettingsRow
+          icon="image"
+          label={t("myPhotos")}
+          onPress={() => navigation.navigate("MyPhotos")}
         />
         <SettingsRow
           icon="check-circle"
@@ -364,21 +445,6 @@ export function SettingsScreen() {
 
       <View style={styles.card}>
         <Text style={typeScale.eyebrow}>{t("account")}</Text>
-        <SettingsRow
-          icon="edit-3"
-          label={t("editProfile")}
-          onPress={() => navigation.navigate("EditProfile")}
-        />
-        <SettingsRow
-          icon="eye"
-          label={t("viewMyProfile")}
-          onPress={() => navigation.navigate("ViewProfile")}
-        />
-        <SettingsRow
-          icon="image"
-          label={t("myPhotos")}
-          onPress={() => navigation.navigate("EditProfile")}
-        />
         <SettingsRow
           icon="lock"
           label={t("changePassword")}
@@ -403,37 +469,10 @@ export function SettingsScreen() {
         <SettingsRow icon="trash-2" label={t("deleteAccount")} onPress={confirmDeleteAccount} danger />
       </View>
 
-      <Modal
+      <PhotoVerificationModal
         visible={verificationModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setVerificationModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={[styles.modalIconWrapper, { backgroundColor: `${colors.primary}20` }]}>
-              <Feather name="check-circle" size={32} color={colors.primary} />
-            </View>
-            <Text style={typeScale.h1}>Profilini Doğrula</Text>
-            <Text style={styles.modalBodyText}>
-              Profilini doğrulayarak topluluktaki güvenilirliğini artırabilir, daha fazla kişiyle eşleşebilir ve öncelikli görünürlük kazanabilirsin!
-            </Text>
-            <View style={styles.modalActions}>
-              <PrimaryButton
-                label={isRequestingVerify ? "İstek Gönderiliyor..." : "Doğrulama Talebi Gönder"}
-                onPress={handleSendVerificationRequest}
-                loading={isRequestingVerify}
-              />
-              <PrimaryButton
-                label="Vazgeç"
-                variant="outline"
-                onPress={() => setVerificationModalVisible(false)}
-                disabled={isRequestingVerify}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setVerificationModalVisible(false)}
+      />
     </ScrollView>
   );
 }

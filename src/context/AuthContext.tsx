@@ -63,9 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       setAuthToken(token);
       try {
-        setUser(await getCurrentUser());
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
         syncPushToken();
-        setSubscription(await fetchSubscription());
+        fetchSubscription().then((sub) => setSubscription(sub)).catch(() => {});
       } catch {
         await deleteToken(AUTH_TOKEN_STORAGE_KEY);
         setAuthToken(null);
@@ -78,9 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = await loginRequest(payload);
     await setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token);
     setAuthToken(token.access_token);
-    setUser(await getCurrentUser());
+
+    const currentUser = await getCurrentUser();
+    setUser(currentUser);
+
+    // Non-blocking background syncs so login navigation is instant
     syncPushToken();
-    setSubscription(await fetchSubscription());
+    fetchSubscription().then((sub) => setSubscription(sub)).catch(() => {});
   }
 
   async function refreshSubscription(): Promise<void> {

@@ -68,3 +68,12 @@ export function respondToJoinRequest(eventId: number, userId: number, approved: 
     .patch<Event>(`/events/${eventId}/join-requests/${userId}`, { approved })
     .then((res) => res.data);
 }
+
+export function recordEventImpression(eventId: number): Promise<void> {
+  return apiClient.post(`/events/${eventId}/impressions`).then(() => undefined).catch(() => undefined);
+}
+
+export function recordBulkEventImpressions(eventIds: number[]): Promise<void> {
+  if (!eventIds || eventIds.length === 0) return Promise.resolve();
+  return apiClient.post("/events/impressions", eventIds).then(() => undefined).catch(() => undefined);
+}

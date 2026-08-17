@@ -122,9 +122,14 @@ export function ViewProfileScreen() {
                 <Text style={styles.trustText}>{profile.trust_score} Onaylı Buluşma</Text>
               </View>
             ) : null}
-            {profile.zodiac_sign ? (
+            {profile.zodiac_sign && !profile.hidden_fields?.includes("zodiac_sign") ? (
               <View style={styles.trustBadge}>
                 <Text style={styles.trustText}>{profile.zodiac_sign}</Text>
+              </View>
+            ) : null}
+            {profile.height && !profile.hidden_fields?.includes("height") ? (
+              <View style={styles.trustBadge}>
+                <Text style={styles.trustText}>📏 {profile.height} cm</Text>
               </View>
             ) : null}
           </View>

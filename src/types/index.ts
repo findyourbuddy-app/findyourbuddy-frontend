@@ -16,6 +16,11 @@ export interface User {
   university: string | null;
   zodiac_sign: string | null;
   gender: string | null;
+  height: number | null;
+  political_views?: string | null;
+  beliefs?: string | null;
+  languages_spoken?: string[];
+  hidden_fields?: string[];
   verification_status: string;
   looking_for: string | null;
   about_me_prompt: string | null;
@@ -46,12 +51,17 @@ export interface UserUpdate {
   university?: string | null;
   zodiac_sign?: string | null;
   gender?: string | null;
+  height?: number | null;
+  political_views?: string | null;
+  beliefs?: string | null;
+  languages_spoken?: string[];
   looking_for?: string | null;
   about_me_prompt?: string | null;
   voice_note_url?: string | null;
   bio?: string;
   interests?: string[];
   hobbies?: string[];
+  hidden_fields?: string[];
   latitude?: number;
   longitude?: number;
 }
@@ -211,6 +221,7 @@ export interface Match {
   event_id: number;
   event_title?: string | null;
   event_category?: string | null;
+  event_is_group?: boolean;
   user_a_id: number;
   user_b_id: number;
   score: number;

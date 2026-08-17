@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { colors, fontFamily, spacing, typeScale } from "../theme";
+import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { AuthStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Legal">;
@@ -71,16 +71,92 @@ Kişisel verileriniz, yetkisiz erişime, kayba veya kötüye kullanıma karşı 
 9. İletişim
 Haklarınızı kullanmak veya sorularınız için Ayarlar > Destek bölümünden bize ulaşabilirsiniz.`;
 
+const TERMS_TEXT_EN = `Last updated: This document is a comprehensive draft prepared based on the actual services offered by FindYourBuddy.
+
+1. Description of Service
+FindYourBuddy ("the App") is an event-based matching platform where users can connect, match, and chat through events they attend. The App includes profile creation, event attendance notifications, swipe-based matching, messaging, notifications, and premium membership services.
+
+2. Account Creation & Age Restriction
+To use the App, you must be at least 18 years old and accept the Terms of Service and Privacy Policy presented during registration. You are responsible for ensuring that the information you provide is accurate and up to date. You are solely responsible for maintaining the security of your account credentials.
+
+3. User Responsibilities
+Users may not impersonate another person, post misleading or fake profile information/photos, share harassing, hateful, threatening, or illegal content, or engage in unauthorized commercial promotion. Violations are evaluated via the "Report" / "Block" features.
+
+4. Event Attendance and Matching
+When you indicate attendance using the "I'm Going to This Event" option, this information is used solely to provide visibility in that event's matching pool. The App does not guarantee actual attendance; this is a declaration of intent based on user statements.
+
+5. Premium Membership and Payments
+Premium purchases are securely processed via İyzico payment infrastructure. Your card details are never stored on App servers. Premium membership offers extra features such as unlimited swipes, advanced filters, super likes, and seeing who liked you.
+
+6. Account Suspension and Termination
+In case of Terms violations, your account may be warned, restricted, or permanently closed. You may delete your account at any time via Settings > Account; this action is irreversible.
+
+7. Limitation of Liability
+The App is not responsible for the outcomes of user interactions (including offline meetups). Users are expected to take reasonable safety precautions when meeting others in person.
+
+8. Dispute Resolution
+Disputes arising from these terms shall be governed by the laws of the Republic of Türkiye, with jurisdiction in competent courts.
+
+9. Contact
+For questions regarding the Terms of Service, contact us via Settings > Support.`;
+
+const PRIVACY_TEXT_EN = `Privacy Policy & Data Protection Notice
+
+Last updated: This document outlines the categories of personal data processed by FindYourBuddy.
+
+1. Data Controller
+Your personal data is processed by FindYourBuddy as the data controller in accordance with applicable data protection laws.
+
+2. Categories of Personal Data Processed
+• Identity & Contact: Name, email, date of birth, occupation
+• Profile Information: Photos, interests, biography, preferences
+• Location Data: Approximate/current GPS location for event matching
+• Usage Data: Swipe history, matches, event attendance declarations
+• Communication Content: Chat messages exchanged with matched users
+• Transaction Data: Premium membership status (card details handled securely by İyzico)
+• Technical Data: Push notification tokens, application logs
+
+3. Purposes of Processing
+Your data is processed to create/verify your account, suggest relevant events and buddies, facilitate matching and messaging, process premium payments, send push notifications, ensure platform safety (blocking/reporting), and comply with legal requirements.
+
+4. Sharing with Third Parties
+Your data is shared with İyzico (payments), Firebase/Firestore (real-time chat), OpenStreetMap/Nominatim (location lookup), Expo/FCM/APNs (push notifications), and SMTP providers strictly as necessary to deliver services. Your data is never sold to third parties for marketing.
+
+5. Electronic Marketing Communications
+Commercial messages (promotions, announcements) are sent only with your explicit consent, which you can revoke at any time via Settings > Notifications. Essential transactional notices (password resets, match alerts) are exempt as they are required for service delivery.
+
+6. Data Retention & Deletion
+Personal data is retained while your account is active. When you delete your account, your profile data and messages are permanently erased within a reasonable timeframe. Expired events and transient data are cleaned periodically.
+
+7. User Rights
+You have the right to request access to, correction of, or deletion of your personal data. You can export your data via Settings > Download My Data, or permanently erase your account via Settings > Delete Account.
+
+8. Data Security
+Reasonable technical and administrative measures are taken to protect your personal data against unauthorized access or loss. Passwords are stored using irreversible encryption.
+
+9. Contact
+For questions regarding your privacy rights, reach out via Settings > Support.`;
+
+import { Pressable, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useAppTheme } from "../context/ThemeContext";
 
 export function LegalScreen({ route }: Props) {
   const isTerms = route.params.kind === "terms";
-  const { bgGradient } = useAppTheme();
+  const { bgGradient, language, setLanguage } = useAppTheme();
+
+  const title = isTerms
+    ? (language === "en" ? "Terms of Service" : "Kullanım Şartları")
+    : (language === "en" ? "Privacy Policy" : "Gizlilik Politikası");
+
+  const contentText = isTerms
+    ? (language === "en" ? TERMS_TEXT_EN : TERMS_TEXT)
+    : (language === "en" ? PRIVACY_TEXT_EN : PRIVACY_TEXT);
 
   return (
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
-      <Text style={typeScale.h1}>{isTerms ? "Kullanım Şartları" : "Gizlilik Politikası"}</Text>
-      <Text style={styles.body}>{isTerms ? TERMS_TEXT : PRIVACY_TEXT}</Text>
+      <Text style={typeScale.h1}>{title}</Text>
+      <Text style={styles.body}>{contentText}</Text>
     </ScrollView>
   );
 }
@@ -93,6 +169,27 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.xl,
     gap: spacing.lg,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  langPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+  },
+  langPillText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.textPrimary,
   },
   body: {
     fontFamily: fontFamily.body,

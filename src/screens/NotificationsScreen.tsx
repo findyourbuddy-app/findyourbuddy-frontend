@@ -1,19 +1,31 @@
 import { useCallback, useState } from "react";
-import { FlatList, StyleSheet, Text, View, ActivityIndicator } from "react-native";
-import { Alert } from "../utils/alert";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { listMyNotifications, markMyNotificationsRead } from "../api/notifications";
-import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
-import { formatRelativeTimestamp } from "../utils/date";
-import type { Notification } from "../types";
-
+import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
+import type { MainStackParamList } from "../navigation/RootNavigator";
+import { colors, fontFamily, radius, spacing } from "../theme";
+import type { Notification } from "../types";
+import { Alert } from "../utils/alert";
+import { formatRelativeTimestamp } from "../utils/date";
 
 export function NotificationsScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { isPremium } = useAuth();
+  const { t, language, accentColor, bgGradient } = useAppTheme();
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { t, accentColor, bgGradient } = useAppTheme();
 
   const loadNotifications = useCallback(async () => {
     setIsLoading(true);
@@ -21,11 +33,14 @@ export function NotificationsScreen() {
       setNotifications(await listMyNotifications());
       await markMyNotificationsRead();
     } catch {
-      Alert.alert("Bir sorun oluştu", "Bildirimler yüklenemedi. Lütfen tekrar dene.");
+      Alert.alert(
+        language === "en" ? "Error" : "Bir sorun oluştu",
+        language === "en" ? "Notifications could not be loaded. Please try again." : "Bildirimler yüklenemedi. Lütfen tekrar dene."
+      );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [language]);
 
   useFocusEffect(
     useCallback(() => {
@@ -36,19 +51,107 @@ export function NotificationsScreen() {
   function getNotificationMeta(title: string, body: string) {
     const lowercaseTitle = title.toLowerCase();
     const lowercaseBody = body.toLowerCase();
-    if (lowercaseTitle.includes("beğeni") || lowercaseBody.includes("beğendi") || lowercaseBody.includes("like")) {
-      return { icon: "heart" as const, color: "#FF2E93" };
+
+    if (
+      lowercaseTitle.includes("beğeni") ||
+      lowercaseBody.includes("beğendi") ||
+      lowercaseBody.includes("like")
+    ) {
+      return { icon: "heart" as const, color: "#FF2E93", type: "like" };
     }
-    if (lowercaseTitle.includes("match") || lowercaseTitle.includes("eşleşme") || lowercaseBody.includes("eşleşti")) {
-      return { icon: "users" as const, color: "#9B7BFF" };
+    if (
+      lowercaseTitle.includes("match") ||
+      lowercaseTitle.includes("eşleşme") ||
+      lowercaseBody.includes("eşleşti")
+    ) {
+      return { icon: "users" as const, color: "#9B7BFF", type: "match" };
     }
-    if (lowercaseTitle.includes("mesaj") || lowercaseTitle.includes("message") || lowercaseBody.includes("mesaj")) {
-      return { icon: "message-circle" as const, color: "#2ECC71" };
+    if (
+      lowercaseTitle.includes("mesaj") ||
+      lowercaseTitle.includes("message") ||
+      lowercaseBody.includes("mesaj")
+    ) {
+      return { icon: "message-circle" as const, color: "#2ECC71", type: "message" };
     }
-    if (lowercaseTitle.includes("katılım") || lowercaseTitle.includes("grup") || lowercaseBody.includes("grup") || lowercaseTitle.includes("istek")) {
-      return { icon: "calendar" as const, color: "#F1C40F" };
+    if (
+      lowercaseTitle.includes("etkinlik") ||
+      lowercaseBody.includes("buluştun mu") ||
+      lowercaseBody.includes("nasıldı")
+    ) {
+      return { icon: "check-square" as const, color: "#F1C40F", type: "feedback" };
     }
-    return { icon: "bell" as const, color: colors.primary };
+    return { icon: "bell" as const, color: colors.primary, type: "general" };
+  }
+
+  function formatNotificationContent(title: string, body: string) {
+    const lowercaseTitle = title.toLowerCase();
+    const lowercaseBody = body.toLowerCase();
+
+    if (language === "en") {
+      if (lowercaseTitle.includes("beğeni") || lowercaseBody.includes("beğendi") || lowercaseTitle.includes("like")) {
+        return {
+          title: "New Like! ❤️",
+          body: "Someone liked you as a buddy!",
+        };
+      }
+      if (lowercaseTitle.includes("match") || lowercaseTitle.includes("eşleşme") || lowercaseBody.includes("eşleşti")) {
+        return {
+          title: "New Match! 🎉",
+          body: "You have a new match on FindYourBuddy!",
+        };
+      }
+      if (lowercaseTitle.includes("mesaj") || lowercaseTitle.includes("message")) {
+        return {
+          title: "New Message 💬",
+          body: "You received a new message.",
+        };
+      }
+      if (lowercaseTitle.includes("etkinlik") || lowercaseBody.includes("nasıldı") || lowercaseBody.includes("buluştun")) {
+        return {
+          title: "How was the event? ⭐",
+          body: "Did you meet your buddy? Quickly rate your experience.",
+        };
+      }
+    } else {
+      if (lowercaseTitle.includes("like") || lowercaseTitle.includes("beğeni")) {
+        return {
+          title: "Yeni Beğeni! ❤️",
+          body: "Biri seni kanka olarak beğendi.",
+        };
+      }
+      if (lowercaseTitle.includes("match") || lowercaseTitle.includes("eşleşme")) {
+        return {
+          title: "Yeni Eşleşme! 🎉",
+          body: "FindYourBuddy'de yeni bir kanka eşleşmen var!",
+        };
+      }
+      if (lowercaseTitle.includes("message") || lowercaseTitle.includes("mesaj")) {
+        return {
+          title: "Yeni Mesaj 💬",
+          body: "Sana yeni bir mesaj geldi.",
+        };
+      }
+      if (lowercaseTitle.includes("etkinlik") || lowercaseBody.includes("nasıldı") || lowercaseBody.includes("buluştun")) {
+        return {
+          title: "Etkinlik nasıldı? ⭐",
+          body: "Kankanla buluştun mu? Sohbet ekranından hızlıca belirtebilirsin.",
+        };
+      }
+    }
+
+    return { title, body };
+  }
+
+  function handlePressNotification(item: Notification) {
+    const meta = getNotificationMeta(item.title, item.body);
+
+    if (meta.type === "like") {
+      navigation.navigate("LikesReceived");
+    } else if (meta.type === "match" || meta.type === "message" || meta.type === "feedback") {
+      navigation.navigate("Tabs", { screen: "Messages" });
+    } else {
+      navigation.navigate("Tabs", { screen: "Discover" });
+    }
   }
 
   if (isLoading && notifications.length === 0) {
@@ -72,20 +175,29 @@ export function NotificationsScreen() {
         }
         renderItem={({ item }) => {
           const meta = getNotificationMeta(item.title, item.body);
+          const formatted = formatNotificationContent(item.title, item.body);
+
           return (
-            <View style={[styles.row, !item.is_read && styles.rowUnread]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.row,
+                !item.is_read && styles.rowUnread,
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={() => handlePressNotification(item)}
+            >
               <View style={[styles.iconContainer, { backgroundColor: `${meta.color}15` }]}>
                 <Feather name={meta.icon} size={18} color={meta.color} />
               </View>
-              
+
               <View style={styles.textColumn}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.body}>{item.body}</Text>
+                <Text style={styles.title}>{formatted.title}</Text>
+                <Text style={styles.body}>{formatted.body}</Text>
                 <Text style={styles.time}>{formatRelativeTimestamp(item.created_at)}</Text>
               </View>
 
-              {!item.is_read && <View style={styles.unreadIndicator} />}
-            </View>
+              <Feather name="chevron-right" size={16} color={colors.textSecondary} />
+            </Pressable>
           );
         }}
       />
@@ -111,7 +223,7 @@ const styles = StyleSheet.create({
   list: {
     padding: spacing.xl,
     gap: spacing.md,
-    paddingLeft: spacing.xl + 20, // Add spacing to respect timeline line
+    paddingLeft: spacing.xl + 20,
   },
   timelineLine: {
     position: "absolute",
@@ -163,13 +275,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  unreadIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-    marginLeft: spacing.xs,
   },
   emptyText: {
     fontFamily: fontFamily.body,

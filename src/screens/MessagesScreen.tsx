@@ -1,6 +1,14 @@
 import { useCallback, useState } from "react";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
-import { Alert } from "../utils/alert";
+import {
+  FlatList,
+  Modal,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { CompositeNavigationProp } from "@react-navigation/native";
@@ -12,26 +20,31 @@ import { SectionHeader } from "../components/ui/SectionHeader";
 import { listMyMatches } from "../api/matches";
 import { useAuth } from "../context/AuthContext";
 import { useMessagesContext } from "../context/MessagesContext";
-import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
-import { isToday } from "../utils/date";
+import { useAppTheme } from "../context/ThemeContext";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
+import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { Match } from "../types";
+import { Alert } from "../utils/alert";
+import { isToday } from "../utils/date";
 
 type MessagesNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, "Messages">,
   NativeStackNavigationProp<MainStackParamList>
 >;
 
-import { useAppTheme } from "../context/ThemeContext";
+const INITIAL_CHAT_LIMIT = 5;
 
 export function MessagesScreen() {
   const navigation = useNavigation<MessagesNavigationProp>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
-  const { t, accentColor, bgGradient } = useAppTheme();
+  const { t, language, bgGradient } = useAppTheme();
+
   const [matches, setMatches] = useState<Match[]>([]);
   const [query, setQuery] = useState("");
+  const [modalQuery, setModalQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [allMatchesModalVisible, setAllMatchesModalVisible] = useState(false);
 
   const loadMatches = useCallback(async () => {
     setIsRefreshing(true);
@@ -39,11 +52,16 @@ export function MessagesScreen() {
       setMatches(await listMyMatches());
       await refreshUnread();
     } catch {
-      Alert.alert("Bir sorun oluştu", "Eşleşmeler yüklenemedi. Lütfen tekrar dene.");
+      Alert.alert(
+        language === "en" ? "Error" : "Bir sorun oluştu",
+        language === "en"
+          ? "Matches could not be loaded. Please try again."
+          : "Eşleşmeler yüklenemedi. Lütfen tekrar dene."
+      );
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshUnread]);
+  }, [refreshUnread, language]);
 
   useFocusEffect(
     useCallback(() => {
@@ -52,91 +70,165 @@ export function MessagesScreen() {
   );
 
   function openChat(match: Match): void {
+    setAllMatchesModalVisible(false);
     navigation.navigate("Chat", {
       matchId: match.id,
       otherUserId: match.other_user.id,
       otherUserName: match.other_user.display_name,
+      otherUserPhoto: match.other_user.photo_url,
       needsFeedback: match.needs_feedback,
+      eventTitle: match.event_title || undefined,
+      isGroupEvent: match.event_is_group || false,
     });
   }
 
   const filtered = matches.filter((match) =>
     match.other_user.display_name.toLowerCase().includes(query.trim().toLowerCase())
   );
+
+  const modalFiltered = matches.filter((match) =>
+    match.other_user.display_name.toLowerCase().includes(modalQuery.trim().toLowerCase())
+  );
+
   const newMatches = filtered.filter((match) => isToday(match.created_at));
-  const allMatches = filtered;
+  const mainConversations = filtered.slice(0, INITIAL_CHAT_LIMIT);
+  const totalCount = filtered.length;
 
   if (!user) {
     return null;
   }
 
   return (
-    <FlatList
-      style={[styles.background, { backgroundColor: bgGradient[0] }]}
-      contentContainerStyle={styles.list}
-      data={allMatches}
-      keyExtractor={(match) => String(match.id)}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={loadMatches} />}
-      ListHeaderComponent={
-        <View style={styles.headerArea}>
-          <View style={styles.topRow}>
-            <View>
-              <Text style={typeScale.eyebrow}>{t("tabMessages")}</Text>
+    <View style={styles.container}>
+      <FlatList
+        style={[styles.background, { backgroundColor: bgGradient[0] }]}
+        contentContainerStyle={styles.list}
+        data={mainConversations}
+        keyExtractor={(match) => String(match.id)}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={loadMatches} />}
+        ListHeaderComponent={
+          <View style={styles.headerArea}>
+            <View style={styles.topRow}>
               <Text style={typeScale.h1}>{t("messagesHeader")}</Text>
+              <Pressable
+                style={styles.iconButton}
+                onPress={() => navigation.navigate("Settings")}
+                accessibilityRole="button"
+                accessibilityLabel={t("settings")}
+              >
+                <Feather name="settings" size={18} color={colors.textPrimary} />
+              </Pressable>
             </View>
-            <Pressable
-              style={styles.iconButton}
-              onPress={() => navigation.navigate("Settings")}
-              accessibilityRole="button"
-              accessibilityLabel={t("settings")}
-            >
-              <Feather name="settings" size={18} color={colors.textPrimary} />
-            </Pressable>
-          </View>
 
-          <View style={styles.searchBar}>
-            <Feather name="search" size={16} color={colors.textSecondary} />
-            <TextInput
-              placeholder={t("searchPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              value={query}
-              onChangeText={setQuery}
-              style={styles.searchInput}
+            <View style={styles.searchBar}>
+              <Feather name="search" size={16} color={colors.textSecondary} />
+              <TextInput
+                placeholder={t("searchPlaceholder")}
+                placeholderTextColor={colors.textSecondary}
+                value={query}
+                onChangeText={setQuery}
+                style={styles.searchInput}
+              />
+            </View>
+
+            {newMatches.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader title={t("newMatchesTitle")} actionLabel={t("today")} />
+                {newMatches.map((match) => (
+                  <View key={match.id} style={styles.matchCardWrapper}>
+                    <MatchPreviewCard match={match} onPressMessage={() => openChat(match)} />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            <SectionHeader
+              title={t("conversations")}
+              actionLabel={totalCount > INITIAL_CHAT_LIMIT ? `${t("seeAll")} (${totalCount})` : t("seeAll")}
+              onActionPress={() => setAllMatchesModalVisible(true)}
             />
           </View>
+        }
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>{t("noMatchesYetFindEvents")}</Text>
+        }
+        renderItem={({ item }) => (
+          <View style={styles.chatItemWrapper}>
+            <ChatListItem
+              match={item}
+              currentUserId={user.id}
+              onPress={() => openChat(item)}
+              onBlocked={loadMatches}
+            />
+          </View>
+        )}
+      />
 
-          {newMatches.length > 0 ? (
-            <View style={styles.section}>
-              <SectionHeader title={t("newMatchesTitle")} actionLabel={t("today")} />
-              {newMatches.map((match) => (
-                <View key={match.id} style={styles.matchCardWrapper}>
-                  <MatchPreviewCard match={match} onPressMessage={() => openChat(match)} />
-                </View>
-              ))}
+      {/* See All Conversations Popup Modal */}
+      <Modal
+        visible={allMatchesModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAllMatchesModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setAllMatchesModalVisible(false)}
+        >
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={typeScale.h2}>
+                {language === "en" ? `All Conversations (${modalFiltered.length})` : `Tüm Sohbetler (${modalFiltered.length})`}
+              </Text>
+              <Pressable
+                style={styles.modalCloseBtn}
+                onPress={() => setAllMatchesModalVisible(false)}
+              >
+                <Feather name="x" size={20} color={colors.textSecondary} />
+              </Pressable>
             </View>
-          ) : null}
 
-          <SectionHeader title={t("conversations")} actionLabel={t("seeAll")} />
-        </View>
-      }
-      ListEmptyComponent={
-        <Text style={styles.emptyText}>{t("noMatchesYetFindEvents")}</Text>
-      }
-      renderItem={({ item }) => (
-        <View style={styles.chatItemWrapper}>
-          <ChatListItem
-            match={item}
-            currentUserId={user.id}
-            onPress={() => openChat(item)}
-            onBlocked={loadMatches}
-          />
-        </View>
-      )}
-    />
+            <View style={styles.modalSearchBar}>
+              <Feather name="search" size={16} color={colors.textSecondary} />
+              <TextInput
+                placeholder={t("searchPlaceholder")}
+                placeholderTextColor={colors.textSecondary}
+                value={modalQuery}
+                onChangeText={setModalQuery}
+                style={styles.searchInput}
+              />
+            </View>
+
+            <FlatList
+              style={styles.modalList}
+              data={modalFiltered}
+              keyExtractor={(item) => String(item.id)}
+              showsVerticalScrollIndicator={true}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>{t("noMatchesYetFindEvents")}</Text>
+              }
+              renderItem={({ item }) => (
+                <View style={styles.chatItemWrapper}>
+                  <ChatListItem
+                    match={item}
+                    currentUserId={user.id}
+                    onPress={() => openChat(item)}
+                    onBlocked={loadMatches}
+                  />
+                </View>
+              )}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   background: {
     flex: 1,
     backgroundColor: colors.background,
@@ -197,5 +289,40 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: "center",
     marginTop: spacing.xl,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 10, 40, 0.55)",
+    justifyContent: "flex-end",
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.card * 1.5,
+    borderTopRightRadius: radius.card * 1.5,
+    padding: spacing.xl,
+    maxHeight: "80%",
+    minHeight: "55%",
+    gap: spacing.md,
+    ...shadows.card,
+  },
+  modalHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  modalCloseBtn: {
+    padding: spacing.xs,
+  },
+  modalSearchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: "#F1F5F9",
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  modalList: {
+    marginTop: spacing.xs,
   },
 });

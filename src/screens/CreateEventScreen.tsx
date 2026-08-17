@@ -12,7 +12,7 @@ import type { GeocodingResult } from "../api/geocoding";
 import { createEvent, createEventCreditsCheckoutSession, getEventCreationQuota } from "../api/events";
 import type { EventCreationQuota } from "../types";
 import { CATEGORIES } from "../constants/categories";
-import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
+import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 
 type CreateEventNavigationProp = NativeStackNavigationProp<MainStackParamList, "CreateEvent">;
@@ -68,6 +68,7 @@ export function CreateEventScreen() {
   const [ticketPrice, setTicketPrice] = useState("");
   const [quota, setQuota] = useState<EventCreationQuota | null>(null);
   const [isBuyingCredits, setIsBuyingCredits] = useState(false);
+  const [quotaModalVisible, setQuotaModalVisible] = useState(false);
 
   function refreshQuota(): void {
     getEventCreationQuota()
@@ -217,10 +218,18 @@ export function CreateEventScreen() {
       navigation.goBack();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {
-        setError("Haftalık etkinlik oluşturma limitine ulaştın. Premium ile sınırsız etkinlik oluşturabilirsin.");
+        setError(
+          language === "en"
+            ? "You reached the weekly event limit. Upgrade to Premium for unlimited events."
+            : "Haftalık etkinlik oluşturma limitine ulaştın. Premium ile sınırsız etkinlik oluşturabilirsin."
+        );
         refreshQuota();
       } else {
-        setError("Etkinlik oluşturulamadı. Bilgileri kontrol edip tekrar dene.");
+        setError(
+          language === "en"
+            ? "Could not create event. Please check details and try again."
+            : "Etkinlik oluşturulamadı. Bilgileri kontrol edip tekrar dene."
+        );
       }
     } finally {
       setIsSaving(false);
@@ -229,6 +238,18 @@ export function CreateEventScreen() {
 
   return (
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
+      {quota && !quota.is_premium && quota.weekly_limit !== null ? (
+        <View style={styles.topQuotaRow}>
+          <Pressable style={styles.topQuotaPill} onPress={() => setQuotaModalVisible(true)}>
+            <Feather name="zap" size={13} color="#F1C40F" />
+            <Text style={styles.topQuotaPillText}>
+              {Math.max(quota.weekly_limit - quota.events_created_this_week, 0)}/{quota.weekly_limit} {language === "en" ? "Left" : "Hak"}
+            </Text>
+            <Feather name="info" size={12} color={colors.primary} />
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.field}>
         <Text style={typeScale.eyebrow}>{t("eventTitleLabel")}</Text>
         <TextInput
@@ -356,24 +377,6 @@ export function CreateEventScreen() {
           </Pressable>
         </View>
       </View>
-
-      {quota && !quota.is_premium && quota.weekly_limit !== null ? (
-        <View style={styles.quotaCard}>
-          <Text style={styles.helperText}>
-            {t("createQuotaNotice")} {Math.max(quota.weekly_limit - quota.events_created_this_week, 0)}/
-            {quota.weekly_limit}. {t("unlimitedQuotaNotice")}
-          </Text>
-          {quota.credits_balance > 0 ? (
-            <Text style={styles.helperText}>{t("creditsLeft")}: {quota.credits_balance}</Text>
-          ) : null}
-          <PrimaryButton
-            label={t("buyExtraCredits")}
-            onPress={handleBuyCredits}
-            loading={isBuyingCredits}
-            variant="outline"
-          />
-        </View>
-      ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -528,6 +531,64 @@ export function CreateEventScreen() {
         </View>
       </Modal>
 
+      {/* QUOTA & EXTRA CREDITS MODAL SHEET */}
+      <Modal visible={quotaModalVisible} transparent animationType="fade" onRequestClose={() => setQuotaModalVisible(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setQuotaModalVisible(false)}>
+          <Pressable style={styles.quotaModalCard} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.quotaModalTitle}>
+                {language === "en" ? "Weekly Event Creation Quota ⚡" : "Haftalık Etkinlik Limitiniz ⚡"}
+              </Text>
+              <Pressable onPress={() => setQuotaModalVisible(false)}>
+                <Feather name="x" size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {quota ? (
+              <View style={{ gap: spacing.sm, marginVertical: spacing.sm }}>
+                <Text style={styles.quotaModalDesc}>
+                  {language === "en"
+                    ? `You have ${Math.max((quota.weekly_limit ?? 3) - quota.events_created_this_week, 0)}/${quota.weekly_limit ?? 3} free event creation limits left this week.`
+                    : `Bu hafta kalan ücretsiz etkinlik oluşturma hakkınız: ${Math.max((quota.weekly_limit ?? 3) - quota.events_created_this_week, 0)}/${quota.weekly_limit ?? 3}.`}
+                </Text>
+                {quota.credits_balance > 0 ? (
+                  <View style={styles.creditsBox}>
+                    <Feather name="check-circle" size={14} color="#2ECC71" />
+                    <Text style={styles.creditsBoxText}>
+                      {language === "en" ? `Extra Credits Balance: ${quota.credits_balance}` : `Ekstra Hak Bakiyeniz: ${quota.credits_balance}`}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+              <PrimaryButton
+                label={language === "en" ? "Buy 3 Extra Credits (49 ₺)" : "3 Ekstra Etkinlik Hakkı Al (49 ₺)"}
+                onPress={() => {
+                  setQuotaModalVisible(false);
+                  handleBuyCredits();
+                }}
+                loading={isBuyingCredits}
+              />
+              <PrimaryButton
+                label={language === "en" ? "⭐ Upgrade to Premium (Unlimited)" : "⭐ Premium'a Geç (Sınırsız Limit)"}
+                onPress={async () => {
+                  setQuotaModalVisible(false);
+                  try {
+                    const { createCheckoutSession } = require("../api/subscriptions");
+                    const { checkout_url } = await createCheckoutSession();
+                    if (checkout_url) {
+                      Linking.openURL(checkout_url);
+                    }
+                  } catch {}
+                }}
+                variant="outline"
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -541,6 +602,62 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  topQuotaRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    marginBottom: -spacing.xs,
+  },
+  topQuotaPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: "rgba(74, 194, 226, 0.35)",
+    ...shadows.card,
+  },
+  topQuotaPillText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.textPrimary,
+  },
+  quotaModalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    width: "100%",
+    maxWidth: 340,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    ...shadows.card,
+  },
+  quotaModalTitle: {
+    fontFamily: fontFamily.displayBold,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  quotaModalDesc: {
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  creditsBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(46, 204, 113, 0.1)",
+    padding: spacing.xs + 2,
+    borderRadius: radius.sm,
+  },
+  creditsBoxText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: "#2ECC71",
   },
   field: {
     gap: spacing.sm,

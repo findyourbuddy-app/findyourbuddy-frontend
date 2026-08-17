@@ -20,7 +20,7 @@ import { createBookmark, deleteBookmark, listMyBookmarks } from "../api/bookmark
 import { reverseGeocode } from "../api/geocoding";
 import type { GeocodingResult } from "../api/geocoding";
 import { hasValidCoordinates } from "../utils/location";
-import { attendEvent, listEvents } from "../api/events";
+import { attendEvent, listEvents, recordBulkEventImpressions } from "../api/events";
 import { formatEventDate } from "../utils/date";
 import { useAuth } from "../context/AuthContext";
 import { CATEGORIES, getCategoryMeta } from "../constants/categories";
@@ -42,14 +42,22 @@ function shortenPlaceLabel(displayName: string): string {
 function normalizeText(text: string): string {
   if (!text) return "";
   return text
-    .toLowerCase()
-    .replace(/ç/g, "c")
-    .replace(/ğ/g, "g")
+    .replace(/İ/g, "i")
+    .replace(/I/g, "i")
     .replace(/ı/g, "i")
+    .replace(/Ç/g, "c")
+    .replace(/ç/g, "c")
+    .replace(/Ğ/g, "g")
+    .replace(/ğ/g, "g")
+    .replace(/Ö/g, "o")
     .replace(/ö/g, "o")
+    .replace(/Ş/g, "s")
     .replace(/ş/g, "s")
+    .replace(/Ü/g, "u")
     .replace(/ü/g, "u")
-    .replace(/[^a-z0-9]/g, "");
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim();
 }
 
 function isSmartMatch(text: string, query: string): boolean {
@@ -61,18 +69,15 @@ function isSmartMatch(text: string, query: string): boolean {
 
   if (normText.includes(normQuery)) return true;
 
-  const queryTokens = query.toLowerCase().split(/\s+/).filter(Boolean);
-  return queryTokens.every((token) => {
-    const normToken = normalizeText(token);
-    return normText.includes(normToken);
-  });
+  const queryTokens = normQuery.split(/\s+/).filter(Boolean);
+  return queryTokens.every((token) => normText.includes(token));
 }
 
 import { useAppTheme } from "../context/ThemeContext";
 
 export function DiscoverScreen() {
   const navigation = useNavigation<DiscoverNavigationProp>();
-  const { user } = useAuth();
+  const { isPremium, user } = useAuth();
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -154,6 +159,35 @@ export function DiscoverScreen() {
     };
   }, []);
 
+  function handlePressLocationPill(): void {
+    if (!isPremium) {
+      Alert.alert(
+        language === "en" ? "✈️ Travel Passport (Custom Location)" : "✈️ Pasaport (Sanal Konum Seçimi)",
+        language === "en"
+          ? "Teleporting to custom cities and picking manual locations is exclusive to ⭐ Premium members!"
+          : "Farklı şehirlerdeki etkinlikleri keşfetmek ve özel sanal konum seçmek ⭐ Premium üyelere özeldir!",
+        [
+          { text: t("cancel"), style: "cancel" },
+          {
+            text: t("upgradeToPremium"),
+            onPress: async () => {
+              try {
+                const { createCheckoutSession } = require("../api/subscriptions");
+                const { checkout_url } = await createCheckoutSession();
+                if (checkout_url) {
+                  const { Linking } = require("react-native");
+                  Linking.openURL(checkout_url);
+                }
+              } catch {}
+            },
+          },
+        ]
+      );
+      return;
+    }
+    setIsCityPickerVisible(true);
+  }
+
   function handleCitySelect(result: GeocodingResult): void {
     setCityLabel(shortenPlaceLabel(result.display_name));
     setUserCoords({ latitude: result.latitude, longitude: result.longitude });
@@ -226,8 +260,21 @@ export function DiscoverScreen() {
 
   const sortedEvents = useMemo(() => {
     if (events.length === 0) return [];
-    
-    const list = [...events];
+
+    let list = [...events];
+    if (searchQuery.trim()) {
+      list = list.filter(
+        (e) =>
+          isSmartMatch(e.title ?? "", searchQuery) ||
+          isSmartMatch(e.description ?? "", searchQuery) ||
+          isSmartMatch(e.location_name ?? "", searchQuery) ||
+          isSmartMatch(e.category ?? "", searchQuery)
+      );
+    } else if (selectedCategory) {
+      const targetCategory = selectedCategory.toLowerCase();
+      list = list.filter((e) => e.category?.toLowerCase() === targetCategory);
+    }
+
     if (sortBy === "distance" && userCoords) {
       return list.sort((a, b) => {
         const distA = getDistanceInKm(a.latitude, a.longitude, userCoords.latitude, userCoords.longitude);
@@ -240,30 +287,32 @@ export function DiscoverScreen() {
     }
     // Default: Sort by date
     return list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-  }, [events, sortBy, userCoords, getDistanceInKm]);
+  }, [events, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm]);
 
-  // Rapidly tapping category chips can fire overlapping requests -- without
-  // this guard, a slower older request resolving after a newer one would
-  // silently overwrite the list with the wrong category's events, which
-  // looks exactly like "filtering is broken" from the outside.
   const loadEventsRequestIdRef = useRef(0);
 
   const loadEvents = useCallback(async (category: string | null) => {
     const requestId = ++loadEventsRequestIdRef.current;
-    setIsRefreshing(true);
     setHasMore(true);
     try {
-      const result = await listEvents(category ?? undefined, true, 0, LIMIT);
+      // Fetch batch of events for fast category filtering
+      const result = await listEvents(category ?? undefined, true, 0, 100);
       if (requestId !== loadEventsRequestIdRef.current) return;
       setEvents(result);
-      setHasMore(result.length === LIMIT);
+      setHasMore(result.length === 100);
+      if (result.length > 0) {
+        recordBulkEventImpressions(result.slice(0, 20).map((e) => e.id));
+      }
     } catch {
       if (requestId !== loadEventsRequestIdRef.current) return;
-      Alert.alert("Bir sorun oluştu", "Etkinlikler yüklenemedi. Lütfen tekrar dene.");
+      Alert.alert(
+        language === "en" ? "Error" : "Bir sorun oluştu",
+        language === "en" ? "Events could not be loaded. Please try again." : "Etkinlikler yüklenemedi. Lütfen tekrar dene."
+      );
     } finally {
       if (requestId === loadEventsRequestIdRef.current) setIsRefreshing(false);
     }
-  }, []);
+  }, [language]);
 
   const loadMoreEvents = useCallback(async () => {
     if (isLoadingMore || !hasMore || isRefreshing) return;
@@ -334,7 +383,10 @@ export function DiscoverScreen() {
         }
         return next;
       });
-      Alert.alert("Bir sorun oluştu", "Kaydetme işlemi tamamlanamadı. Lütfen tekrar dene.");
+      Alert.alert(
+        language === "en" ? "Error" : "Bir sorun oluştu",
+        language === "en" ? "Bookmark action failed. Please try again." : "Kaydetme işlemi tamamlanamadı. Lütfen tekrar dene."
+      );
     }
   }
 
@@ -428,7 +480,14 @@ export function DiscoverScreen() {
       ListHeaderComponent={
         <View style={styles.headerArea}>
           <View style={styles.topRow}>
-            <Text style={styles.brandTitle}>FindYourBuddy</Text>
+            <Pressable
+              onPress={() => navigation.navigate("Profile")}
+              accessibilityRole="button"
+              accessibilityLabel="Profilim"
+            >
+              <Avatar name={user?.display_name ?? "?"} photoUrl={user?.photo_url} isVerified={user?.is_verified} size={40} />
+            </Pressable>
+
             <View style={styles.headerActions}>
               <Pressable
                 style={styles.iconButton}
@@ -445,13 +504,6 @@ export function DiscoverScreen() {
                 accessibilityLabel="Bildirimler"
               >
                 <Feather name="bell" size={18} color={colors.textPrimary} />
-              </Pressable>
-              <Pressable
-                onPress={() => navigation.navigate("Profile")}
-                accessibilityRole="button"
-                accessibilityLabel="Profilim"
-              >
-                <Avatar name={user?.display_name ?? "?"} photoUrl={user?.photo_url} isVerified={user?.is_verified} size={36} />
               </Pressable>
             </View>
           </View>
@@ -568,7 +620,7 @@ export function DiscoverScreen() {
 
               {/* Sub-Header Location & Map View Controls Row */}
               <View style={styles.subHeaderControlsRow}>
-                <Pressable style={styles.locationPill} onPress={() => setIsCityPickerVisible(true)}>
+                <Pressable style={styles.locationPill} onPress={handlePressLocationPill}>
                   <Feather name="map-pin" size={14} color={colors.textPrimary} />
                   <Text style={styles.locationText}>{cityLabel}</Text>
                 </Pressable>

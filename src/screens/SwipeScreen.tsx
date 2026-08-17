@@ -125,7 +125,10 @@ export function SwipeScreen() {
         })
         .catch(() => {
           if (!cancelled) {
-            Alert.alert("Bir sorun oluştu", "Etkinlik ve adaylar yüklenemedi. Lütfen tekrar dene.");
+            Alert.alert(
+              language === "en" ? "Error" : "Bir sorun oluştu",
+              language === "en" ? "Events and candidates could not be loaded. Please try again." : "Etkinlik ve adaylar yüklenemedi. Lütfen tekrar dene."
+            );
           }
         })
         .finally(() => {
@@ -135,7 +138,7 @@ export function SwipeScreen() {
       return () => {
         cancelled = true;
       };
-    }, [route.params, filters, refreshQuota, activeTab])
+    }, [route.params, filters, refreshQuota, activeTab, language])
   );
 
   function switchEvent(event: Event): void {
@@ -147,7 +150,12 @@ export function SwipeScreen() {
     });
     getSwipeCandidates(event.id, filters)
       .then(setCandidates)
-      .catch(() => Alert.alert("Bir sorun oluştu", "Adaylar yüklenemedi. Lütfen tekrar dene."))
+      .catch(() =>
+        Alert.alert(
+          language === "en" ? "Error" : "Bir sorun oluştu",
+          language === "en" ? "Candidates could not be loaded. Please try again." : "Adaylar yüklenemedi. Lütfen tekrar dene."
+        )
+      )
       .finally(() => setIsLoading(false));
   }
 
@@ -365,9 +373,11 @@ export function SwipeScreen() {
           </Pressable>
           {quota ? (
             <Text style={styles.quotaText}>
-              {quota.is_premium ? "Sınırsız beğeni" : `${quota.swipes_used_today}/${quota.swipe_limit} beğeni`}
+              {quota.is_premium
+                ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
+                : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}
               {" · "}
-              {quota.super_likes_used_today}/{quota.super_like_limit} süper
+              {quota.super_likes_used_today}/{quota.super_like_limit} {language === "en" ? "super" : "süper"}
             </Text>
           ) : null}
         </View>
@@ -489,7 +499,11 @@ export function SwipeScreen() {
           />
         ) : (
           <View style={styles.center}>
-            <Text style={styles.emptyText}>Bu etkinlik için başka aday kalmadı.</Text>
+            <Text style={styles.emptyText}>
+              {language === "en"
+                ? "No more candidates left for this event."
+                : "Bu etkinlik için başka aday kalmadı."}
+            </Text>
           </View>
         )}
       </View>

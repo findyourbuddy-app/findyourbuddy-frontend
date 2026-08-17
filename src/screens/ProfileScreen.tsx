@@ -9,8 +9,12 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Avatar } from "../components/ui/Avatar";
 import { Badge } from "../components/ui/Badge";
 import { IconSectionHeader } from "../components/ui/IconSectionHeader";
+import { ProfileCompletionCard } from "../components/profile/ProfileCompletionCard";
+import { QuickFieldEditModal } from "../components/profile/QuickFieldEditModal";
+import type { FieldKey } from "../utils/profileCompletion";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { useAuth } from "../context/AuthContext";
+import { LANGUAGES_LIST } from "../constants/languages";
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
 import { formatEventDate, formatMemberSince, isNewMember } from "../utils/date";
@@ -26,6 +30,27 @@ import { useAppTheme } from "../context/ThemeContext";
 
 type ProfileNavigationProp = NativeStackNavigationProp<MainStackParamList, "Profile">;
 
+const ZODIAC_SIGNS = [
+  { key: "Koç", tr: "Koç ♈", en: "Aries ♈" },
+  { key: "Boğa", tr: "Boğa ♉", en: "Taurus ♉" },
+  { key: "İkizler", tr: "İkizler ♊", en: "Gemini ♊" },
+  { key: "Yengeç", tr: "Yengeç ♋", en: "Cancer ♋" },
+  { key: "Aslan", tr: "Aslan ♌", en: "Leo ♌" },
+  { key: "Başak", tr: "Başak ♍", en: "Virgo ♍" },
+  { key: "Terazi", tr: "Terazi ♎", en: "Libra ♎" },
+  { key: "Akrep", tr: "Akrep ♏", en: "Scorpio ♏" },
+  { key: "Yay", tr: "Yay ♐", en: "Sagittarius ♐" },
+  { key: "Oğlak", tr: "Oğlak ♑", en: "Capricorn ♑" },
+  { key: "Kova", tr: "Kova ♒", en: "Aquarius ♒" },
+  { key: "Balık", tr: "Balık ♓", en: "Pisces ♓" },
+];
+
+function getZodiacLabel(key: string, language: string): string {
+  const item = ZODIAC_SIGNS.find((z) => z.key === key);
+  if (!item) return key;
+  return language === "en" ? item.en : item.tr;
+}
+
 export function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
   const { user, signOut, isPremium, updateUser } = useAuth();
@@ -33,6 +58,17 @@ export function ProfileScreen() {
   const [attendingEvents, setAttendingEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [locationName, setLocationName] = useState<string | null>(null);
+  const [quickEditKey, setQuickEditKey] = useState<FieldKey | null>(null);
+  const [quickEditVisible, setQuickEditVisible] = useState(false);
+
+  function handleOpenQuickEdit(key: FieldKey) {
+    if (key === "photo" || key === "gallery") {
+      navigation.navigate("MyPhotos");
+    } else {
+      setQuickEditKey(key);
+      setQuickEditVisible(true);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -65,25 +101,38 @@ export function ProfileScreen() {
     if (isBoosted) {
       const remainingSecs = Math.max(0, Math.floor((new Date(user.boosted_until!).getTime() - Date.now()) / 1000));
       const mins = Math.floor(remainingSecs / 60);
-      Alert.alert("Spotlight Aktif! 🚀", `Profilin şu an öne çıkarılmış durumda. Kalan süre: ${mins} dakika.`);
+      Alert.alert(
+        language === "en" ? "Spotlight Active! 🚀" : "Spotlight Aktif! 🚀",
+        language === "en"
+          ? `Your profile is currently featured at top. Remaining time: ${mins} mins.`
+          : `Profilin şu an öne çıkarılmış durumda. Kalan süre: ${mins} dakika.`
+      );
       return;
     }
 
     if (user.boosts_balance && user.boosts_balance > 0) {
       Alert.alert(
-        "Spotlight Başlatılsın mı?",
-        `Mevcut Spotlight hakkından 1 adet kullanarak profilini 60 dakikalığına öne çıkar. (Kalan hak: ${user.boosts_balance} adet)`,
+        language === "en" ? "Activate Spotlight?" : "Spotlight Başlatılsın mı?",
+        language === "en"
+          ? `Use 1 Spotlight credit to feature your profile at top for 60 minutes. (Credits left: ${user.boosts_balance})`
+          : `Mevcut Spotlight hakkından 1 adet kullanarak profilini 60 dakikalığına öne çıkar. (Kalan hak: ${user.boosts_balance} adet)`,
         [
-          { text: "Vazgeç", style: "cancel" },
+          { text: t("cancel"), style: "cancel" },
           {
-            text: "Başlat",
+            text: language === "en" ? "Activate" : "Başlat",
             onPress: async () => {
               try {
                 const updatedUser = await activateBoost();
                 updateUser(updatedUser);
-                Alert.alert("Spotlight Baştalıldı! 🚀", "Profilin en üst sıraya taşındı!");
+                Alert.alert(
+                  language === "en" ? "Spotlight Activated! 🚀" : "Spotlight Başlatıldı! 🚀",
+                  language === "en" ? "Your profile has been moved to top list!" : "Profilin en üst sıraya taşındı!"
+                );
               } catch {
-                Alert.alert("Hata", "Spotlight başlatılamadı. Lütfen tekrar dene.");
+                Alert.alert(
+                  language === "en" ? "Error" : "Hata",
+                  language === "en" ? "Could not activate Spotlight. Please try again." : "Spotlight başlatılamadı. Lütfen tekrar dene."
+                );
               }
             }
           }
@@ -91,9 +140,11 @@ export function ProfileScreen() {
       );
     } else {
       Alert.alert(
-        "Spotlight Hakkın Yok",
-        "Spotlight başlatabilmek için kaydırma ekranındaki Buddy Mağazası'nı ziyaret ederek hak satın alabilirsin!",
-        [{ text: "Tamam" }]
+        language === "en" ? "No Spotlight Credits ⚡" : "Spotlight Hakkın Yok ⚡",
+        language === "en"
+          ? "You need Spotlight credits to feature your profile. Visit the Buddy Store on the Swipe screen to get more!"
+          : "Spotlight başlatabilmek için kaydırma ekranındaki Buddy Mağazası'nı ziyaret ederek hak satın alabilirsin!",
+        [{ text: t("ok") }]
       );
     }
   }
@@ -128,6 +179,9 @@ export function ProfileScreen() {
         <Text style={styles.heroEmail}>{user.email}</Text>
         <View style={styles.heroBadgeRow}>
           {isPremium ? <Badge label={language === "en" ? "Premium Member" : "Premium Üye"} variant="yellow" icon="⭐" /> : null}
+          {user.is_verified || user.verification_status === "verified" ? (
+            <Badge label={language === "en" ? "Verified Profile 🔵" : "Mavi Tik Onaylı Profil 🔵"} variant="blue" icon="✓" />
+          ) : null}
           {isNewMember(user.created_at) ? (
             <Badge label={t("newMember")} variant="green" />
           ) : null}
@@ -145,22 +199,137 @@ export function ProfileScreen() {
         </View>
       </LinearGradient>
 
+      {/* Profile Completion Bar */}
+      <ProfileCompletionCard user={user} onPressFieldKey={handleOpenQuickEdit} />
+
       {hasValidCoordinates(user.latitude, user.longitude) ? (
-        <View style={[styles.card, styles.cardAccentBlue]}>
+        <Pressable style={[styles.card, styles.cardAccentBlue]} onPress={() => handleOpenQuickEdit("occupation")}>
           <IconSectionHeader icon="map-pin" color="#2E7FC9" label={t("location")} />
           <Text style={styles.bio}>{locationName || (language === "en" ? "Location Saved" : "Konum Kaydedildi")}</Text>
-        </View>
+        </Pressable>
       ) : null}
 
-      {user.occupation ? (
-        <View style={[styles.card, styles.cardAccentBlue]}>
-          <IconSectionHeader icon="briefcase" color="#2E7FC9" label={t("occupation")} />
-          <Text style={styles.bio}>{user.occupation}</Text>
-        </View>
+      {user.about_me_prompt ? (
+        <Pressable style={[styles.card, styles.cardAccentPurple]} onPress={() => handleOpenQuickEdit("prompt")}>
+          <IconSectionHeader icon="help-circle" color="#9B51E0" label={language === "en" ? "About Me Prompt" : "Soru & Cevap"} />
+          <Text style={styles.bio}>"{user.about_me_prompt}"</Text>
+        </Pressable>
+      ) : null}
+
+      {user.occupation || user.university ? (
+        <Pressable style={[styles.card, styles.cardAccentBlue]} onPress={() => handleOpenQuickEdit("occupation")}>
+          <View style={styles.cardHeaderWithHidden}>
+            <IconSectionHeader icon="briefcase" color="#2E7FC9" label={t("occupation")} />
+            {user.hidden_fields?.includes("occupation") ? (
+              <View style={styles.hiddenBadge}>
+                <Feather name="eye-off" size={11} color={colors.textSecondary} />
+                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.bio}>
+            {[user.occupation, user.university].filter(Boolean).join(" • ")}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {user.looking_for ? (
+        <Pressable style={[styles.card, styles.cardAccentYellow]} onPress={() => handleOpenQuickEdit("interests")}>
+          <View style={styles.cardHeaderWithHidden}>
+            <IconSectionHeader icon="target" color="#E0A800" label={language === "en" ? "Looking For" : "Aradığı İletişim"} />
+            {user.hidden_fields?.includes("looking_for") ? (
+              <View style={styles.hiddenBadge}>
+                <Feather name="eye-off" size={11} color={colors.textSecondary} />
+                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.bio}>{user.looking_for}</Text>
+        </Pressable>
+      ) : null}
+
+      {user.height ? (
+        <Pressable style={[styles.card, styles.cardAccentBlue]} onPress={() => handleOpenQuickEdit("height")}>
+          <View style={styles.cardHeaderWithHidden}>
+            <IconSectionHeader icon="user" color="#2E7FC9" label={language === "en" ? "Height" : "Boy"} />
+            {user.hidden_fields?.includes("height") ? (
+              <View style={styles.hiddenBadge}>
+                <Feather name="eye-off" size={11} color={colors.textSecondary} />
+                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.bio}>{user.height} cm</Text>
+        </Pressable>
+      ) : null}
+
+      {user.zodiac_sign ? (
+        <Pressable style={[styles.card, styles.cardAccentPurple]} onPress={() => handleOpenQuickEdit("zodiac")}>
+          <View style={styles.cardHeaderWithHidden}>
+            <IconSectionHeader icon="moon" color="#9B51E0" label={language === "en" ? "Zodiac Sign" : "Burç"} />
+            {user.hidden_fields?.includes("zodiac_sign") ? (
+              <View style={styles.hiddenBadge}>
+                <Feather name="eye-off" size={11} color={colors.textSecondary} />
+                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.bio}>{getZodiacLabel(user.zodiac_sign, language)}</Text>
+        </Pressable>
+      ) : null}
+
+      {user.languages_spoken && user.languages_spoken.length > 0 ? (
+        <Pressable style={[styles.card, styles.cardAccentBlue]} onPress={() => handleOpenQuickEdit("languages")}>
+          <View style={styles.cardHeaderWithHidden}>
+            <IconSectionHeader icon="globe" color="#2FA88B" label={language === "en" ? "Languages Spoken" : "Bildiği Diller"} />
+            {user.hidden_fields?.includes("languages_spoken") ? (
+              <View style={styles.hiddenBadge}>
+                <Feather name="eye-off" size={11} color={colors.textSecondary} />
+                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.chipRow}>
+            {user.languages_spoken.map((code) => {
+              const item = LANGUAGES_LIST.find((l) => l.code === code);
+              return (
+                <View key={code} style={styles.chip}>
+                  <Text style={styles.chipText}>{item ? `${item.flag} ${language === "en" ? item.labelEn : item.label}` : code}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </Pressable>
+      ) : null}
+
+      {user.political_views || user.beliefs ? (
+        <Pressable style={[styles.card, styles.cardAccentPurple]} onPress={() => handleOpenQuickEdit("worldview")}>
+          <View style={styles.cardHeaderWithHidden}>
+            <IconSectionHeader icon="compass" color="#9B51E0" label={language === "en" ? "Worldview & Beliefs" : "Dünya Görüşü & İnanç"} />
+            {user.hidden_fields?.includes("political_views") || user.hidden_fields?.includes("beliefs") ? (
+              <View style={styles.hiddenBadge}>
+                <Feather name="eye-off" size={11} color={colors.textSecondary} />
+                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.chipRow}>
+            {user.political_views ? (
+              <View style={[styles.chip, { backgroundColor: "#F3E8FF" }]}>
+                <Text style={[styles.chipText, { color: "#9B51E0" }]}>{user.political_views}</Text>
+              </View>
+            ) : null}
+            {user.beliefs ? (
+              <View style={[styles.chip, { backgroundColor: "#F3E8FF" }]}>
+                <Text style={[styles.chipText, { color: "#9B51E0" }]}>{user.beliefs}</Text>
+              </View>
+            ) : null}
+          </View>
+        </Pressable>
       ) : null}
 
       {user.photos.length > 0 ? (
-        <View style={[styles.card, styles.cardAccentPink]}>
+        <Pressable style={[styles.card, styles.cardAccentPink]} onPress={() => handleOpenQuickEdit("gallery")}>
           <IconSectionHeader icon="image" color="#D9427F" label={t("myPhotos")} />
           <FlatList
             data={user.photos}
@@ -172,18 +341,18 @@ export function ProfileScreen() {
             )}
             ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
           />
-        </View>
+        </Pressable>
       ) : null}
 
       {user.bio ? (
-        <View style={[styles.card, styles.cardAccentPurple]}>
+        <Pressable style={[styles.card, styles.cardAccentPurple]} onPress={() => handleOpenQuickEdit("bio")}>
           <IconSectionHeader icon="feather" color={colors.primary} label={t("aboutMe")} />
           <Text style={styles.bio}>{user.bio}</Text>
-        </View>
+        </Pressable>
       ) : null}
 
       {user.hobbies && user.hobbies.length > 0 ? (
-        <View style={[styles.card, styles.cardAccentPurple]}>
+        <Pressable style={[styles.card, styles.cardAccentPurple]} onPress={() => handleOpenQuickEdit("hobbies")}>
           <IconSectionHeader icon="star" color="#8A2BE2" label={t("hobbies")} />
           <View style={styles.chipRow}>
             {user.hobbies.map((hobby) => (
@@ -192,11 +361,11 @@ export function ProfileScreen() {
               </View>
             ))}
           </View>
-        </View>
+        </Pressable>
       ) : null}
 
       {user.interests.length > 0 ? (
-        <View style={[styles.card, styles.cardAccentYellow]}>
+        <Pressable style={[styles.card, styles.cardAccentYellow]} onPress={() => handleOpenQuickEdit("interests")}>
           <IconSectionHeader icon="heart" color="#E0A800" label={t("interests")} />
           <View style={styles.chipRow}>
             {user.interests.map((interest) => (
@@ -205,7 +374,7 @@ export function ProfileScreen() {
               </View>
             ))}
           </View>
-        </View>
+        </Pressable>
       ) : null}
 
       {attendingEvents.length > 0 ? (
@@ -294,6 +463,16 @@ export function ProfileScreen() {
           </View>
         </Pressable>
       </View>
+
+      <QuickFieldEditModal
+        visible={quickEditVisible}
+        fieldKey={quickEditKey}
+        user={user}
+        onClose={() => setQuickEditVisible(false)}
+        onSaved={() => {
+          getCurrentUser().then(updateUser);
+        }}
+      />
     </ScrollView>
   );
 }
@@ -402,11 +581,31 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.card,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    borderLeftWidth: 3,
-    borderLeftColor: "transparent",
-    ...shadows.soft,
+    padding: spacing.xl,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardHeaderWithHidden: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  hiddenBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  hiddenBadgeText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 10,
+    color: colors.textSecondary,
   },
   cardAccentBlue: {
     borderLeftColor: "#2E7FC9",
