@@ -472,7 +472,6 @@ export function DiscoverScreen() {
   return (
     <>
     <FlatList
-      key={selectedCategory ?? "all"}
       style={[styles.background, { backgroundColor: bgGradient[0] }]}
       contentContainerStyle={styles.list}
       data={isMapView ? [] : rest}
