@@ -97,8 +97,8 @@ export function SwipeFiltersModal({
   if (!isPremium) {
     return (
       <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-        <View style={styles.backdrop}>
-          <View style={styles.card}>
+        <Pressable style={styles.backdrop} onPress={onDismiss}>
+          <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
             <View style={{ alignItems: "center", gap: spacing.xs, marginVertical: spacing.xs }}>
               <Feather name="sliders" size={36} color={colors.primary} />
               <Text style={typeScale.h1}>{language === "en" ? "Advanced Buddy Filters 🎛️" : "Gelişmiş Kanka Filtreleri 🎛️"}</Text>
@@ -135,16 +135,16 @@ export function SwipeFiltersModal({
               />
               <PrimaryButton label={t("close")} variant="outline" onPress={onDismiss} disabled={isUpgrading} />
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     );
   }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <View style={styles.backdrop}>
-        <View style={styles.card}>
+      <Pressable style={styles.backdrop} onPress={onDismiss}>
+        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={typeScale.h1}>{language === "en" ? "Advanced Filters 🎛️" : "Gelişmiş Filtreler 🎛️"}</Text>
 
           {/* Gender Preference Chips */}
@@ -210,8 +210,8 @@ export function SwipeFiltersModal({
             <PrimaryButton label={language === "en" ? "Clear Filters" : "Filtreleri Temizle"} variant="outline" onPress={handleClear} />
             <PrimaryButton label={t("close")} variant="outline" onPress={onDismiss} />
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

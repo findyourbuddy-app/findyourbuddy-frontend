@@ -19,7 +19,8 @@ import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
 import { formatEventDate, formatMemberSince, isNewMember } from "../utils/date";
 import { listMyAttendingEvents } from "../api/events";
-import { activateBoost, getCurrentUser } from "../api/users";
+import * as ImagePicker from "expo-image-picker";
+import { activateBoost, getCurrentUser, uploadProfilePhoto } from "../api/users";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
@@ -60,6 +61,48 @@ export function ProfileScreen() {
   const [locationName, setLocationName] = useState<string | null>(null);
   const [quickEditKey, setQuickEditKey] = useState<FieldKey | null>(null);
   const [quickEditVisible, setQuickEditVisible] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  async function handleAvatarPress() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== "granted") {
+      Alert.alert(
+        language === "en" ? "Permission Required" : "İzin Gerekli",
+        language === "en"
+          ? "Please grant gallery permission to update your profile photo."
+          : "Profil fotoğrafını değiştirmek için galeri izni vermen gerekiyor."
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.7,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    const asset = result.assets?.[0];
+    if (result.canceled || !asset) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "profile.jpg";
+      const updatedUser = await uploadProfilePhoto(asset.uri, fileName);
+      updateUser(updatedUser);
+      Alert.alert(
+        language === "en" ? "Success" : "Başarılı 📸",
+        language === "en" ? "Profile photo updated successfully!" : "Profil fotoğrafın başarıyla güncellendi!"
+      );
+    } catch {
+      Alert.alert(
+        language === "en" ? "Error" : "Hata",
+        language === "en" ? "Could not update profile photo. Please try again." : "Profil fotoğrafı güncellenemedi. Lütfen tekrar dene."
+      );
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  }
 
   function handleOpenQuickEdit(key: FieldKey) {
     if (key === "photo" || key === "gallery") {
@@ -163,9 +206,18 @@ export function ProfileScreen() {
       >
         <View style={styles.heroDecorLarge} />
         <View style={styles.heroDecorSmall} />
-        <View style={styles.avatarRing}>
+        <Pressable
+          style={styles.avatarRing}
+          onPress={handleAvatarPress}
+          disabled={isUploadingPhoto}
+          accessibilityRole="button"
+          accessibilityLabel="Profil fotoğrafını değiştir"
+        >
           <Avatar name={user.display_name} photoUrl={user.photo_url} size={88} />
-        </View>
+          <View style={styles.cameraIconBadge}>
+            <Feather name="camera" size={14} color={colors.surface} />
+          </View>
+        </Pressable>
         <Text style={styles.heroName}>
           {user.display_name}
           {user.age ? `, ${user.age}` : ""}
@@ -519,6 +571,20 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.35)",
     marginBottom: spacing.sm,
+    position: "relative",
+  },
+  cameraIconBadge: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.surface,
   },
   heroName: {
     fontFamily: fontFamily.bodySemiBold,
