@@ -524,8 +524,8 @@ export function ChatScreen({ route }: Props) {
           const reactionEntries = Object.values(reactionsMap);
 
           return (
-            <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
-              <View style={{ alignItems: isOwn ? "flex-end" : "flex-start", maxWidth: "82%" }}>
+            <View style={{ marginBottom: spacing.xs }}>
+              <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
                 <Pressable
                   style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}
                   onPress={() => setVisibleTimestampId((prev) => (prev === item.id ? null : item.id))}
@@ -550,19 +550,19 @@ export function ChatScreen({ route }: Props) {
                     </View>
                   ) : null}
                 </Pressable>
-
-                {reactionEntries.length > 0 ? (
-                  <View style={[styles.reactionPillsRow, isOwn ? { alignSelf: "flex-end" } : { alignSelf: "flex-start" }]}>
-                    {Array.from(new Set(reactionEntries)).map((emoji) => (
-                      <View key={emoji} style={styles.reactionPill}>
-                        <Text style={styles.reactionEmojiText}>
-                          {emoji} {reactionEntries.filter((e) => e === emoji).length}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
               </View>
+
+              {reactionEntries.length > 0 ? (
+                <View style={[styles.reactionPillsRow, isOwn ? { alignSelf: "flex-end" } : { alignSelf: "flex-start" }]}>
+                  {Array.from(new Set(reactionEntries)).map((emoji) => (
+                    <View key={emoji} style={styles.reactionPill}>
+                      <Text style={styles.reactionEmojiText}>
+                        {emoji} {reactionEntries.filter((e) => e === emoji).length}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </View>
           );
         }}
