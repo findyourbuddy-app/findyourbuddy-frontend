@@ -33,7 +33,7 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
           <View style={[styles.iconBadge, { backgroundColor: isComplete ? "rgba(46, 204, 113, 0.15)" : "rgba(74, 194, 226, 0.15)" }]}>
             <Feather
               name={isComplete ? "check-circle" : "pie-chart"}
-              size={22}
+              size={18}
               color={isComplete ? "#2ECC71" : "#4AC2E2"}
             />
           </View>
@@ -115,8 +115,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: radius.card,
     padding: spacing.lg,
-    marginHorizontal: spacing.lg,
-    marginVertical: spacing.sm,
     borderWidth: 1,
     borderColor: "rgba(226, 232, 240, 0.8)",
     gap: spacing.xs,
@@ -131,12 +129,12 @@ const styles = StyleSheet.create({
   titleWithIcon: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   iconBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },

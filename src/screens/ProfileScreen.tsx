@@ -647,10 +647,11 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.card,
-    padding: spacing.xl,
-    gap: spacing.md,
+    padding: spacing.lg,
+    gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.card,
   },
   cardHeaderWithHidden: {
     flexDirection: "row",
