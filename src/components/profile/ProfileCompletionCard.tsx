@@ -20,7 +20,7 @@ interface Props {
 export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { language } = useAppTheme();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   const completion = calculateProfileCompletion(user);
   const isComplete = completion.percentage >= 100;
@@ -33,7 +33,7 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
           <View style={[styles.iconBadge, { backgroundColor: isComplete ? "rgba(46, 204, 113, 0.15)" : "rgba(74, 194, 226, 0.15)" }]}>
             <Feather
               name={isComplete ? "check-circle" : "pie-chart"}
-              size={18}
+              size={22}
               color={isComplete ? "#2ECC71" : "#4AC2E2"}
             />
           </View>
@@ -41,22 +41,11 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
             <Text style={styles.cardTitle}>
               {language === "en" ? "Profile Completion" : "Profil Tamamlanma Oranı"}
             </Text>
-            <Text style={[typeScale.h2, styles.percentageText]}>
+            <Text style={styles.percentageText}>
               %{completion.percentage} {isComplete ? "🎉" : ""}
             </Text>
           </View>
         </View>
-
-        <Pressable
-          style={styles.editButtonTouch}
-          onPress={() => navigation.navigate("EditProfile")}
-        >
-          <Text style={styles.editButtonText}>
-            {isComplete
-              ? (language === "en" ? "Edit Profile" : "Düzenle")
-              : (language === "en" ? "Complete Profile ⚡" : "Tamamla ⚡")}
-          </Text>
-        </Pressable>
       </View>
 
       {/* Progress Bar */}
@@ -83,7 +72,7 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
             </Text>
             <Feather
               name={expanded ? "chevron-up" : "chevron-down"}
-              size={16}
+              size={18}
               color={colors.textSecondary}
             />
           </Pressable>
@@ -102,9 +91,9 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
                     }
                   }}
                 >
-                  <Feather name="plus" size={12} color="#FF6B6B" />
+                  <Feather name="plus" size={13} color="#FF6B6B" />
                   <Text style={styles.missingChipText}>{language === "en" ? item.labelEn : item.labelTr}</Text>
-                  <Feather name="arrow-right" size={10} color="#E74C3C" style={{ marginLeft: 2 }} />
+                  <Feather name="arrow-right" size={11} color="#E74C3C" style={{ marginLeft: 2 }} />
                 </Pressable>
               ))}
             </View>
@@ -125,28 +114,29 @@ const styles = StyleSheet.create({
   cardContainer: {
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: radius.card,
-    padding: spacing.md,
+    padding: spacing.lg,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.sm,
     borderWidth: 1,
     borderColor: "rgba(226, 232, 240, 0.8)",
+    gap: spacing.xs,
     ...shadows.card,
   },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   titleWithIcon: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   iconBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -155,36 +145,25 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textSecondary,
   },
   percentageText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 22,
     color: colors.textPrimary,
   },
-  editButtonTouch: {
-    backgroundColor: "rgba(74, 194, 226, 0.12)",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: "rgba(74, 194, 226, 0.3)",
-  },
-  editButtonText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 12,
-    color: colors.primary,
-  },
   progressTrack: {
-    height: 8,
+    height: 12,
     backgroundColor: "#E2E8F0",
-    borderRadius: 4,
+    borderRadius: 6,
     overflow: "hidden",
     marginTop: spacing.xs,
     marginBottom: spacing.xs,
   },
   progressFill: {
     height: "100%",
-    borderRadius: 4,
+    borderRadius: 6,
   },
   missingBox: {
     marginTop: spacing.xs,
@@ -193,38 +172,38 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 2,
+    paddingVertical: 4,
   },
   missingHint: {
-    fontFamily: fontFamily.body,
-    fontSize: 12,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
     color: colors.textSecondary,
   },
   chipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
+    gap: 8,
     marginTop: spacing.xs,
   },
   missingChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
     backgroundColor: "rgba(255, 107, 107, 0.08)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: "rgba(255, 107, 107, 0.2)",
   },
   missingChipText: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: 11,
+    fontSize: 12,
     color: "#E74C3C",
   },
   perfectText: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: 12,
+    fontSize: 13,
     color: "#2ECC71",
     marginTop: 4,
   },
