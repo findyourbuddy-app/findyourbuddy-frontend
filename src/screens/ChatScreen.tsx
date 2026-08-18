@@ -364,12 +364,15 @@ export function ChatScreen({ route }: Props) {
 
   const messageListRef = useRef<FlatList<Message>>(null);
 
-  // Without this, a new message (sent or received) or the keyboard opening
-  // leaves the list wherever it was -- the newest bubble ends up hidden
-  // behind the input row instead of scrolling into view.
+  function scrollToBottom(animated = true) {
+    setTimeout(() => {
+      messageListRef.current?.scrollToEnd({ animated });
+    }, 100);
+  }
+
   useEffect(() => {
     if (messages.length > 0) {
-      messageListRef.current?.scrollToEnd({ animated: true });
+      scrollToBottom(true);
     }
   }, [messages.length]);
 
@@ -412,6 +415,7 @@ export function ChatScreen({ route }: Props) {
       }
     } finally {
       setIsSending(false);
+      scrollToBottom(true);
     }
   }
 
@@ -428,6 +432,7 @@ export function ChatScreen({ route }: Props) {
       Alert.alert("Hata", "GIF gönderilemedi.");
     } finally {
       setIsSending(false);
+      scrollToBottom(true);
     }
   }
 
@@ -472,6 +477,7 @@ export function ChatScreen({ route }: Props) {
       Alert.alert("Hata", "Fotoğraf gönderilemedi. Lütfen tekrar dene.");
     } finally {
       setIsSending(false);
+      scrollToBottom(true);
     }
   }
 
@@ -513,7 +519,8 @@ export function ChatScreen({ route }: Props) {
         contentContainerStyle={styles.messageList}
         data={messages}
         keyExtractor={(message) => String(message.id)}
-        onContentSizeChange={() => messageListRef.current?.scrollToEnd({ animated: false })}
+        onContentSizeChange={() => scrollToBottom(true)}
+        onLayout={() => scrollToBottom(false)}
         renderItem={({ item }) => {
           const isOwn = item.sender_id === user.id;
           const timeText = formatMessageTime(item.created_at, language);
