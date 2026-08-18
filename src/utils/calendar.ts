@@ -1,5 +1,6 @@
 import { Alert } from "./alert";
-import { Linking } from "react-native";
+import * as Calendar from "expo-calendar";
+import { Linking, Platform } from "react-native";
 import type { Event } from "../types";
 
 export function getGoogleCalendarUrl(event: Event): string {
@@ -16,18 +17,36 @@ export function getGoogleCalendarUrl(event: Event): string {
 }
 
 export async function openAddToCalendar(event: Event): Promise<void> {
-  const url = getGoogleCalendarUrl(event);
+  if (Platform.OS === "web") {
+    const url = getGoogleCalendarUrl(event);
+    await Linking.openURL(url);
+    return;
+  }
+
   try {
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-    } else {
-      await Linking.openURL(`https://calendar.google.com/`);
+    const { status } = await Calendar.requestCalendarPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Takvim İzni Gerekli",
+        "Etkinliği takvimine ekleyebilmek için takvim iznine ihtiyacımız var."
+      );
+      return;
     }
+
+    const startDate = new Date(event.starts_at);
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+
+    // Launches the native OS calendar dialog screen directly on the device
+    await Calendar.createEventInCalendarAsync({
+      title: event.title,
+      startDate,
+      endDate,
+      location: event.location_name,
+      notes: event.description || "FindYourBuddy etkinliği",
+    });
   } catch {
-    Alert.alert(
-      "Takvim Hatası",
-      "Takvim uygulaması açılamadı. Lütfen tekrar dene."
-    );
+    // Fallback to web link if native dialog fails
+    const url = getGoogleCalendarUrl(event);
+    await Linking.openURL(url);
   }
 }
