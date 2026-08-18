@@ -32,7 +32,7 @@ function initialsForName(name: string): string {
   return (first + second).toUpperCase();
 }
 
-function resolvePhotoUrl(url?: string | null): string | null {
+export function resolvePhotoUrl(url?: string | null): string | null {
   if (!url || !url.trim()) return null;
   const trimmed = url.trim();
   if (

@@ -17,7 +17,7 @@ import { useAuth } from "../context/AuthContext";
 import { useMessagesContext } from "../context/MessagesContext";
 import { apiClient } from "../api/client";
 import { colors, fontFamily, radius, spacing, typeScale, shadows } from "../theme";
-import { Avatar } from "../components/ui/Avatar";
+import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { formatMessageTime, formatRelativeTimestamp } from "../utils/date";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Message, ReportReason } from "../types";
@@ -537,7 +537,7 @@ export function ChatScreen({ route }: Props) {
                   onLongPress={() => setSelectedMessageForReaction(item)}
                 >
                   {item.message_type === "image" || item.message_type === "gif" ? (
-                    <Image source={{ uri: item.media_url || undefined }} style={styles.bubbleImage} />
+                    <Image source={{ uri: resolvePhotoUrl(item.media_url) || undefined }} style={styles.bubbleImage} />
                   ) : (
                     <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
                   )}
