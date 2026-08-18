@@ -532,38 +532,23 @@ export function ChatScreen({ route }: Props) {
                   onLongPress={() => setSelectedMessageForReaction(item)}
                 >
                   {item.message_type === "image" || item.message_type === "gif" ? (
-                    <View style={{ gap: 4 }}>
-                      <Image source={{ uri: item.media_url || undefined }} style={styles.bubbleImage} />
-                      {isTimeVisible ? (
-                        <View style={styles.bubbleFooter}>
-                          <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
-                          {isOwn ? (
-                            <Feather
-                              name={item.is_read ? "check-circle" : "check"}
-                              size={12}
-                              color="rgba(255,255,255,0.75)"
-                            />
-                          ) : null}
-                        </View>
-                      ) : null}
-                    </View>
+                    <Image source={{ uri: item.media_url || undefined }} style={styles.bubbleImage} />
                   ) : (
-                    <View style={styles.inlineContentRow}>
-                      <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
-                      {isTimeVisible ? (
-                        <View style={styles.inlineTimeBadge}>
-                          <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
-                          {isOwn ? (
-                            <Feather
-                              name={item.is_read ? "check-circle" : "check"}
-                              size={12}
-                              color="rgba(255,255,255,0.75)"
-                            />
-                          ) : null}
-                        </View>
+                    <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
+                  )}
+
+                  {isTimeVisible ? (
+                    <View style={styles.bubbleFooter}>
+                      <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
+                      {isOwn ? (
+                        <Feather
+                          name={item.is_read ? "check-circle" : "check"}
+                          size={12}
+                          color="rgba(255,255,255,0.75)"
+                        />
                       ) : null}
                     </View>
-                  )}
+                  ) : null}
                 </Pressable>
 
                 {reactionEntries.length > 0 ? (
@@ -803,26 +788,12 @@ const styles = StyleSheet.create({
   bubbleTextOwn: {
     color: colors.surface,
   },
-  inlineContentRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  inlineTimeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    alignSelf: "flex-end",
-    marginBottom: 1,
-    marginLeft: "auto",
-  },
   bubbleFooter: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-end",
     gap: 4,
+    marginTop: 4,
   },
   bubbleTime: {
     fontFamily: fontFamily.body,
