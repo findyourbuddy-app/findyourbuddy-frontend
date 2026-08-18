@@ -12,6 +12,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["expo", "start", "--tunnel"],
       "port": 8081
+    },
+    {
+      "name": "expo-lan",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["expo", "start", "--lan", "--go"],
+      "port": 8081
     }
   ]
 }
