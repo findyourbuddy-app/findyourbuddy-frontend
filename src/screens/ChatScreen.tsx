@@ -50,22 +50,22 @@ export function ChatScreen({ route }: Props) {
 
   const POPULAR_GIFS = useMemo(
     () => [
-      { key: "hello", label: language === "en" ? "Hello 👋" : "Merhaba 👋", url: "https://media.giphy.com/media/VdfD8e415yLte/giphy.gif" },
-      { key: "wink", label: language === "en" ? "Wink 😉" : "Göz Kırp 😉", url: "https://media.giphy.com/media/d1E2VyhFsxRxCLKw/giphy.gif" },
-      { key: "laugh", label: language === "en" ? "Laugh 😂" : "Kahkaha 😂", url: "https://media.giphy.com/media/ltvJF9EQ135t155j6V/giphy.gif" },
-      { key: "coffee", label: language === "en" ? "Coffee ☕" : "Kahve ☕", url: "https://media.giphy.com/media/3oriO0OEd9QIDdllqo/giphy.gif" },
-      { key: "celebrate", label: language === "en" ? "Celebration 🎉" : "Kutlama 🎉", url: "https://media.giphy.com/media/l0MYt5jPR6QX5pnq0/giphy.gif" },
-      { key: "applause", label: language === "en" ? "Applause 👏" : "Alkış 👏", url: "https://media.giphy.com/media/3Gm15eZf29HGVPKl53/giphy.gif" },
-      { key: "love", label: language === "en" ? "Love ❤️" : "Sevgi ❤️", url: "https://media.giphy.com/media/26hpK8sjGn5BLTOAU/giphy.gif" },
-      { key: "dance", label: language === "en" ? "Dance 💃" : "Dans 💃", url: "https://media.giphy.com/media/l3vRlT2k2L35Cvv5C/giphy.gif" },
-      { key: "hug", label: language === "en" ? "Hug 🤗" : "Sarıl 🤗", url: "https://media.giphy.com/media/3oEdv4hwWTzBhWvaU0/giphy.gif" },
-      { key: "thumbsup", label: language === "en" ? "Thumbs Up 👍" : "Süper 👍", url: "https://media.giphy.com/media/111ebonMs92shy/giphy.gif" },
-      { key: "party", label: language === "en" ? "Party 🥳" : "Parti 🥳", url: "https://media.giphy.com/media/artj92V8o75VPL7AeQ/giphy.gif" },
-      { key: "mindblown", label: language === "en" ? "Mind Blown 🤯" : "Şok 🤯", url: "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif" },
-      { key: "cool", label: language === "en" ? "Cool 😎" : "Harika 😎", url: "https://media.giphy.com/media/3o7TKMt1VVNkHV2PaE/giphy.gif" },
-      { key: "highfive", label: language === "en" ? "High Five 🙌" : "Çak 🙌", url: "https://media.giphy.com/media/3oEJHV0z8S7WM4MwnK/giphy.gif" },
-      { key: "shocked", label: language === "en" ? "OMG 😱" : "İnanılmaz 😱", url: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif" },
-      { key: "cheers", label: language === "en" ? "Cheers 🍻" : "Şerefe 🍻", url: "https://media.giphy.com/media/g9582DNuQppxC/giphy.gif" }
+      { key: "hello", label: language === "en" ? "Hello 👋" : "Merhaba 👋", url: "https://i.giphy.com/VdfD8e415yLte/giphy.gif" },
+      { key: "wink", label: language === "en" ? "Wink 😉" : "Göz Kırp 😉", url: "https://i.giphy.com/d1E2VyhFsxRxCLKw/giphy.gif" },
+      { key: "laugh", label: language === "en" ? "Laugh 😂" : "Kahkaha 😂", url: "https://i.giphy.com/ltvJF9EQ135t155j6V/giphy.gif" },
+      { key: "coffee", label: language === "en" ? "Coffee ☕" : "Kahve ☕", url: "https://i.giphy.com/3oriO0OEd9QIDdllqo/giphy.gif" },
+      { key: "celebrate", label: language === "en" ? "Celebration 🎉" : "Kutlama 🎉", url: "https://i.giphy.com/l0MYt5jPR6QX5pnq0/giphy.gif" },
+      { key: "applause", label: language === "en" ? "Applause 👏" : "Alkış 👏", url: "https://i.giphy.com/3Gm15eZf29HGVPKl53/giphy.gif" },
+      { key: "love", label: language === "en" ? "Love ❤️" : "Sevgi ❤️", url: "https://i.giphy.com/26hpK8sjGn5BLTOAU/giphy.gif" },
+      { key: "dance", label: language === "en" ? "Dance 💃" : "Dans 💃", url: "https://i.giphy.com/l3vRlT2k2L35Cvv5C/giphy.gif" },
+      { key: "hug", label: language === "en" ? "Hug 🤗" : "Sarıl 🤗", url: "https://i.giphy.com/3oEdv4hwWTzBhWvaU0/giphy.gif" },
+      { key: "thumbsup", label: language === "en" ? "Thumbs Up 👍" : "Süper 👍", url: "https://i.giphy.com/111ebonMs92shy/giphy.gif" },
+      { key: "party", label: language === "en" ? "Party 🥳" : "Parti 🥳", url: "https://i.giphy.com/artj92V8o75VPL7AeQ/giphy.gif" },
+      { key: "mindblown", label: language === "en" ? "Mind Blown 🤯" : "Şok 🤯", url: "https://i.giphy.com/26ufdipQqU2lhNA4g/giphy.gif" },
+      { key: "cool", label: language === "en" ? "Cool 😎" : "Harika 😎", url: "https://i.giphy.com/3o7TKMt1VVNkHV2PaE/giphy.gif" },
+      { key: "highfive", label: language === "en" ? "High Five 🙌" : "Çak 🙌", url: "https://i.giphy.com/3oEJHV0z8S7WM4MwnK/giphy.gif" },
+      { key: "shocked", label: language === "en" ? "OMG 😱" : "İnanılmaz 😱", url: "https://i.giphy.com/xT0xeJpnrWC4XWblEk/giphy.gif" },
+      { key: "cheers", label: language === "en" ? "Cheers 🍻" : "Şerefe 🍻", url: "https://i.giphy.com/g9582DNuQppxC/giphy.gif" }
     ],
     [language]
   );
@@ -480,6 +480,7 @@ export function ChatScreen({ route }: Props) {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.7,
+      allowsEditing: false,
       base64: true,
     });
     const asset = result.assets?.[0];
