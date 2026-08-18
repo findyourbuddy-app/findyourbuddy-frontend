@@ -158,7 +158,14 @@ export function ChatListItem({ match, currentUserId, onPress, onBlocked }: ChatL
               ) : null}
             </View>
 
-
+            {match.event_title ? (
+              <View style={styles.eventPill}>
+                <Feather name="calendar" size={10} color={colors.primary} />
+                <Text style={styles.eventPillText} numberOfLines={1}>
+                  {match.event_title}
+                </Text>
+              </View>
+            ) : null}
 
             <Text style={[styles.preview, isUnread && styles.unreadText]} numberOfLines={1}>
               {lastMessage ? lastMessage.content : (language === "en" ? "No messages yet, send the first one!" : "Henüz mesaj yok, ilk sen yaz!")}
