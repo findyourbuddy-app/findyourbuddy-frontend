@@ -43,6 +43,7 @@ export function ChatScreen({ route }: Props) {
   const [historicalMessages, setHistoricalMessages] = useState<Message[]>([]);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
+  const [selectedImage, setSelectedImage] = useState<{ uri: string; base64?: string | null } | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
@@ -403,21 +404,44 @@ export function ChatScreen({ route }: Props) {
 
   async function handleSend(): Promise<void> {
     const content = draft.trim();
-    if (!content || !user) {
+    if ((!content && !selectedImage) || !user) {
       return;
     }
     setErrorText(null);
     setIsSending(true);
+
+    const activeImage = selectedImage;
+    const activeText = content;
+
     setDraft("");
+    setSelectedImage(null);
 
     try {
-      // Sent through the backend only -- it moderates and rate-limits the
-      // message, then relays it into Firestore itself for real-time
-      // delivery. The client never writes to Firestore directly, so it
-      // can't be used to bypass either check.
-      await sendMessage(matchId, { content, message_type: "text", media_url: undefined });
+      if (activeImage) {
+        let imageUrl = activeImage.uri;
+        try {
+          const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
+          const uploaded = await uploadGalleryPhoto(activeImage.uri, fileName);
+          if (uploaded && uploaded.photo_url) {
+            imageUrl = uploaded.photo_url;
+          }
+        } catch {
+          if (activeImage.base64) {
+            imageUrl = `data:image/jpeg;base64,${activeImage.base64}`;
+          }
+        }
+
+        await sendMessage(matchId, {
+          content: activeText || "[Fotoğraf]",
+          message_type: "image",
+          media_url: imageUrl,
+        });
+      } else {
+        await sendMessage(matchId, { content: activeText, message_type: "text", media_url: undefined });
+      }
     } catch (error) {
-      setDraft(content);
+      if (activeText) setDraft(activeText);
+      if (activeImage) setSelectedImage(activeImage);
       if (axios.isAxiosError(error) && error.response?.status === 422) {
         setErrorText("Mesajın uygunsuz içerik nedeniyle gönderilemedi.");
       } else {
@@ -449,7 +473,7 @@ export function ChatScreen({ route }: Props) {
   async function handlePickPhoto(): Promise<void> {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
-      Alert.alert("Galeri izni gerekli", "Fotoğraf göndermek için galeri iznini açman gerekiyor.");
+      Alert.alert("Galeri izni gerekli", "Fotoğraf seçmek için galeri iznini açman gerekiyor.");
       return;
     }
 
@@ -463,32 +487,7 @@ export function ChatScreen({ route }: Props) {
       return;
     }
 
-    setIsSending(true);
-    try {
-      let imageUrl = asset.uri;
-      try {
-        const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "photo.jpg";
-        const uploaded = await uploadGalleryPhoto(asset.uri, fileName);
-        if (uploaded && uploaded.photo_url) {
-          imageUrl = uploaded.photo_url;
-        }
-      } catch {
-        if (asset.base64) {
-          imageUrl = `data:image/jpeg;base64,${asset.base64}`;
-        }
-      }
-
-      await sendMessage(matchId, {
-        content: "[Fotoğraf]",
-        message_type: "image",
-        media_url: imageUrl,
-      });
-    } catch {
-      Alert.alert("Hata", "Fotoğraf gönderilemedi. Lütfen tekrar dene.");
-    } finally {
-      setIsSending(false);
-      scrollToBottom(true);
-    }
+    setSelectedImage({ uri: asset.uri, base64: asset.base64 });
   }
 
   if (!user) {
@@ -547,7 +546,14 @@ export function ChatScreen({ route }: Props) {
                   onLongPress={() => setSelectedMessageForReaction(item)}
                 >
                   {item.message_type === "image" || item.message_type === "gif" ? (
-                    <Image source={{ uri: resolvePhotoUrl(item.media_url) || undefined }} style={styles.bubbleImage} />
+                    <View>
+                      <Image source={{ uri: resolvePhotoUrl(item.media_url) || undefined }} style={styles.bubbleImage} contentFit="cover" />
+                      {item.content && item.content !== "[Fotoğraf]" && item.content !== "[GIF]" ? (
+                        <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn, { marginTop: spacing.xs }]}>
+                          {item.content}
+                        </Text>
+                      ) : null}
+                    </View>
                   ) : (
                     <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
                   )}
@@ -597,6 +603,23 @@ export function ChatScreen({ route }: Props) {
               </Pressable>
             ))}
           </View>
+        </View>
+      ) : null}
+
+      {selectedImage ? (
+        <View style={styles.attachedImagePreviewRow}>
+          <Image source={{ uri: selectedImage.uri }} style={styles.attachedImageThumbnail} contentFit="cover" />
+          <View style={styles.attachedImageInfo}>
+            <Text style={styles.attachedImageTitle}>
+              {language === "en" ? "Photo attached 📷" : "Fotoğraf eklendi 📷"}
+            </Text>
+            <Text style={styles.attachedImageSubtitle}>
+              {language === "en" ? "Add a message or tap Send" : "Aşağıya mesajını yazıp Gönder'e basabilirsin"}
+            </Text>
+          </View>
+          <Pressable style={styles.removeAttachedBtn} onPress={() => setSelectedImage(null)}>
+            <Feather name="x-circle" size={20} color={colors.textSecondary} />
+          </Pressable>
         </View>
       ) : null}
 
@@ -870,9 +893,41 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     overflow: "hidden",
   },
+  attachedImagePreviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  attachedImageThumbnail: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.background,
+  },
+  attachedImageInfo: {
+    flex: 1,
+  },
+  attachedImageTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  attachedImageSubtitle: {
+    fontFamily: fontFamily.body,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  removeAttachedBtn: {
+    padding: spacing.xs,
+  },
   bubbleImage: {
-    width: 200,
-    height: 150,
+    width: 220,
+    height: 160,
     borderRadius: radius.sm,
   },
   icebreakerContainer: {

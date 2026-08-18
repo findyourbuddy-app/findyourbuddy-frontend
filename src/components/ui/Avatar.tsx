@@ -35,12 +35,13 @@ function initialsForName(name: string): string {
 export function resolvePhotoUrl(url?: string | null): string | null {
   if (!url || !url.trim()) return null;
   const trimmed = url.trim();
-  if (
-    trimmed.startsWith("http://") ||
-    trimmed.startsWith("https://") ||
-    trimmed.startsWith("file://") ||
-    trimmed.startsWith("data:")
-  ) {
+  if (trimmed.startsWith("file://") || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    if (trimmed.includes("localhost:8000") || trimmed.includes("127.0.0.1:8000")) {
+      return trimmed.replace(/http:\/\/(localhost|127\.0\.0\.1):8000/, API_BASE_URL.replace(/\/+$/, ""));
+    }
     return trimmed;
   }
   const base = API_BASE_URL.replace(/\/+$/, "");
