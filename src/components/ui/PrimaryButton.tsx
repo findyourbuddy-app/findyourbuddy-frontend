@@ -29,6 +29,7 @@ export function PrimaryButton({
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}

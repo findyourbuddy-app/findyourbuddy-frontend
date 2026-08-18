@@ -5,6 +5,7 @@ import * as Location from "expo-location";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -77,6 +78,7 @@ import { useAppTheme } from "../context/ThemeContext";
 
 export function DiscoverScreen() {
   const navigation = useNavigation<DiscoverNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { isPremium, user } = useAuth();
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [events, setEvents] = useState<Event[]>([]);
@@ -478,7 +480,7 @@ export function DiscoverScreen() {
         ) : null
       }
       ListHeaderComponent={
-        <View style={styles.headerArea}>
+        <View style={[styles.headerArea, { paddingTop: insets.top + spacing.md }]}>
           <View style={styles.topRow}>
             <Pressable
               onPress={() => navigation.navigate("Profile")}

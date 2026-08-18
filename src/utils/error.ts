@@ -82,9 +82,10 @@ export function formatApiError(err: unknown, language: "tr" | "en"): string {
       : "Bu işlem için yetkiniz bulunmuyor.";
   }
   if (status === 404) {
+    const url = err.config?.url || "";
     return language === "en"
-      ? "Requested item or service was not found."
-      : "Aranan öge veya servis bulunamadı.";
+      ? `Requested resource not found (404: ${url || "endpoint"}).`
+      : `İstenen servis veya içerik bulunamadı (404: ${url || "uç nokta"}).`;
   }
   if (status === 409) {
     return language === "en"

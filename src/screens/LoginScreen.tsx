@@ -75,29 +75,30 @@ export function LoginScreen() {
       {/* Bottom Right Liquid Blob */}
       <View style={styles.blobBottomRight} />
 
+      {/* Absolute Top Right Language Selector */}
+      <View style={styles.topRightLangContainer}>
+        <Pressable
+          style={styles.langPill}
+          onPress={() => setLanguage(language === "tr" ? "en" : "tr")}
+          accessibilityRole="button"
+          accessibilityLabel="Change Language"
+        >
+          <Feather name="globe" size={13} color={colors.textPrimary} />
+          <Text style={styles.langPillText}>
+            {language === "tr" ? "🇹🇷 TR" : "🇬🇧 EN"}
+          </Text>
+        </Pressable>
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >
-          {/* Top Bar Language Selector */}
-          <View style={styles.topBarRow}>
-            <Pressable
-              style={styles.langPill}
-              onPress={() => setLanguage(language === "tr" ? "en" : "tr")}
-              accessibilityRole="button"
-              accessibilityLabel="Change Language"
-            >
-              <Feather name="globe" size={14} color={colors.textPrimary} />
-              <Text style={styles.langPillText}>
-                {language === "tr" ? "🇹🇷 Türkçe" : "🇬🇧 English"}
-              </Text>
-            </Pressable>
-          </View>
 
           {/* Logo & Brand Header */}
           <View style={styles.headerBox}>
@@ -222,11 +223,11 @@ const styles = StyleSheet.create({
     borderRadius: 130,
     backgroundColor: "rgba(255, 107, 107, 0.18)",
   },
-  topBarRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+  topRightLangContainer: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 54 : 40,
+    right: spacing.lg,
+    zIndex: 999,
   },
   langPill: {
     flexDirection: "row",
@@ -252,6 +253,7 @@ const styles = StyleSheet.create({
   },
   headerBox: {
     alignItems: "center",
+    marginTop: spacing.lg + 4,
     marginBottom: 36,
   },
   formBox: {

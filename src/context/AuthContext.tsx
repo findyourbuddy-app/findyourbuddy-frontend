@@ -65,8 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
-        syncPushToken();
-        fetchSubscription().then((sub) => setSubscription(sub)).catch(() => {});
+        setTimeout(() => {
+          syncPushToken().catch(() => {});
+          fetchSubscription().then((sub) => setSubscription(sub)).catch(() => {});
+        }, 50);
       } catch {
         await deleteToken(AUTH_TOKEN_STORAGE_KEY);
         setAuthToken(null);
@@ -77,15 +79,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(payload: LoginPayload): Promise<void> {
     const token = await loginRequest(payload);
-    await setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token);
     setAuthToken(token.access_token);
+    setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token).catch(() => {});
 
     const currentUser = await getCurrentUser();
     setUser(currentUser);
 
-    // Non-blocking background syncs so login navigation is instant
-    syncPushToken();
-    fetchSubscription().then((sub) => setSubscription(sub)).catch(() => {});
+    // Non-blocking background syncs so screen transition is instant
+    setTimeout(() => {
+      syncPushToken().catch(() => {});
+      fetchSubscription().then((sub) => setSubscription(sub)).catch(() => {});
+    }, 50);
   }
 
   async function refreshSubscription(): Promise<void> {

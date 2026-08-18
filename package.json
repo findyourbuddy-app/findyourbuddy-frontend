@@ -47,7 +47,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "tunnel": "expo start --tunnel",
+    "tunnel": "expo start --tunnel --go",
     "test": "jest"
   },
   "private": true

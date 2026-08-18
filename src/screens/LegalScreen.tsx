@@ -16,8 +16,8 @@ Uygulamayı kullanabilmek için 18 yaşını doldurmuş olmak ve kayıt sırası
 3. Kullanıcı Yükümlülükleri
 Kullanıcılar; başka bir kişiyi taklit edemez, yanıltıcı/sahte profil bilgisi veya fotoğraf paylaşamaz, taciz, nefret söylemi, tehdit veya yasa dışı içerik paylaşamaz, ticari amaçla izinsiz tanıtım yapamaz. İhlal bildirimleri "Şikayet Et" / "Engelle" özellikleri üzerinden değerlendirilir.
 
-4. Etkinlik Katılımı ve Eşleştirme
-"Bu Etkinliğe Gidiyorum" seçeneğiyle bir etkinliğe katılım bildiriminde bulunduğunuzda, bu bilgi yalnızca ilgili etkinliğin eşleştirme havuzunda görünürlüğünüzü sağlamak amacıyla kullanılır. Uygulama, kullanıcıların etkinliğe fiilen katılacağını garanti etmez; bu yalnızca kullanıcı beyanına dayanan bir niyet bildirimidir.
+4. Etkinlik Katılımı, Ücretler ve Eşleştirme
+"Bu Etkinliğe Gidiyorum" seçeneğiyle bir etkinliğe katılım bildiriminde bulunduğunuzda, bu bilgi yalnızca ilgili etkinliğin eşleştirme havuzunda görünürlüğünüzü sağlamak amacıyla kullanılır. Uygulama bünyesinde doğrudan bilet satışı yapılmamaktadır; etkinlik kartlarında gösterilen ücretler kişi başı tahmini katılım/harcama bedeli veya bilgilendirme amaçlıdır. Bilet işlemleri üçüncü parti organizatör platformları üzerinden yürütülür.
 
 5. Premium Üyelik ve Ödemeler
 Premium üyelik satın alımları İyzico altyapısı üzerinden güvenli şekilde işlenir. Kart bilgileriniz Uygulama sunucularında saklanmaz. Premium üyelik; sınırsız kaydırma, gelişmiş filtreler, süper beğeni ve seni beğenenleri görme gibi ek özellikler sunar. İptal ve iade koşulları satın alma sırasında ayrıca belirtilir.
@@ -41,9 +41,10 @@ Son güncelleme: bu metin, FindYourBuddy'nin fiilen işlediği veri kategorileri
 1. Veri Sorumlusu
 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca kişisel verileriniz, veri sorumlusu sıfatıyla FindYourBuddy tarafından aşağıda açıklanan kapsamda işlenmektedir.
 
-2. İşlenen Kişisel Veri Kategorileri
+2. İşlenen Kişisel Veri Kategorileri ve Biyometrik Veri Açık Rızası
 • Kimlik ve iletişim bilgileri: ad, e-posta, doğum tarihi, meslek
-• Profil bilgileri: fotoğraflar, ilgi alanları, biyografi
+• Profil bilgileri: fotoğraflar, ilgi alanları, biyografi, ses tanıtım kaydı
+• Biyometrik veri (Açık Rıza Bağlamında): Profil doğrulama (Mavi Tık) işlemi sırasında yüklediğiniz anlık özçekim (selfie) fotoğrafı ve yüz karşılaştırma verisi, yalnızca profilinizin gerçek bir bireye ait olduğunu doğrulamak amacıyla açık rızanıza istinaden işlenir ve doğrulama sonrasında saklanmaz/işlenmez.
 • Konum verisi: etkinlik eşleştirmesi için yaklaşık/anlık konum
 • Kullanım verisi: kaydırma (swipe) geçmişi, eşleşmeler, etkinlik katılım bildirimleri
 • İletişim içeriği: eşleşilen kullanıcılarla yapılan sohbet mesajları

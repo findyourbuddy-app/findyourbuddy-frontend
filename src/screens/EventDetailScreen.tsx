@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { openAddToCalendar } from "../utils/calendar";
 import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -432,33 +433,7 @@ export function EventDetailScreen({ route }: Props) {
         )}
 
         {!isOwnerOfGroupEvent && event.is_attending ? (
-          event.is_paid ? (
-            // Bilet QR/barkod doğrulaması sadece uygulama içinde oluşturulan
-            // (creator_id dolu) ücretli etkinliklerde gösteriliyor. Hazır/çekilmiş
-            // (scraped, creator_id boş) etkinliklerin biletleri üçüncü parti
-            // platformlardan geliyor -- onları doğrulamayı şimdilik yapmıyoruz,
-            // sadece fiyat bilgisi üstteki meta satırında görünüyor.
-            event.creator_id ? (
-              event.is_ticket_verified ? (
-                <View style={styles.checkedInBadge}>
-                  <Feather name="check-circle" size={16} color="#2ECC71" />
-                  <Text style={styles.checkedInText}>Bilet doğrulandı ✓</Text>
-                </View>
-              ) : (
-                <View style={{ gap: spacing.xs }}>
-                  <PrimaryButton
-                    label="Bilet QR Kodunu Yükle"
-                    onPress={handleUploadTicket}
-                    loading={isUploadingTicket}
-                    variant="outline"
-                  />
-                  <Text style={styles.helperText}>
-                    Bu etkinlik ücretli olduğu için katılımın, bilet üzerindeki QR/barkod okunarak doğrulanır.
-                  </Text>
-                </View>
-              )
-            ) : null
-          ) : event.is_checked_in ? (
+          event.is_checked_in ? (
             <View style={styles.checkedInBadge}>
               <Feather name="check-circle" size={16} color="#2ECC71" />
               <Text style={styles.checkedInText}>Etkinlikte olduğun doğrulandı ✓</Text>
@@ -472,6 +447,29 @@ export function EventDetailScreen({ route }: Props) {
             />
           )
         ) : null}
+
+        {/* Share & Add to Calendar Buttons */}
+        <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs }}>
+          <View style={{ flex: 1 }}>
+            <PrimaryButton
+              label={language === "en" ? "📅 Calendar" : "📅 Takvime Ekle"}
+              onPress={() => openAddToCalendar(event)}
+              variant="outline"
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <PrimaryButton
+              label={language === "en" ? "🔗 Share" : "🔗 Paylaş"}
+              onPress={() => {
+                Share.share({
+                  title: event.title,
+                  message: `FindYourBuddy etkinliğine göz at: ${event.title} - ${event.location_name}\n\nfindyourbuddy://event/${event.id}`,
+                }).catch(() => {});
+              }}
+              variant="outline"
+            />
+          </View>
+        </View>
       </View>
     </ScrollView>
   );

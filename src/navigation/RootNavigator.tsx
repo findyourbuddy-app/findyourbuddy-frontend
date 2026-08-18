@@ -265,7 +265,7 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer>
-      {user ? (user.phone_verified ? <MainNavigator /> : <VerifyPhoneScreen />) : <AuthNavigator />}
+      {user ? <MainNavigator /> : <AuthNavigator />}
       <AlertHost />
     </NavigationContainer>
   );
