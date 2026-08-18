@@ -12,6 +12,8 @@ import type { GeocodingResult } from "../api/geocoding";
 import { createEvent, createEventCreditsCheckoutSession, getEventCreationQuota } from "../api/events";
 import type { EventCreationQuota } from "../types";
 import { CATEGORIES } from "../constants/categories";
+import * as Location from "expo-location";
+import { resolveCityDistrict } from "../utils/location";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 
@@ -84,7 +86,25 @@ export function CreateEventScreen() {
       .finally(() => setIsQuotaLoading(false));
   }
 
-  useEffect(refreshQuota, []);
+  useEffect(() => {
+    refreshQuota();
+    async function initCurrentLocation() {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const pos = await Location.getCurrentPositionAsync({});
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setCoordinates({ latitude: lat, longitude: lng });
+          const label = await resolveCityDistrict(lat, lng);
+          if (label) {
+            setLocationName((current) => (current.trim() ? current : label));
+          }
+        }
+      } catch {}
+    }
+    initCurrentLocation();
+  }, []);
 
   async function handleBuyCredits(): Promise<void> {
     setIsBuyingCredits(true);

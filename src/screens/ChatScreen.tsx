@@ -67,6 +67,28 @@ export function ChatScreen({ route }: Props) {
     [language]
   );
 
+  const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
+  const [selectedMessageForReaction, setSelectedMessageForReaction] = useState<Message | null>(null);
+  const [visibleTimestampId, setVisibleTimestampId] = useState<string | number | null>(null);
+
+  async function handleToggleReaction(messageId: string | number, emoji: string) {
+    setSelectedMessageForReaction(null);
+    if (!user) return;
+    try {
+      const docRef = doc(db, "matches", String(matchId), "messages", String(messageId));
+      const targetMessage = liveMessages.find((m) => String(m.id) === String(messageId));
+      const currentReactions = targetMessage?.reactions || {};
+      const existing = currentReactions[user.id];
+      const newReactions = { ...currentReactions };
+      if (existing === emoji) {
+        delete newReactions[user.id];
+      } else {
+        newReactions[user.id] = emoji;
+      }
+      await updateDoc(docRef, { reactions: newReactions });
+    } catch {}
+  }
+
   const [gifModalVisible, setGifModalVisible] = useState(false);
 
   const [incomingCall, setIncomingCall] = useState<{
@@ -309,6 +331,7 @@ export function ChatScreen({ route }: Props) {
             media_url: data.media_url || null,
             created_at: data.created_at?.toDate()?.toISOString() || new Date().toISOString(),
             is_read: data.is_read || false,
+            reactions: data.reactions || {},
           });
 
           // Mark incoming unread messages as read in Firestore
@@ -496,39 +519,64 @@ export function ChatScreen({ route }: Props) {
         renderItem={({ item }) => {
           const isOwn = item.sender_id === user.id;
           const timeText = formatMessageTime(item.created_at, language);
+          const isTimeVisible = visibleTimestampId === item.id;
+          const reactionsMap = item.reactions || {};
+          const reactionEntries = Object.values(reactionsMap);
 
           return (
             <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
-              <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
-                {item.message_type === "image" || item.message_type === "gif" ? (
-                  <View style={{ gap: 4 }}>
-                    <Image source={{ uri: item.media_url || undefined }} style={styles.bubbleImage} />
-                    <View style={styles.bubbleFooter}>
-                      <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
-                      {isOwn ? (
-                        <Feather
-                          name={item.is_read ? "check-circle" : "check"}
-                          size={12}
-                          color="rgba(255,255,255,0.75)"
-                        />
+              <View style={{ alignItems: isOwn ? "flex-end" : "flex-start", maxWidth: "82%" }}>
+                <Pressable
+                  style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}
+                  onPress={() => setVisibleTimestampId((prev) => (prev === item.id ? null : item.id))}
+                  onLongPress={() => setSelectedMessageForReaction(item)}
+                >
+                  {item.message_type === "image" || item.message_type === "gif" ? (
+                    <View style={{ gap: 4 }}>
+                      <Image source={{ uri: item.media_url || undefined }} style={styles.bubbleImage} />
+                      {isTimeVisible ? (
+                        <View style={styles.bubbleFooter}>
+                          <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
+                          {isOwn ? (
+                            <Feather
+                              name={item.is_read ? "check-circle" : "check"}
+                              size={12}
+                              color="rgba(255,255,255,0.75)"
+                            />
+                          ) : null}
+                        </View>
                       ) : null}
                     </View>
-                  </View>
-                ) : (
-                  <View style={styles.inlineContentRow}>
-                    <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
-                    <View style={styles.inlineTimeBadge}>
-                      <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
-                      {isOwn ? (
-                        <Feather
-                          name={item.is_read ? "check-circle" : "check"}
-                          size={12}
-                          color="rgba(255,255,255,0.75)"
-                        />
+                  ) : (
+                    <View style={styles.inlineContentRow}>
+                      <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
+                      {isTimeVisible ? (
+                        <View style={styles.inlineTimeBadge}>
+                          <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
+                          {isOwn ? (
+                            <Feather
+                              name={item.is_read ? "check-circle" : "check"}
+                              size={12}
+                              color="rgba(255,255,255,0.75)"
+                            />
+                          ) : null}
+                        </View>
                       ) : null}
                     </View>
+                  )}
+                </Pressable>
+
+                {reactionEntries.length > 0 ? (
+                  <View style={[styles.reactionPillsRow, isOwn ? { alignSelf: "flex-end" } : { alignSelf: "flex-start" }]}>
+                    {Array.from(new Set(reactionEntries)).map((emoji) => (
+                      <View key={emoji} style={styles.reactionPill}>
+                        <Text style={styles.reactionEmojiText}>
+                          {emoji} {reactionEntries.filter((e) => e === emoji).length}
+                        </Text>
+                      </View>
+                    ))}
                   </View>
-                )}
+                ) : null}
               </View>
             </View>
           );
@@ -594,6 +642,37 @@ export function ChatScreen({ route }: Props) {
               <Text style={styles.cancelText}>{t("cancel")}</Text>
             </Pressable>
           </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Long-Press Emoji Reaction Modal */}
+      <Modal
+        visible={selectedMessageForReaction !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedMessageForReaction(null)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setSelectedMessageForReaction(null)}>
+          <View style={styles.reactionCard}>
+            <Text style={styles.reactionBarTitle}>
+              {language === "en" ? "React to message" : "Mesaja tepki ver"}
+            </Text>
+            <View style={styles.reactionBarRow}>
+              {REACTION_EMOJIS.map((emoji) => (
+                <Pressable
+                  key={emoji}
+                  style={styles.reactionEmojiBtn}
+                  onPress={() => {
+                    if (selectedMessageForReaction) {
+                      handleToggleReaction(selectedMessageForReaction.id, emoji);
+                    }
+                  }}
+                >
+                  <Text style={{ fontSize: 26 }}>{emoji}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
         </Pressable>
       </Modal>
 
@@ -945,5 +1024,44 @@ const styles = StyleSheet.create({
   },
   acceptBtn: {
     backgroundColor: colors.primary,
+  },
+  reactionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card * 1.5,
+    padding: spacing.lg,
+    alignItems: "center",
+    gap: spacing.md,
+    ...shadows.card,
+  },
+  reactionBarTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  reactionBarRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  reactionEmojiBtn: {
+    padding: spacing.xs,
+    borderRadius: radius.pill,
+  },
+  reactionPillsRow: {
+    flexDirection: "row",
+    gap: 4,
+    marginTop: 2,
+  },
+  reactionPill: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  reactionEmojiText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.textPrimary,
   },
 });
