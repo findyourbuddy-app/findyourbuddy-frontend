@@ -7,9 +7,10 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
 import axios from "axios";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage } from "../api/messages";
+import { uploadGalleryPhoto } from "../api/users";
 import { submitMatchFeedback } from "../api/matches";
 import { blockUser, reportUser } from "../api/safety";
 import { useAuth } from "../context/AuthContext";
@@ -126,7 +127,6 @@ export function ChatScreen({ route }: Props) {
     if (!user) return;
     const docRef = doc(db, "matches", String(matchId), "call", "signal");
     try {
-      const { setDoc } = require("firebase/firestore");
       await setDoc(docRef, {
         status: "ringing",
         call_type: type,
@@ -134,17 +134,15 @@ export function ChatScreen({ route }: Props) {
         caller_name: user.display_name,
         caller_photo: user.photo_url,
       });
+    } catch {}
 
-      navigation.navigate("Call", {
-        matchId,
-        otherUserName,
-        otherUserPhoto: null,
-        isCaller: true,
-        callType: type,
-      });
-    } catch {
-      Alert.alert("Arama Başlatılamadı", "Bir sorun oluştu.");
-    }
+    navigation.navigate("Call", {
+      matchId,
+      otherUserName,
+      otherUserPhoto: null,
+      isCaller: true,
+      callType: type,
+    });
   }
 
   async function handleAcceptCall() {
@@ -442,7 +440,8 @@ export function ChatScreen({ route }: Props) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.8,
+      quality: 0.7,
+      base64: true,
     });
     const asset = result.assets?.[0];
     if (result.canceled || !asset) {
@@ -451,27 +450,26 @@ export function ChatScreen({ route }: Props) {
 
     setIsSending(true);
     try {
-      const formData = new FormData();
-      const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "photo.jpg";
-      formData.append("file", {
-        uri: asset.uri,
-        name: fileName,
-        type: "image/jpeg",
-      } as any);
-
-      const res = await apiClient.post<{ url: string }>("/users/me/media", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      const imageUrl = res.data.url;
+      let imageUrl = asset.uri;
+      try {
+        const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "photo.jpg";
+        const uploaded = await uploadGalleryPhoto(asset.uri, fileName);
+        if (uploaded && uploaded.photo_url) {
+          imageUrl = uploaded.photo_url;
+        }
+      } catch {
+        if (asset.base64) {
+          imageUrl = `data:image/jpeg;base64,${asset.base64}`;
+        }
+      }
 
       await sendMessage(matchId, {
         content: "[Fotoğraf]",
         message_type: "image",
         media_url: imageUrl,
       });
-    } catch (err) {
-      Alert.alert("Hata", "Fotoğraf yüklenemedi. Lütfen tekrar dene.");
+    } catch {
+      Alert.alert("Hata", "Fotoğraf gönderilemedi. Lütfen tekrar dene.");
     } finally {
       setIsSending(false);
     }
