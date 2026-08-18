@@ -238,14 +238,26 @@ export function ChatScreen({ route }: Props) {
   useEffect(() => {
     navigation.setOptions({
       headerTitleAlign: "left",
-      headerTitle: () => (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginLeft: Platform.OS === "ios" ? -8 : 0 }}>
-          <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={36} />
-          <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary }}>
-            {otherUserName}
-          </Text>
+      headerBackVisible: false,
+      headerLeft: () => (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs, marginLeft: Platform.OS === "ios" ? -8 : -4 }}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={{ paddingRight: 6, paddingVertical: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel="Geri"
+          >
+            <Feather name="chevron-left" size={26} color={colors.textPrimary} />
+          </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+            <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={36} />
+            <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary }}>
+              {otherUserName}
+            </Text>
+          </View>
         </View>
       ),
+      headerTitle: "",
       headerRight: () => (
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
           <Pressable onPress={() => initiateCall("voice")} style={styles.headerButton}>
@@ -483,26 +495,40 @@ export function ChatScreen({ route }: Props) {
         onContentSizeChange={() => messageListRef.current?.scrollToEnd({ animated: false })}
         renderItem={({ item }) => {
           const isOwn = item.sender_id === user.id;
+          const timeText = formatMessageTime(item.created_at, language);
+
           return (
             <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
               <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
                 {item.message_type === "image" || item.message_type === "gif" ? (
-                  <Image source={{ uri: item.media_url || undefined }} style={styles.bubbleImage} />
+                  <View style={{ gap: 4 }}>
+                    <Image source={{ uri: item.media_url || undefined }} style={styles.bubbleImage} />
+                    <View style={styles.bubbleFooter}>
+                      <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
+                      {isOwn ? (
+                        <Feather
+                          name={item.is_read ? "check-circle" : "check"}
+                          size={12}
+                          color="rgba(255,255,255,0.75)"
+                        />
+                      ) : null}
+                    </View>
+                  </View>
                 ) : (
-                  <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
+                  <View style={styles.inlineContentRow}>
+                    <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
+                    <View style={styles.inlineTimeBadge}>
+                      <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
+                      {isOwn ? (
+                        <Feather
+                          name={item.is_read ? "check-circle" : "check"}
+                          size={12}
+                          color="rgba(255,255,255,0.75)"
+                        />
+                      ) : null}
+                    </View>
+                  </View>
                 )}
-                <View style={styles.bubbleFooter}>
-                  <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>
-                    {formatMessageTime(item.created_at, language)}
-                  </Text>
-                  {isOwn ? (
-                    <Feather
-                      name={item.is_read ? "check-circle" : "check"}
-                      size={12}
-                      color="rgba(255,255,255,0.75)"
-                    />
-                  ) : null}
-                </View>
               </View>
             </View>
           );
@@ -697,6 +723,21 @@ const styles = StyleSheet.create({
   },
   bubbleTextOwn: {
     color: colors.surface,
+  },
+  inlineContentRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  inlineTimeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    alignSelf: "flex-end",
+    marginBottom: 1,
+    marginLeft: "auto",
   },
   bubbleFooter: {
     flexDirection: "row",
