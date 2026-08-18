@@ -75,3 +75,22 @@ export function createPurchaseCheckoutSession(
     })
     .then((res) => res.data);
 }
+
+export async function uploadMedia(uri: string, fileName: string): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append("file", await toUploadFile(uri, fileName));
+
+  return apiClient
+    .post<{ url: string }>("/users/me/media", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    .then((res) => res.data);
+}
+
+export function verifyPhotoWithVision(selfiePhotoUrl: string): Promise<{ verified: boolean; message: string }> {
+  return apiClient
+    .post<{ verified: boolean; message: string }>("/users/me/verify-photo", {
+      selfie_photo_url: selfiePhotoUrl,
+    })
+    .then((res) => res.data);
+}

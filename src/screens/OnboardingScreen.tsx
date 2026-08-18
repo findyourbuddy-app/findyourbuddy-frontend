@@ -26,6 +26,8 @@ import {
   uploadGalleryPhoto,
   uploadProfilePhoto,
 } from "../api/users";
+import { LANGUAGES_LIST } from "../constants/languages";
+import { BIO_SUGGESTIONS, PROMPT_SUGGESTIONS } from "../constants/prompts";
 import { HOBBIES } from "../constants/hobbies";
 import { INTERESTS, getInterestLabel } from "../constants/interests";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
@@ -35,21 +37,54 @@ import type { User, UserPhoto } from "../types";
 type NavigationProp = NativeStackNavigationProp<MainStackParamList, "Onboarding">;
 
 const ZODIAC_SIGNS = [
-  "Koç", "Boğa", "İkizler", "Yengeç",
-  "Aslan", "Başak", "Terazi", "Akrep",
-  "Yay", "Oğlak", "Kova", "Balık"
+  { key: "Koç", tr: "Koç", en: "Aries" },
+  { key: "Boğa", tr: "Boğa", en: "Taurus" },
+  { key: "İkizler", tr: "İkizler", en: "Gemini" },
+  { key: "Yengeç", tr: "Yengeç", en: "Cancer" },
+  { key: "Aslan", tr: "Aslan", en: "Leo" },
+  { key: "Başak", tr: "Başak", en: "Virgo" },
+  { key: "Terazi", tr: "Terazi", en: "Libra" },
+  { key: "Akrep", tr: "Akrep", en: "Scorpio" },
+  { key: "Yay", tr: "Yay", en: "Sagittarius" },
+  { key: "Oğlak", tr: "Oğlak", en: "Capricorn" },
+  { key: "Kova", tr: "Kova", en: "Aquarius" },
+  { key: "Balık", tr: "Balık", en: "Pisces" },
 ];
 
-const GENDER_OPTIONS = ["Kadın", "Erkek", "Non-binary", "Belirtmek İstemiyorum"];
+const GENDER_OPTIONS = [
+  { key: "Kadın", tr: "Kadın", en: "Female" },
+  { key: "Erkek", tr: "Erkek", en: "Male" },
+  { key: "Diğer", tr: "Diğer", en: "Other" },
+  { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
+];
 
 const LOOKING_FOR_OPTIONS = [
-  "Kahve & Sohbet",
-  "Spor Arkadaşı",
-  "Konser Kankası",
-  "Yeni Şehirde Rehber",
-  "Sadece Eğlence",
-  "Uzun Vadeli Dostluk",
-  "Ciddi Arkadaşlık",
+  { key: "Kahve & Sohbet", tr: "Kahve & Sohbet", en: "Coffee & Chat" },
+  { key: "Spor Arkadaşı", tr: "Spor Arkadaşı", en: "Workout Buddy" },
+  { key: "Konser Kankası", tr: "Konser Kankası", en: "Concert Buddy" },
+  { key: "Yeni Şehirde Rehber", tr: "Yeni Şehirde Rehber", en: "City Guide" },
+  { key: "Sadece Eğlence", tr: "Sadece Eğlence", en: "Just Having Fun" },
+  { key: "Uzun Vadeli Dostluk", tr: "Uzun Vadeli Dostluk", en: "Long-term Friendship" },
+];
+
+const POLITICAL_OPTIONS = [
+  { key: "Apolitik / Nötr", tr: "Apolitik / Nötr", en: "Apolitical / Neutral" },
+  { key: "Sosyal Demokrat", tr: "Sosyal Demokrat", en: "Social Democrat" },
+  { key: "Liberal", tr: "Liberal", en: "Liberal" },
+  { key: "Muhafazakar", tr: "Muhafazakar", en: "Conservative" },
+  { key: "Milliyetçi", tr: "Milliyetçi", en: "Nationalist" },
+  { key: "Sol / İlerici", tr: "Sol / İlerici", en: "Progressive / Left" },
+  { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
+];
+
+const BELIEF_OPTIONS = [
+  { key: "Deist", tr: "Deist", en: "Deist" },
+  { key: "Müslüman", tr: "Müslüman", en: "Muslim" },
+  { key: "Ateist", tr: "Ateist", en: "Atheist" },
+  { key: "Agnostik", tr: "Agnostik", en: "Agnostic" },
+  { key: "Hristiyan", tr: "Hristiyan", en: "Christian" },
+  { key: "Spirütüel", tr: "Spirütüel", en: "Spiritual" },
+  { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
 ];
 
 const MAX_PHOTOS = 6;
@@ -77,13 +112,19 @@ import { useAppTheme } from "../context/ThemeContext";
 export function OnboardingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, updateUser, clearJustRegistered } = useAuth();
-  const { bgGradient } = useAppTheme();
+  const { bgGradient, language, setLanguage, t } = useAppTheme();
 
   const [step, setStep] = useState(1);
   const [displayName, setDisplayName] = useState(user?.display_name || "");
   const [dateOfBirth, setDateOfBirth] = useState(user?.date_of_birth || "");
   const [gender, setGender] = useState(user?.gender || "");
+  const [height, setHeight] = useState<string>(user?.height ? String(user.height) : "");
   const [zodiacSign, setZodiacSign] = useState(user?.zodiac_sign || "");
+  const [politicalViews, setPoliticalViews] = useState<string | null>(user?.political_views ?? null);
+  const [beliefs, setBeliefs] = useState<string | null>(user?.beliefs ?? null);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(
+    user?.languages_spoken && user.languages_spoken.length > 0 ? user.languages_spoken : ["tr"]
+  );
   const [lookingFor, setLookingFor] = useState(user?.looking_for || "");
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>(user?.hobbies || []);
   const [selectedInterests, setSelectedInterests] = useState<string[]>(user?.interests || []);
@@ -102,34 +143,56 @@ export function OnboardingScreen() {
   const [zodiacPickerVisible, setZodiacPickerVisible] = useState(false);
   const [genderPickerVisible, setGenderPickerVisible] = useState(false);
   const [lookingForPickerVisible, setLookingForPickerVisible] = useState(false);
+  const [politicalPickerVisible, setPoliticalPickerVisible] = useState(false);
+  const [beliefsPickerVisible, setBeliefsPickerVisible] = useState(false);
 
   // Zodiac Options
-  const zodiacOptions = ZODIAC_SIGNS.map((sign) => ({
-    key: sign,
-    label: sign,
+  const zodiacOptions = ZODIAC_SIGNS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
     onPress: () => {
-      setZodiacSign(sign);
+      setZodiacSign(item.key);
       setZodiacPickerVisible(false);
     },
   }));
 
   // Gender Options
-  const genderOptions = GENDER_OPTIONS.map((g) => ({
-    key: g,
-    label: g,
+  const genderOptions = GENDER_OPTIONS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
     onPress: () => {
-      setGender(g);
+      setGender(item.key);
       setGenderPickerVisible(false);
     },
   }));
 
   // Looking For Options
-  const lookingForOptions = LOOKING_FOR_OPTIONS.map((opt) => ({
-    key: opt,
-    label: opt,
+  const lookingForOptions = LOOKING_FOR_OPTIONS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
     onPress: () => {
-      setLookingFor(opt);
+      setLookingFor(item.key);
       setLookingForPickerVisible(false);
+    },
+  }));
+
+  // Political Options
+  const politicalOptions = POLITICAL_OPTIONS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
+    onPress: () => {
+      setPoliticalViews(item.key);
+      setPoliticalPickerVisible(false);
+    },
+  }));
+
+  // Belief Options
+  const beliefOptions = BELIEF_OPTIONS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
+    onPress: () => {
+      setBeliefs(item.key);
+      setBeliefsPickerVisible(false);
     },
   }));
 
@@ -297,7 +360,11 @@ export function OnboardingScreen() {
         display_name: displayName.trim(),
         date_of_birth: parseBirthDateToISO(dateOfBirth.trim()),
         gender: gender || undefined,
+        height: height.trim() ? Number(height.trim()) : undefined,
         zodiac_sign: zodiacSign || undefined,
+        political_views: politicalViews || undefined,
+        beliefs: beliefs || undefined,
+        languages_spoken: selectedLanguages,
         looking_for: lookingFor || undefined,
         hobbies: selectedHobbies,
         interests: selectedInterests,
@@ -334,8 +401,12 @@ export function OnboardingScreen() {
     <View style={[styles.container, { backgroundColor: bgGradient[0] }]}>
       {/* Header Progress Bar */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profilini Oluştur ✨</Text>
-        <Text style={styles.stepSubtitle}>Adım {step} / 4</Text>
+        <Text style={styles.headerTitle}>
+          {language === "en" ? "Create Your Profile ✨" : "Profilini Oluştur ✨"}
+        </Text>
+        <Text style={styles.stepSubtitle}>
+          {language === "en" ? `Step ${step} / 4` : `Adım ${step} / 4`}
+        </Text>
         <View style={styles.progressBarBg}>
           <View style={[styles.progressBarFill, { width: `${(step / 4) * 100}%` }]} />
         </View>
@@ -347,9 +418,13 @@ export function OnboardingScreen() {
         {/* STEP 1: Basic Personal Info */}
         {step === 1 ? (
           <View style={styles.stepCard}>
-            <Text style={styles.stepHeading}>Temel Bilgiler & Kimlik 👤</Text>
+            <Text style={styles.stepHeading}>
+              {language === "en" ? "Basic Info & Identity 👤" : "Temel Bilgiler & Kimlik 👤"}
+            </Text>
             <Text style={styles.stepDescription}>
-              Sana en uygun kankaları önerebilmemiz için kimlik bilgilerini ve beklentini gir.
+              {language === "en"
+                ? "Enter your basic info and preferences so we can match you with ideal buddies."
+                : "Sana en uygun kankaları önerebilmemiz için kimlik bilgilerini ve beklentini gir."}
             </Text>
 
             {/* Display Name Input */}

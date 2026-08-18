@@ -1,8 +1,15 @@
 import axios from "axios";
-import { API_BASE_URL } from "../constants/config";
+import { getApiBaseUrl } from "../constants/config";
 
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getApiBaseUrl(),
+});
+
+apiClient.interceptors.request.use((config) => {
+  const baseUrl = getApiBaseUrl();
+  config.baseURL = baseUrl;
+  console.log(`[API Request] ${config.method?.toUpperCase()} ${baseUrl}${config.url}`);
+  return config;
 });
 
 export function setAuthToken(token: string | null): void {

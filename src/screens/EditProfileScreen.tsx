@@ -17,9 +17,13 @@ import { Avatar } from "../components/ui/Avatar";
 import { Chip } from "../components/ui/Chip";
 import { IconSectionHeader } from "../components/ui/IconSectionHeader";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
+import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
 import { OptionPickerModal } from "../components/overlays/OptionPickerModal";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
 import { MapLocationPicker } from "../components/maps/MapLocationPicker";
+import { PhotoVerificationModal } from "../components/overlays/PhotoVerificationModal";
+import * as Location from "expo-location";
+import { reverseGeocode } from "../api/geocoding";
 import type { GeocodingResult } from "../api/geocoding";
 import {
   deleteGalleryPhoto,
@@ -31,6 +35,8 @@ import {
 } from "../api/users";
 import { useAuth } from "../context/AuthContext";
 import { apiClient } from "../api/client";
+import { LANGUAGES_LIST } from "../constants/languages";
+import { BIO_SUGGESTIONS, PROMPT_SUGGESTIONS } from "../constants/prompts";
 import { INTERESTS } from "../constants/interests";
 import { HOBBIES, MAX_HOBBIES_SELECTION } from "../constants/hobbies";
 import {
@@ -39,7 +45,7 @@ import {
   calculateAge,
   isValidBirthDate,
 } from "../utils/profile";
-import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
+import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { User, UserPhoto } from "../types";
 
@@ -78,39 +84,122 @@ export function EditProfileScreen() {
   const [lookingForPickerVisible, setLookingForPickerVisible] = useState(false);
 
   const ZODIAC_SIGNS = [
-    "Koç", "Boğa", "İkizler", "Yengeç",
-    "Aslan", "Başak", "Terazi", "Akrep",
-    "Yay", "Oğlak", "Kova", "Balık"
+    { key: "Koç", tr: "Koç", en: "Aries" },
+    { key: "Boğa", tr: "Boğa", en: "Taurus" },
+    { key: "İkizler", tr: "İkizler", en: "Gemini" },
+    { key: "Yengeç", tr: "Yengeç", en: "Cancer" },
+    { key: "Aslan", tr: "Aslan", en: "Leo" },
+    { key: "Başak", tr: "Başak", en: "Virgo" },
+    { key: "Terazi", tr: "Terazi", en: "Libra" },
+    { key: "Akrep", tr: "Akrep", en: "Scorpio" },
+    { key: "Yay", tr: "Yay", en: "Sagittarius" },
+    { key: "Oğlak", tr: "Oğlak", en: "Capricorn" },
+    { key: "Kova", tr: "Kova", en: "Aquarius" },
+    { key: "Balık", tr: "Balık", en: "Pisces" },
   ];
 
-  const GENDER_OPTIONS = ["Kadın", "Erkek", "Diğer", "Belirtmek İstemiyorum"];
+  const GENDER_OPTIONS = [
+    { key: "Kadın", tr: "Kadın", en: "Female" },
+    { key: "Erkek", tr: "Erkek", en: "Male" },
+    { key: "Diğer", tr: "Diğer", en: "Other" },
+    { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
+  ];
 
   const LOOKING_FOR_OPTIONS = [
-    "Kahve & Sohbet",
-    "Spor Arkadaşı",
-    "Konser Kankası",
-    "Yeni Şehirde Rehber",
-    "Sadece Eğlence",
-    "Uzun Vadeli Dostluk"
+    { key: "Kahve & Sohbet", tr: "Kahve & Sohbet", en: "Coffee & Chat" },
+    { key: "Spor Arkadaşı", tr: "Spor Arkadaşı", en: "Workout Buddy" },
+    { key: "Konser Kankası", tr: "Konser Kankası", en: "Concert Buddy" },
+    { key: "Yeni Şehirde Rehber", tr: "Yeni Şehirde Rehber", en: "City Guide" },
+    { key: "Sadece Eğlence", tr: "Sadece Eğlence", en: "Just Having Fun" },
+    { key: "Uzun Vadeli Dostluk", tr: "Uzun Vadeli Dostluk", en: "Long-term Friendship" },
   ];
 
-  const zodiacOptions = ZODIAC_SIGNS.map((sign) => ({
-    key: sign,
-    label: sign,
-    onPress: () => setZodiacSign(sign),
+  const POLITICAL_OPTIONS = [
+    { key: "Apolitik / Nötr", tr: "Apolitik / Nötr", en: "Apolitical / Neutral" },
+    { key: "Sosyal Demokrat", tr: "Sosyal Demokrat", en: "Social Democrat" },
+    { key: "Liberal", tr: "Liberal", en: "Liberal" },
+    { key: "Muhafazakar", tr: "Muhafazakar", en: "Conservative" },
+    { key: "Milliyetçi", tr: "Milliyetçi", en: "Nationalist" },
+    { key: "Sol / İlerici", tr: "Sol / İlerici", en: "Progressive / Left" },
+    { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
+  ];
+
+  const BELIEF_OPTIONS = [
+    { key: "Deist", tr: "Deist", en: "Deist" },
+    { key: "Müslüman", tr: "Müslüman", en: "Muslim" },
+    { key: "Ateist", tr: "Ateist", en: "Atheist" },
+    { key: "Agnostik", tr: "Agnostik", en: "Agnostic" },
+    { key: "Hristiyan", tr: "Hristiyan", en: "Christian" },
+    { key: "Spirütüel", tr: "Spirütüel", en: "Spiritual" },
+    { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
+  ];
+
+  const zodiacOptions = ZODIAC_SIGNS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
+    onPress: () => setZodiacSign(item.key),
   }));
 
-  const genderOptions = GENDER_OPTIONS.map((option) => ({
-    key: option,
-    label: option,
-    onPress: () => setGender(option),
+  const genderOptions = GENDER_OPTIONS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
+    onPress: () => setGender(item.key),
   }));
 
-  const lookingForOptions = LOOKING_FOR_OPTIONS.map((option) => ({
-    key: option,
-    label: option,
-    onPress: () => setLookingFor(option),
+  const lookingForOptions = LOOKING_FOR_OPTIONS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
+    onPress: () => setLookingFor(item.key),
   }));
+
+  const politicalOptions = POLITICAL_OPTIONS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
+    onPress: () => setPoliticalViews(item.key),
+  }));
+
+  const beliefOptions = BELIEF_OPTIONS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
+    onPress: () => setBeliefs(item.key),
+  }));
+
+  const [selectedLanguages, setSelectedLanguages] = useState<Set<string>>(
+    new Set(user?.languages_spoken && user.languages_spoken.length > 0 ? user.languages_spoken : ["tr"])
+  );
+  const [politicalViews, setPoliticalViews] = useState<string | null>(user?.political_views ?? null);
+  const [beliefs, setBeliefs] = useState<string | null>(user?.beliefs ?? null);
+  const [politicalPickerVisible, setPoliticalPickerVisible] = useState(false);
+  const [beliefsPickerVisible, setBeliefsPickerVisible] = useState(false);
+
+  function toggleLanguage(code: string): void {
+    setSelectedLanguages((current) => {
+      const next = new Set(current);
+      if (next.has(code)) {
+        if (next.size > 1) next.delete(code);
+      } else {
+        next.add(code);
+      }
+      return next;
+    });
+  }
+
+  const [height, setHeight] = useState<string>(user?.height ? String(user.height) : "");
+  const [hiddenFields, setHiddenFields] = useState<Set<string>>(
+    new Set(user?.hidden_fields ?? [])
+  );
+
+  function toggleFieldPrivacy(fieldKey: string): void {
+    setHiddenFields((current) => {
+      const next = new Set(current);
+      if (next.has(fieldKey)) {
+        next.delete(fieldKey);
+      } else {
+        next.add(fieldKey);
+      }
+      return next;
+    });
+  }
 
   const [selectedInterests, setSelectedInterests] = useState<Set<string>>(
     new Set(user?.interests ?? [])
@@ -121,6 +210,46 @@ export function EditProfileScreen() {
       : null
   );
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
+  const [isLocatingCurrent, setIsLocatingCurrent] = useState(false);
+  const [currentLocationLabel, setCurrentLocationLabel] = useState<string | null>(null);
+
+  const handleAutoUpdateCurrentLocation = useCallback(async () => {
+    setIsLocatingCurrent(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          language === "en" ? "Location Permission Required" : "Konum İzni Gerekli",
+          language === "en"
+            ? "Please grant location access to update your position automatically."
+            : "Anlık konumunuzu otomatik güncelleyebilmek için konum izni vermeniz gerekmektedir."
+        );
+        return;
+      }
+      const position = await Location.getCurrentPositionAsync({});
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      setLocation({ latitude: lat, longitude: lng });
+
+      const reverseRes = await reverseGeocode(lat, lng);
+      const label = reverseRes.display_name.split(",").slice(0, 2).join(",").trim();
+      setCurrentLocationLabel(label);
+
+      Alert.alert(
+        language === "en" ? "Location Updated 📍" : "Konum Güncellendi 📍",
+        language === "en"
+          ? `Your position has been automatically updated to ${label}.`
+          : `Konumunuz otomatik olarak ${label} olarak güncellendi!`
+      );
+    } catch {
+      Alert.alert(
+        language === "en" ? "Error" : "Bir Sorun Oluştu",
+        language === "en" ? "Could not fetch current GPS location." : "Anlık GPS konumunuz alınırken bir sorun oluştu."
+      );
+    } finally {
+      setIsLocatingCurrent(false);
+    }
+  }, [language]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -202,6 +331,7 @@ export function EditProfileScreen() {
     setLocationPickerVisible(false);
   }
 
+  const [photoVerificationVisible, setPhotoVerificationVisible] = useState(false);
   const [isVerifyingPhoto, setIsVerifyingPhoto] = useState(false);
 
   async function handleVerifyPhoto(): Promise<void> {
@@ -214,8 +344,10 @@ export function EditProfileScreen() {
       const cameraPerm = await ImagePicker.requestCameraPermissionsAsync();
       if (cameraPerm.status !== "granted") {
         Alert.alert(
-          "Kamera İzni Gerekli",
-          "Mavi Tik 🔵 doğrulaması için ön kamera ile anlık selfie çekilmesi zorunludur. Lütfen kamera iznini onaylayın."
+          language === "en" ? "Camera Permission Required" : "Kamera İzni Gerekli",
+          language === "en"
+            ? "A live selfie from the front camera is required for Blue Checkmark verification. Please grant camera permission."
+            : "Mavi Tik 🔵 doğrulaması için ön kamera ile anlık selfie çekilmesi zorunludur. Lütfen kamera iznini onaylayın."
         );
         return;
       }
@@ -243,11 +375,16 @@ export function EditProfileScreen() {
       if (res.data?.verified) {
         updateUser({ ...uploadedUser, is_verified: true });
         Alert.alert(
-          "Doğrulama Başarılı! 🔵",
-          `${res.data.message || "Profiliniz başarıyla doğrulandı!"}\n\nE-posta adresinize (${user.email}) doğrulama onay mesajı gönderilmiştir.`
+          language === "en" ? "Verification Successful! 🔵" : "Doğrulama Başarılı! 🔵",
+          language === "en"
+            ? `${res.data.message || "Your profile has been verified!"}\n\nA confirmation email has been sent to ${user.email}.`
+            : `${res.data.message || "Profiliniz başarıyla doğrulandı!"}\n\nE-posta adresinize (${user.email}) doğrulama onay mesajı gönderilmiştir.`
         );
       } else {
-        Alert.alert("Doğrulama Başarısız", res.data?.message || "Selfie profil fotoğrafınızla uyuşmadı.");
+        Alert.alert(
+          language === "en" ? "Verification Failed" : "Doğrulama Başarısız",
+          res.data?.message || (language === "en" ? "Selfie did not match your profile photo." : "Selfie profil fotoğrafınızla uyuşmadı.")
+        );
       }
     } catch {
       Alert.alert("Hata", "Fotoğraf doğrulaması sırasında bir sorun oluştu. Lütfen tekrar deneyin.");
@@ -383,9 +520,15 @@ export function EditProfileScreen() {
       } as any);
       updateUser(updated);
       setVoiceNoteUrl(null);
-      Alert.alert("Başarılı", "Ses tanıtımın profilinden kaldırıldı.");
+      Alert.alert(
+        language === "en" ? "Success" : "Başarılı",
+        language === "en" ? "Voice intro removed from profile." : "Ses tanıtımın profilinden kaldırıldı."
+      );
     } catch {
-      Alert.alert("Hata", "Ses tanıtımı silinirken bir sorun oluştu.");
+      Alert.alert(
+        language === "en" ? "Error" : "Hata",
+        language === "en" ? "Failed to delete voice intro." : "Ses tanıtımı silinirken bir sorun oluştu."
+      );
     } finally {
       setIsSaving(false);
     }
@@ -395,7 +538,7 @@ export function EditProfileScreen() {
     setError(null);
 
     if (!displayName.trim()) {
-      setError("İsmin boş olamaz.");
+      setError(language === "en" ? "Name cannot be empty." : "İsmin boş olamaz.");
       return;
     }
 
@@ -406,7 +549,7 @@ export function EditProfileScreen() {
       const month = Number(birthMonth);
       const year = Number(birthYear);
       if (!isValidBirthDate(day, month, year)) {
-        setError("Lütfen geçerli bir doğum tarihi gir (18-99 yaş arası).");
+        setError(language === "en" ? "Please enter a valid birth date (ages 18-99)." : "Lütfen geçerli bir doğum tarihi gir (18-99 yaş arası).");
         return;
       }
       birthDateIso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -421,6 +564,11 @@ export function EditProfileScreen() {
         university: university.trim() ? university.trim() : null,
         zodiac_sign: zodiacSign ? zodiacSign : null,
         gender: gender ? gender : null,
+        height: height.trim() ? Number(height.trim()) : null,
+        political_views: politicalViews ? politicalViews : null,
+        beliefs: beliefs ? beliefs : null,
+        languages_spoken: Array.from(selectedLanguages),
+        hidden_fields: Array.from(hiddenFields),
         looking_for: lookingFor ? lookingFor : null,
         about_me_prompt: aboutMePrompt.trim() ? aboutMePrompt.trim() : null,
         bio: bio.trim() ? bio.trim() : undefined,
@@ -432,7 +580,7 @@ export function EditProfileScreen() {
       updateUser(updated);
       leaveScreen();
     } catch {
-      setError("Profil kaydedilemedi, bilgileri kontrol edip tekrar dene.");
+      setError(language === "en" ? "Profile could not be saved. Check your details and try again." : "Profil kaydedilemedi, bilgileri kontrol edip tekrar dene.");
     } finally {
       setIsSaving(false);
     }
@@ -463,7 +611,7 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentBlue]}>
-        <IconSectionHeader icon="user" color="#2E7FC9" label={t("identity")} />
+        <IconSectionHeader icon="user" color="#2E7FC9" label={language === "en" ? "Identity" : "Kimlik Bilgileri"} />
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>{t("name")}</Text>
           <TextInput
@@ -558,7 +706,15 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentTeal]}>
-        <IconSectionHeader icon="briefcase" color="#2FA88B" label={t("careerAndEdu")} />
+        <View style={styles.cardHeaderWithPrivacy}>
+          <IconSectionHeader icon="briefcase" color="#2FA88B" label={t("careerAndEdu")} />
+          <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("occupation")}>
+            <Feather name={hiddenFields.has("occupation") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("occupation") ? colors.accentRed : colors.primary} />
+            <Text style={[styles.privacyBtnText, hiddenFields.has("occupation") && { color: colors.accentRed }]}>
+              {hiddenFields.has("occupation") ? (language === "en" ? "Hidden" : "Profilde Gizli") : (language === "en" ? "Visible" : "Görünür")}
+            </Text>
+          </Pressable>
+        </View>
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>{t("occupation")}</Text>
           <TextInput
@@ -585,22 +741,118 @@ export function EditProfileScreen() {
       <View style={[styles.groupCard, styles.cardAccentPurple]}>
         <IconSectionHeader icon="compass" color={colors.primary} label={t("personalityAndPreferences")} />
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>{t("zodiacSign")}</Text>
+          <View style={styles.fieldHeaderWithPrivacy}>
+            <Text style={styles.fieldLabel}>{t("zodiacSign")}</Text>
+            <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("zodiac_sign")}>
+              <Feather name={hiddenFields.has("zodiac_sign") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("zodiac_sign") ? colors.accentRed : colors.primary} />
+              <Text style={[styles.privacyBtnText, hiddenFields.has("zodiac_sign") && { color: colors.accentRed }]}>
+                {hiddenFields.has("zodiac_sign") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Visible" : "Görünür")}
+              </Text>
+            </Pressable>
+          </View>
           <Pressable style={styles.inputPressable} onPress={() => setZodiacPickerVisible(true)}>
             <Text style={[styles.inputText, !zodiacSign && { color: colors.textSecondary }]}>
-              {zodiacSign || (language === "en" ? "Select zodiac sign..." : "Burcunu seç...")}
+              {zodiacSign
+                ? (ZODIAC_SIGNS.find((item) => item.key === zodiacSign)
+                    ? (language === "en" ? ZODIAC_SIGNS.find((item) => item.key === zodiacSign)?.en : ZODIAC_SIGNS.find((item) => item.key === zodiacSign)?.tr)
+                    : zodiacSign)
+                : (language === "en" ? "Select zodiac sign..." : "Burcunu seç...")}
             </Text>
             <Feather name="compass" size={16} color={colors.textSecondary} />
+          </Pressable>
+        </View>
+        <View style={styles.field}>
+          <View style={styles.fieldHeaderWithPrivacy}>
+            <Text style={styles.fieldLabel}>{language === "en" ? "Height (cm)" : "Boy (cm)"}</Text>
+            <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("height")}>
+              <Feather name={hiddenFields.has("height") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("height") ? colors.accentRed : colors.primary} />
+              <Text style={[styles.privacyBtnText, hiddenFields.has("height") && { color: colors.accentRed }]}>
+                {hiddenFields.has("height") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Visible" : "Görünür")}
+              </Text>
+            </Pressable>
+          </View>
+          <TextInput
+            style={styles.input}
+            placeholder={language === "en" ? "e.g. 178" : "Örn. 178"}
+            placeholderTextColor={colors.textSecondary}
+            value={height}
+            onChangeText={(text) => setHeight(text.replace(/[^0-9]/g, "").slice(0, 3))}
+            keyboardType="numeric"
+            maxLength={3}
+          />
+        </View>
+        <View style={styles.field}>
+          <View style={styles.fieldHeaderWithPrivacy}>
+            <Text style={styles.fieldLabel}>{language === "en" ? "Political Views" : "Siyasi Görüş"}</Text>
+            <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("political_views")}>
+              <Feather name={hiddenFields.has("political_views") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("political_views") ? colors.accentRed : colors.primary} />
+              <Text style={[styles.privacyBtnText, hiddenFields.has("political_views") && { color: colors.accentRed }]}>
+                {hiddenFields.has("political_views") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Visible" : "Görünür")}
+              </Text>
+            </Pressable>
+          </View>
+          <Pressable style={styles.inputPressable} onPress={() => setPoliticalPickerVisible(true)}>
+            <Text style={[styles.inputText, !politicalViews && { color: colors.textSecondary }]}>
+              {politicalViews
+                ? (POLITICAL_OPTIONS.find((item) => item.key === politicalViews)
+                    ? (language === "en" ? POLITICAL_OPTIONS.find((item) => item.key === politicalViews)?.en : POLITICAL_OPTIONS.find((item) => item.key === politicalViews)?.tr)
+                    : politicalViews)
+                : (language === "en" ? "Select political views (Optional)..." : "Siyasi görüşün (İsteğe bağlı)...")}
+            </Text>
+            <Feather name="compass" size={16} color={colors.textSecondary} />
+          </Pressable>
+        </View>
+        <View style={styles.field}>
+          <View style={styles.fieldHeaderWithPrivacy}>
+            <Text style={styles.fieldLabel}>{language === "en" ? "Beliefs & Philosophy" : "İnanç & Dünya Görüşü"}</Text>
+            <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("beliefs")}>
+              <Feather name={hiddenFields.has("beliefs") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("beliefs") ? colors.accentRed : colors.primary} />
+              <Text style={[styles.privacyBtnText, hiddenFields.has("beliefs") && { color: colors.accentRed }]}>
+                {hiddenFields.has("beliefs") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Visible" : "Görünür")}
+              </Text>
+            </Pressable>
+          </View>
+          <Pressable style={styles.inputPressable} onPress={() => setBeliefsPickerVisible(true)}>
+            <Text style={[styles.inputText, !beliefs && { color: colors.textSecondary }]}>
+              {beliefs
+                ? (BELIEF_OPTIONS.find((item) => item.key === beliefs)
+                    ? (language === "en" ? BELIEF_OPTIONS.find((item) => item.key === beliefs)?.en : BELIEF_OPTIONS.find((item) => item.key === beliefs)?.tr)
+                    : beliefs)
+                : (language === "en" ? "Select belief / philosophy (Optional)..." : "İnanç veya felsefen (İsteğe bağlı)...")}
+            </Text>
+            <Feather name="heart" size={16} color={colors.textSecondary} />
           </Pressable>
         </View>
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>{t("lookingForIntention")}</Text>
           <Pressable style={styles.inputPressable} onPress={() => setLookingForPickerVisible(true)}>
             <Text style={[styles.inputText, !lookingFor && { color: colors.textSecondary }]}>
-              {lookingFor ? (lookingFor === "Sadece Eğlence" && language === "en" ? t("justHavingFun") : lookingFor) : (language === "en" ? "Select intention..." : "Uygulamada ne aradığını belirt...")}
+              {lookingFor
+                ? (LOOKING_FOR_OPTIONS.find((item) => item.key === lookingFor)
+                    ? (language === "en" ? LOOKING_FOR_OPTIONS.find((item) => item.key === lookingFor)?.en : LOOKING_FOR_OPTIONS.find((item) => item.key === lookingFor)?.tr)
+                    : lookingFor)
+                : (language === "en" ? "Select intention..." : "Uygulamada ne aradığını belirt...")}
             </Text>
             <Feather name="target" size={16} color={colors.textSecondary} />
           </Pressable>
+        </View>
+      </View>
+
+      {/* Languages Spoken Card */}
+      <View style={[styles.groupCard, styles.cardAccentTeal]}>
+        <IconSectionHeader icon="globe" color="#2FA88B" label={language === "en" ? "Languages Spoken 🌐" : "Bildiği Diller 🌐"} />
+        <View style={styles.chipGrid}>
+          {LANGUAGES_LIST.map((lang) => {
+            const active = selectedLanguages.has(lang.code);
+            return (
+              <Chip
+                key={lang.code}
+                label={`${lang.flag} ${language === "en" ? lang.labelEn : lang.label}`}
+                active={active}
+                onPress={() => toggleLanguage(lang.code)}
+              />
+            );
+          })}
         </View>
       </View>
 
@@ -608,9 +860,37 @@ export function EditProfileScreen() {
         <IconSectionHeader icon="feather" color="#E0A800" label={t("introduceYourself")} />
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>{t("funDetailPrompt")}</Text>
+          <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
+            {language === "en" ? "💡 Tap a suggestion to start:" : "💡 Örnek bir başlığa tıklayarak başla:"}
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
+            <View style={{ flexDirection: "row", gap: spacing.xs }}>
+              {PROMPT_SUGGESTIONS.map((item) => (
+                <Pressable
+                  key={item.id}
+                  style={{
+                    backgroundColor: "#FEF9C3",
+                    borderColor: "#FDE047",
+                    borderWidth: 1,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.xs,
+                    borderRadius: radius.pill,
+                  }}
+                  onPress={() => {
+                    const q = language === "en" ? item.questionEn : item.questionTr;
+                    setAboutMePrompt(`${q} `);
+                  }}
+                >
+                  <Text style={{ color: "#854D0E", fontWeight: "600", fontFamily: fontFamily.body, fontSize: 13 }}>
+                    {language === "en" ? item.questionEn : item.questionTr}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
           <TextInput
             style={[styles.input, styles.bioInput]}
-            placeholder={language === "en" ? "e.g. I love weekend camping and learning new languages..." : "Örn: Hafta sonları kamp yapmayı ve yeni diller öğrenmeyi severim..."}
+            placeholder={language === "en" ? "e.g. My perfect Sunday is morning coffee and nature walks..." : "Örn: Mükemmel bir Pazar günüm sabah kahvesi ve doğa yürüyüşü..."}
             placeholderTextColor={colors.textSecondary}
             value={aboutMePrompt}
             onChangeText={setAboutMePrompt}
@@ -624,6 +904,34 @@ export function EditProfileScreen() {
               {bio.length}/{MAX_BIO_LENGTH}
             </Text>
           </View>
+          <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
+            {language === "en" ? "💡 Tap a suggestion to fill bio:" : "💡 Biyografi örneğine tıklayarak doldur:"}
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
+            <View style={{ flexDirection: "row", gap: spacing.xs }}>
+              {BIO_SUGGESTIONS.map((item) => (
+                <Pressable
+                  key={item.id}
+                  style={{
+                    backgroundColor: "#E0F2FE",
+                    borderColor: "#38BDF8",
+                    borderWidth: 1,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.xs,
+                    borderRadius: radius.pill,
+                  }}
+                  onPress={() => {
+                    const text = language === "en" ? item.placeholderEn : item.placeholderTr;
+                    setBio(text.slice(0, MAX_BIO_LENGTH));
+                  }}
+                >
+                  <Text style={{ color: "#0369A1", fontWeight: "600", fontFamily: fontFamily.body, fontSize: 13 }}>
+                    {language === "en" ? item.questionEn : item.questionTr}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
           <TextInput
             style={[styles.input, styles.bioInput]}
             placeholder={language === "en" ? "Tell us briefly about yourself..." : "Kendinden kısaca bahset..."}
@@ -651,7 +959,7 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentGreen]}>
-        <IconSectionHeader icon="heart" color={colors.accentGreen} label={t("interests")} />
+        <IconSectionHeader icon="heart" color={colors.accentGreen} label={language === "en" ? "Activities I Want to Do" : "Yapmak İstediğim Aktiviteler"} />
         <View style={styles.chipGrid}>
           {INTERESTS.map((interest) => (
             <Chip
@@ -665,45 +973,36 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentPink]}>
-        <IconSectionHeader icon="mic" color="#D9427F" label={t("voiceIntro")} />
+        <IconSectionHeader icon="mic" color="#D9427F" label={language === "en" ? "Voice Intro" : "Ses Tanıtımı"} />
         {voiceNoteUrl ? (
-          <View style={styles.voiceNoteCard}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 }}>
-              <Feather name="mic" size={20} color={colors.primary} />
-              <Text style={styles.voiceNoteTitle}>{language === "en" ? "Voice Intro Uploaded" : "Ses Tanıtımın Yüklendi"}</Text>
-            </View>
-            <Pressable style={styles.voiceNoteDeleteBtn} onPress={handleDeleteVoiceNote}>
-              <Feather name="trash-2" size={16} color={colors.accentRed} />
-            </Pressable>
-          </View>
+          <VoiceNotePlayer audioUrl={voiceNoteUrl} onDelete={handleDeleteVoiceNote} />
         ) : (
           <Pressable style={styles.voiceNotePlaceholder} onPress={() => setShowRecorderModal(true)}>
             <Feather name="mic" size={20} color={colors.primary} />
-            <Text style={styles.voiceNotePlaceholderText}>{t("recordVoiceIntro")}</Text>
+            <Text style={styles.voiceNotePlaceholderText}>{language === "en" ? "Record Voice Intro (Max 10s)" : "Ses Tanıtımı Kaydet (Max 10sn)"}</Text>
           </Pressable>
         )}
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentBlue]}>
-        <IconSectionHeader icon="map-pin" color="#2E7FC9" label={t("location")} />
-        {location ? (
-          <MapLocationPicker
-            latitude={location.latitude}
-            longitude={location.longitude}
-            onChange={setLocation}
-          />
-        ) : null}
+        <IconSectionHeader icon="map-pin" color="#2E7FC9" label={language === "en" ? "Location & GPS" : "Konum & GPS"} />
+        <View style={styles.voiceNoteCard}>
+          <Feather name="navigation" size={18} color={accentColor} />
+          <Text style={{ flex: 1, fontFamily: fontFamily.body, fontSize: 13, color: colors.textPrimary }}>
+            {currentLocationLabel || (location ? (language === "en" ? "GPS Location Active & Saved" : "GPS Konum Aktif & Kaydedildi") : (language === "en" ? "GPS Location Not Set" : "Anlık GPS Konumu Henüz Alınmadı"))}
+          </Text>
+        </View>
         <PrimaryButton
-          label={location ? t("changeLocation") : (language === "en" ? "Select Location" : "Konum Seç")}
-          onPress={() => setLocationPickerVisible(true)}
-          variant="outline"
+          label={isLocatingCurrent ? (language === "en" ? "Updating GPS..." : "GPS Konum Alınıyor...") : (language === "en" ? "📍 Update Current Location (GPS)" : "📍 Anlık Konumumu Otomatik Güncelle (GPS)")}
+          onPress={handleAutoUpdateCurrentLocation}
+          variant="accent"
         />
       </View>
       <View style={[styles.groupCard, styles.cardAccentBlue]}>
-        <IconSectionHeader icon="shield" color="#1DA1F2" label={t("accountVerification")} />
+        <IconSectionHeader icon="shield" color="#1DA1F2" label={language === "en" ? "Account Verification" : "Hesap Doğrulama"} />
         <Pressable
           style={styles.settingsMenuRow}
-          onPress={user.is_verified ? undefined : handleVerifyPhoto}
+          onPress={user.is_verified ? undefined : () => setPhotoVerificationVisible(true)}
           disabled={isVerifyingPhoto}
         >
           <View style={styles.settingsMenuLeft}>
@@ -711,15 +1010,19 @@ export function EditProfileScreen() {
               <Feather name="check-circle" size={18} color="#1DA1F2" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.settingsMenuTitle}>{t("verifyProfile")}</Text>
+              <Text style={styles.settingsMenuTitle}>
+                {user.is_verified
+                  ? (language === "en" ? "Verified Profile 🔵" : "Mavi Tik Onaylı Profil 🔵")
+                  : (language === "en" ? "Verify Profile 🔵" : "Profilini Doğrula 🔵")}
+              </Text>
               <Text style={styles.settingsMenuSub}>
                 {user.is_verified
-                  ? (language === "en" ? "Your account is verified with Blue Badge 🔵" : "Hesabınız Mavi Tik 🔵 ile onaylanmıştır")
+                  ? (language === "en" ? "Your account is verified with Blue Checkmark 🔵" : "Hesabınız Mavi Tik 🔵 ile onaylanmıştır")
                   : user.verification_status === "rejected"
                   ? (language === "en" ? "Verification rejected. Tap to retake live selfie" : "Doğrulama reddedildi. Yeniden canlı selfie çekmek için tıkla")
                   : user.verification_status === "pending"
-                  ? t("verificationPendingTapToRetake")
-                  : (language === "en" ? "Take a live selfie to get a blue badge" : "Anlık ön kamera selfie'si çekerek mavi tik al")}
+                  ? (language === "en" ? "Verification pending. Tap to retake live selfie" : "Doğrulama bekleniyor. Yeniden canlı selfie çekmek için tıkla")
+                  : (language === "en" ? "Take a live selfie to get a blue checkmark" : "Anlık ön kamera selfie'si çekerek mavi tik al")}
               </Text>
             </View>
           </View>
@@ -841,12 +1144,31 @@ export function EditProfileScreen() {
         onDismiss={() => setLookingForPickerVisible(false)}
       />
 
+      <OptionPickerModal
+        visible={politicalPickerVisible}
+        title={language === "en" ? "Select Political Views" : "Siyasi Görüşünü Seç"}
+        options={politicalOptions}
+        onDismiss={() => setPoliticalPickerVisible(false)}
+      />
+
+      <OptionPickerModal
+        visible={beliefsPickerVisible}
+        title={language === "en" ? "Select Beliefs / Philosophy" : "İnanç veya Dünya Görüşünü Seç"}
+        options={beliefOptions}
+        onDismiss={() => setBeliefsPickerVisible(false)}
+      />
+
       <LocationPickerModal
         visible={locationPickerVisible}
         onSelect={handleLocationSelect}
         onDismiss={() => setLocationPickerVisible(false)}
         initialLatitude={location?.latitude}
         initialLongitude={location?.longitude}
+      />
+
+      <PhotoVerificationModal
+        visible={photoVerificationVisible}
+        onClose={() => setPhotoVerificationVisible(false)}
       />
     </ScrollView>
   );
@@ -879,6 +1201,38 @@ const styles = StyleSheet.create({
   },
   avatarSection: {
     alignItems: "center",
+    gap: spacing.sm,
+  },
+  verifiedBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#E8F8F0",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    marginTop: 4,
+  },
+  verifiedBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: "#2ECC71",
+  },
+  verifyProfileBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    marginTop: 4,
+    ...shadows.soft,
+  },
+  verifyProfileBtnText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
   },
   avatarBadge: {
     position: "absolute",
@@ -892,6 +1246,32 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: colors.background,
+  },
+  cardHeaderWithPrivacy: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  fieldHeaderWithPrivacy: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  privacyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  privacyBtnText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.primary,
   },
   field: {
     gap: spacing.sm,
@@ -1126,40 +1506,6 @@ const styles = StyleSheet.create({
   recorderBtnText: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 14,
-    color: colors.surface,
-  },
-  verificationBox: {
-    marginTop: spacing.sm,
-    alignItems: "center",
-  },
-  verifiedBadgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    backgroundColor: "rgba(29, 161, 242, 0.1)",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: "#1DA1F2",
-  },
-  verifiedBadgeText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 12,
-    color: "#1DA1F2",
-  },
-  verifyButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    backgroundColor: "#1DA1F2",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.pill,
-  },
-  verifyButtonText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 12,
     color: colors.surface,
   },
   settingsMenuRow: {

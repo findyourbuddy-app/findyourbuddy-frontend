@@ -33,31 +33,38 @@ const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
 import { useAppTheme } from "../context/ThemeContext";
 
 export function ChatScreen({ route }: Props) {
-  const { matchId, otherUserId, otherUserName, needsFeedback } = route.params;
+  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, eventTitle, isGroupEvent } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
-  const { t, accentColor, bgGradient } = useAppTheme();
+  const { t, language, accentColor, bgGradient } = useAppTheme();
   const [historicalMessages, setHistoricalMessages] = useState<Message[]>([]);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
-  const POPULAR_GIFS = [
-    { key: "hello", label: "Merhaba 👋", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHB1dzJsczd4MmFudDRid2t4YW1rYzQzajc5NXBhdDFtdzBtNHM2ciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VdfD8e415yLte/giphy.gif" },
-    { key: "wink", label: "Göz Kırp 😉", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZDY5cTJycGl1YWJldmt1aXZ5aG82Z3E0MTVkcDRpNHExMHVscDdyNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d1E2VyhFsxRxCLKw/giphy.gif" },
-    { key: "laugh", label: "Kahkaha 😂", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdzB2M2xscXZicWc5M3pxZnpxdGlidDR6dGJnbnpvYTJ0MWpsOHZ5dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ltvJF9EQ135t155j6V/giphy.gif" },
-    { key: "coffee", label: "Kahve Buluşması ☕", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDVqNml4ZmF0NWV1NHkxbjhvYnhkMGFqZjR1N3prOW1obWRtdm1xciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oriO0OEd9QIDdllqo/giphy.gif" },
-    { key: "celebrate", label: "Kutlama 🎉", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZnRna3ZsbGg3cG94czAydTV1MXJwbzdudDBhb3Z3OHh3c2syeG9xbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYt5jPR6QX5pnq0/giphy.gif" },
-    { key: "applause", label: "Alkış 👏", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExN3JpcTZxbGF0MGttOXA1ZnYwaGNnODR0MmY2M3hhazUzMW40dG12ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3Gm15eZf29HGVPKl53/giphy.gif" }
-  ];
 
-  const ICEBREAKERS = [
-    "Selam! Etkinlikte görüşmek üzere 😊",
-    "Buluşma noktası için nereyi tercih edersin? ☕",
-    "Selam, hangi kategori etkinlikleri daha çok seversin? 🎨",
-  ];
+  const POPULAR_GIFS = useMemo(
+    () => [
+      { key: "hello", label: language === "en" ? "Hello 👋" : "Merhaba 👋", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHB1dzJsczd4MmFudDRid2t4YW1rYzQzajc5NXBhdDFtdzBtNHM2ciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VdfD8e415yLte/giphy.gif" },
+      { key: "wink", label: language === "en" ? "Wink 😉" : "Göz Kırp 😉", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZDY5cTJycGl1YWJldmt1aXZ5aG82Z3E0MTVkcDRpNHExMHVscDdyNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d1E2VyhFsxRxCLKw/giphy.gif" },
+      { key: "laugh", label: language === "en" ? "Laugh 😂" : "Kahkaha 😂", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdzB2M2xscXZicWc5M3pxZnpxdGlidDR6dGJnbnpvYTJ0MWpsOHZ5dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ltvJF9EQ135t155j6V/giphy.gif" },
+      { key: "coffee", label: language === "en" ? "Coffee Meetup ☕" : "Kahve Buluşması ☕", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDVqNml4ZmF0NWV1NHkxbjhvYnhkMGFqZjR1N3prOW1obWRtdm1xciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oriO0OEd9QIDdllqo/giphy.gif" },
+      { key: "celebrate", label: language === "en" ? "Celebration 🎉" : "Kutlama 🎉", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZnRna3ZsbGg3cG94czAydTV1MXJwbzdudDBhb3Z3OHh3c2syeG9xbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYt5jPR6QX5pnq0/giphy.gif" },
+      { key: "applause", label: language === "en" ? "Applause 👏" : "Alkış 👏", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExN3JpcTZxbGF0MGttOXA1ZnYwaGNnODR0MmY2M3hhazUzMW40dG12ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3Gm15eZf29HGVPKl53/giphy.gif" }
+    ],
+    [language]
+  );
+
+  const ICEBREAKERS = useMemo(
+    () => [
+      language === "en" ? "Hi! See you at the event 😊" : "Selam! Etkinlikte görüşmek üzere 😊",
+      language === "en" ? "Where would you prefer to meet? ☕" : "Buluşma noktası için nereyi tercih edersin? ☕",
+      language === "en" ? "Hi! Which event categories do you like most? 🎨" : "Selam, hangi kategori etkinlikleri daha çok seversin? 🎨",
+    ],
+    [language]
+  );
 
   const [gifModalVisible, setGifModalVisible] = useState(false);
 
@@ -229,13 +236,28 @@ export function ChatScreen({ route }: Props) {
 
   useEffect(() => {
     navigation.setOptions({
+      headerTitle: () => (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs + 2 }}>
+          <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={34} />
+          <View style={{ justifyContent: "center" }}>
+            <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 15, color: colors.textPrimary }}>
+              {otherUserName}
+            </Text>
+            <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.primary }}>
+              {isGroupEvent
+                ? (language === "en" ? `👥 Group Chat • ${eventTitle || "Event"}` : `👥 Grup Sohbeti • ${eventTitle || "Etkinlik"}`)
+                : (language === "en" ? `👤 1-on-1 Buddy ${eventTitle ? `• ${eventTitle}` : ""}` : `👤 1-on-1 Kanka ${eventTitle ? `• ${eventTitle}` : ""}`)}
+            </Text>
+          </View>
+        </View>
+      ),
       headerRight: () => (
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
           <Pressable onPress={() => initiateCall("voice")} style={styles.headerButton}>
-            <Feather name="phone" size={18} color={colors.primary} />
+            <Feather name="phone" size={18} color={accentColor} />
           </Pressable>
           <Pressable onPress={() => initiateCall("video")} style={styles.headerButton}>
-            <Feather name="video" size={18} color={colors.primary} />
+            <Feather name="video" size={18} color={accentColor} />
           </Pressable>
           <Pressable onPress={openSafetyMenu} style={styles.headerButton}>
             <Feather name="more-vertical" size={20} color={colors.textPrimary} />
@@ -244,7 +266,7 @@ export function ChatScreen({ route }: Props) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otherUserId, otherUserName]);
+  }, [otherUserId, otherUserName, otherUserPhoto, accentColor, eventTitle, isGroupEvent, language]);
 
   // Firestore only carries messages sent after the real-time chat migration --
   // older conversation history lives in Postgres and needs a one-time fetch so
@@ -510,7 +532,9 @@ export function ChatScreen({ route }: Props) {
 
       {messages.length === 0 ? (
         <View style={styles.icebreakerContainer}>
-          <Text style={styles.icebreakerTitle}>💡 Tanışma Önerileri (Buz Kırıcı)</Text>
+          <Text style={styles.icebreakerTitle}>
+            {language === "en" ? "💡 Icebreakers (Conversation Starters)" : "💡 Tanışma Önerileri (Buz Kırıcı)"}
+          </Text>
           <View style={styles.icebreakerRow}>
             {ICEBREAKERS.map((text) => (
               <Pressable key={text} style={styles.icebreakerPill} onPress={() => setDraft(text)}>
@@ -523,20 +547,20 @@ export function ChatScreen({ route }: Props) {
 
       <View style={styles.inputRow}>
         <Pressable style={styles.attachButton} onPress={handlePickPhoto} disabled={isSending}>
-          <Feather name="plus" size={20} color={colors.primary} />
+          <Feather name="plus" size={20} color={accentColor} />
         </Pressable>
         <Pressable style={styles.attachButton} onPress={() => setGifModalVisible(true)} disabled={isSending}>
           <Text style={styles.gifIconText}>GIF</Text>
         </Pressable>
         <TextInput
           style={styles.input}
-          placeholder="Bir mesaj yaz..."
+          placeholder={language === "en" ? "Type a message..." : "Bir mesaj yaz..."}
           placeholderTextColor={colors.textSecondary}
           value={draft}
           onChangeText={setDraft}
           multiline
         />
-        <Pressable style={styles.sendButton} onPress={handleSend} disabled={isSending}>
+        <Pressable style={[styles.sendButton, { backgroundColor: accentColor }]} onPress={handleSend} disabled={isSending}>
           <Feather name="send" size={18} color={colors.surface} />
         </Pressable>
       </View>
@@ -550,7 +574,7 @@ export function ChatScreen({ route }: Props) {
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setGifModalVisible(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={typeScale.h2}>GIF Gönder</Text>
+            <Text style={typeScale.h2}>{language === "en" ? "Send GIF" : "GIF Gönder"}</Text>
             <View style={styles.gifGrid}>
               {POPULAR_GIFS.map((gif) => (
                 <Pressable key={gif.key} style={styles.gifTile} onPress={() => handleSendGif(gif.url)}>
@@ -560,7 +584,7 @@ export function ChatScreen({ route }: Props) {
               ))}
             </View>
             <Pressable style={styles.cancelButton} onPress={() => setGifModalVisible(false)}>
-              <Text style={styles.cancelText}>Vazgeç</Text>
+              <Text style={styles.cancelText}>{t("cancel")}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -580,18 +604,20 @@ export function ChatScreen({ route }: Props) {
               <View style={{ gap: 2 }}>
                 <Text style={styles.callerNameText}>{incomingCall?.callerName}</Text>
                 <Text style={styles.callTypeText}>
-                  Gelen {incomingCall?.callType === "video" ? "Görüntülü" : "Sesli"} Arama...
+                  {language === "en"
+                    ? `Incoming ${incomingCall?.callType === "video" ? "Video" : "Voice"} Call...`
+                    : `Gelen ${incomingCall?.callType === "video" ? "Görüntülü" : "Sesli"} Arama...`}
                 </Text>
               </View>
             </View>
             <View style={styles.callActions}>
               <Pressable style={[styles.callBtn, styles.declineBtn]} onPress={handleDeclineCall}>
                 <Feather name="phone-off" size={20} color={colors.surface} />
-                <Text style={styles.callBtnText}>Reddet</Text>
+                <Text style={styles.callBtnText}>{language === "en" ? "Decline" : "Reddet"}</Text>
               </Pressable>
               <Pressable style={[styles.callBtn, styles.acceptBtn]} onPress={handleAcceptCall}>
                 <Feather name="phone" size={20} color={colors.surface} />
-                <Text style={styles.callBtnText}>Yanıtla</Text>
+                <Text style={styles.callBtnText}>{language === "en" ? "Answer" : "Yanıtla"}</Text>
               </Pressable>
             </View>
           </View>

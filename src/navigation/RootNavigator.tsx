@@ -50,10 +50,20 @@ export type MainTabParamList = {
   Messages: undefined;
 };
 
+import { MyPhotosScreen } from "../screens/MyPhotosScreen";
+
 export type MainStackParamList = {
   Onboarding: undefined;
   Tabs: NavigatorScreenParams<MainTabParamList> | undefined;
-  Chat: { matchId: number; otherUserId: number; otherUserName: string; needsFeedback?: boolean };
+  Chat: {
+    matchId: number;
+    otherUserId: number;
+    otherUserName: string;
+    otherUserPhoto?: string | null;
+    needsFeedback?: boolean;
+    eventTitle?: string;
+    isGroupEvent?: boolean;
+  };
   Call: {
     matchId: number;
     otherUserName: string;
@@ -65,6 +75,7 @@ export type MainStackParamList = {
   Profile: undefined;
   EditProfile: undefined;
   ViewProfile: undefined;
+  MyPhotos: undefined;
   CommunityGuidelines: undefined;
   Settings: undefined;
   ChangePassword: undefined;
@@ -87,6 +98,8 @@ const MainStack = createNativeStackNavigator<MainStackParamList>();
 const MainTabs = createBottomTabNavigator<MainTabParamList>();
 
 function AuthNavigator() {
+  const { language } = useAppTheme();
+
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
       <AuthStack.Screen name="Login" component={LoginScreen} />
@@ -94,14 +107,17 @@ function AuthNavigator() {
       <AuthStack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}
-        options={{ headerShown: true, title: "Şifreni Sıfırla" }}
+        options={{ headerShown: false }}
       />
       <AuthStack.Screen
         name="Legal"
         component={LegalScreen}
         options={({ route }) => ({
           headerShown: true,
-          title: route.params.kind === "terms" ? "Kullanım Şartları" : "Gizlilik Politikası",
+          title:
+            route.params.kind === "terms"
+              ? (language === "en" ? "Terms of Service" : "Kullanım Şartları")
+              : (language === "en" ? "Privacy Policy" : "Gizlilik Politikası"),
         })}
       />
     </AuthStack.Navigator>
@@ -184,6 +200,11 @@ function MainNavigator() {
         options={{ title: t("viewMyProfile") }}
       />
       <MainStack.Screen
+        name="MyPhotos"
+        component={MyPhotosScreen}
+        options={{ title: t("myPhotos") }}
+      />
+      <MainStack.Screen
         name="CommunityGuidelines"
         component={CommunityGuidelinesScreen}
         options={{ title: t("communityGuidelines") }}
@@ -233,15 +254,13 @@ function MainNavigator() {
   );
 }
 
+import { AppSplashScreen } from "../components/ui/AppSplashScreen";
+
 export function RootNavigator() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+    return <AppSplashScreen />;
   }
 
   return (

@@ -8,6 +8,8 @@ import { colors, fontFamily, radius, spacing } from "../../theme";
 import { formatRelativeTimestamp } from "../../utils/date";
 import type { Match } from "../../types";
 
+import { useAppTheme } from "../../context/ThemeContext";
+
 interface ChatListItemProps {
   match: Match;
   currentUserId: number;
@@ -19,6 +21,7 @@ const REVEAL_WIDTH = 144;
 const OPEN_THRESHOLD = 60;
 
 export function ChatListItem({ match, currentUserId, onPress, onBlocked }: ChatListItemProps) {
+  const { language } = useAppTheme();
   const lastMessage = match.last_message;
   const isUnread = Boolean(lastMessage && !lastMessage.is_read && lastMessage.sender_id !== currentUserId);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -55,42 +58,53 @@ export function ChatListItem({ match, currentUserId, onPress, onBlocked }: ChatL
     })
   ).current;
 
+  function otherUserNameSafe(): string {
+    return match.other_user.display_name;
+  }
+
   function handleReport(): void {
     closeReveal();
-    Alert.alert(otherUserNameSafe(), "Bu kullanıcıyı neden şikayet ediyorsun?", [
-      { text: "Taciz / Rahatsız Edici", onPress: () => submitReport("harassment") },
-      { text: "Sahte Profil", onPress: () => submitReport("fake_profile") },
-      { text: "Uygunsuz İçerik", onPress: () => submitReport("inappropriate_content") },
-      { text: "Diğer", onPress: () => submitReport("other") },
-      { text: "Vazgeç", style: "cancel" },
-    ]);
+    Alert.alert(
+      otherUserNameSafe(),
+      language === "en" ? "Why are you reporting this user?" : "Bu kullanıcıyı neden şikayet ediyorsun?",
+      [
+        { text: language === "en" ? "Harassment / Abusive" : "Taciz / Rahatsız Edici", onPress: () => submitReport("harassment") },
+        { text: language === "en" ? "Fake Profile" : "Sahte Profil", onPress: () => submitReport("fake_profile") },
+        { text: language === "en" ? "Inappropriate Content" : "Uygunsuz İçerik", onPress: () => submitReport("inappropriate_content") },
+        { text: language === "en" ? "Other" : "Diğer", onPress: () => submitReport("other") },
+        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
+      ]
+    );
   }
 
   function submitReport(reason: "harassment" | "fake_profile" | "inappropriate_content" | "other"): void {
     reportUser({ reported_user_id: match.other_user.id, reason }).then(
-      () => Alert.alert("Teşekkürler", "Şikayetin alındı, incelenecek."),
-      () => Alert.alert("Bir sorun oluştu", "Şikayet gönderilemedi. Lütfen tekrar dene.")
+      () => Alert.alert(language === "en" ? "Thank You" : "Teşekkürler", language === "en" ? "Your report was received and will be reviewed." : "Şikayetin alındı, incelenecek."),
+      () => Alert.alert(language === "en" ? "Error" : "Bir sorun oluştu", language === "en" ? "Report could not be sent. Please try again." : "Şikayet gönderilemedi. Lütfen tekrar dene.")
     );
-  }
-
-  function otherUserNameSafe(): string {
-    return match.other_user.display_name;
   }
 
   function handleBlock(): void {
     closeReveal();
     Alert.alert(
-      "Kullanıcıyı Engelle",
-      `${otherUserNameSafe()} adlı kullanıcıyı engellemek istediğine emin misin? Bu sohbet listenden kaybolacak.`,
+      language === "en" ? "Block User" : "Kullanıcıyı Engelle",
+      language === "en"
+        ? `Are you sure you want to block ${otherUserNameSafe()}? This chat will be removed from your list.`
+        : `${otherUserNameSafe()} adlı kullanıcıyı engellemek istediğine emin misin? Bu sohbet listenden kaybolacak.`,
       [
-        { text: "Vazgeç", style: "cancel" },
+        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
         {
-          text: "Engelle",
+          text: language === "en" ? "Block" : "Engelle",
           style: "destructive",
           onPress: () => {
             blockUser(match.other_user.id)
               .then(() => onBlocked?.())
-              .catch(() => Alert.alert("Bir sorun oluştu", "Kullanıcı engellenemedi. Lütfen tekrar dene."));
+              .catch(() =>
+                Alert.alert(
+                  language === "en" ? "Error" : "Bir sorun oluştu",
+                  language === "en" ? "User could not be blocked. Please try again." : "Kullanıcı engellenemedi. Lütfen tekrar dene."
+                )
+              );
           },
         },
       ]
@@ -104,19 +118,19 @@ export function ChatListItem({ match, currentUserId, onPress, onBlocked }: ChatL
           style={[styles.revealButton, styles.reportButton]}
           onPress={handleReport}
           accessibilityRole="button"
-          accessibilityLabel="Şikayet et"
+          accessibilityLabel="Report"
         >
           <Feather name="flag" size={16} color={colors.surface} />
-          <Text style={styles.revealButtonText}>Şikayet</Text>
+          <Text style={styles.revealButtonText}>{language === "en" ? "Report" : "Şikayet"}</Text>
         </Pressable>
         <Pressable
           style={[styles.revealButton, styles.blockButton]}
           onPress={handleBlock}
           accessibilityRole="button"
-          accessibilityLabel="Engelle"
+          accessibilityLabel="Block"
         >
           <Feather name="slash" size={16} color={colors.surface} />
-          <Text style={styles.revealButtonText}>Engelle</Text>
+          <Text style={styles.revealButtonText}>{language === "en" ? "Block" : "Engelle"}</Text>
         </Pressable>
       </View>
       <Animated.View style={[styles.container, { transform: [{ translateX }] }]} {...panResponder.panHandlers}>
@@ -133,9 +147,14 @@ export function ChatListItem({ match, currentUserId, onPress, onBlocked }: ChatL
                 <Text style={[styles.name, isUnread && styles.unreadText]} numberOfLines={1}>
                   {match.other_user.display_name}
                 </Text>
+                {isUnread && (
+                  <View style={styles.unreadTag}>
+                    <Text style={styles.unreadTagText}>{language === "en" ? "NEW" : "YENİ"}</Text>
+                  </View>
+                )}
               </View>
               {lastMessage ? (
-                <Text style={styles.time}>{formatRelativeTimestamp(lastMessage.created_at)}</Text>
+                <Text style={[styles.time, isUnread && styles.unreadTime]}>{formatRelativeTimestamp(lastMessage.created_at)}</Text>
               ) : null}
             </View>
 
@@ -149,7 +168,7 @@ export function ChatListItem({ match, currentUserId, onPress, onBlocked }: ChatL
             ) : null}
 
             <Text style={[styles.preview, isUnread && styles.unreadText]} numberOfLines={1}>
-              {lastMessage ? lastMessage.content : "Henüz mesaj yok, ilk sen yaz!"}
+              {lastMessage ? lastMessage.content : (language === "en" ? "No messages yet, send the first one!" : "Henüz mesaj yok, ilk sen yaz!")}
             </Text>
           </View>
           {isUnread ? <View style={styles.unreadDot} /> : null}
@@ -228,10 +247,25 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     color: colors.textPrimary,
   },
+  unreadTime: {
+    fontFamily: fontFamily.bodySemiBold,
+    color: colors.primary,
+  },
+  unreadTag: {
+    backgroundColor: "rgba(255, 107, 107, 0.15)",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radius.pill,
+  },
+  unreadTagText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 9,
+    color: colors.accentRed,
+  },
   unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
     backgroundColor: colors.accentRed,
   },
   eventPill: {

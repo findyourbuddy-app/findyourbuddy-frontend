@@ -24,6 +24,7 @@ export const CATEGORIES: CategoryMeta[] = [
   { slug: "running", label: "Koşu", labelEn: "Running", icon: "wind", gradient: ["#FFB199", "#FF6A6A"] },
   { slug: "coffee", label: "Kahve", labelEn: "Coffee & Chat", icon: "coffee", gradient: ["#D8B48C", "#8B5E3C"] },
   { slug: "concert", label: "Konser", labelEn: "Concerts", icon: "music", gradient: ["#B892FF", "#6C4CF1"] },
+  { slug: "festival", label: "Festival", labelEn: "Festivals", icon: "disc", gradient: ["#FF758C", "#FF7EB3"] },
   { slug: "climbing", label: "Tırmanış", labelEn: "Climbing", icon: "trending-up", gradient: ["#7EE8C6", "#2FA88B"] },
   { slug: "hiking", label: "Doğa Yürüyüşü", labelEn: "Hiking", icon: "map", gradient: ["#9CD98A", "#3F8F4A"] },
   { slug: "cycling", label: "Bisiklet", labelEn: "Cycling", icon: "navigation", gradient: ["#7FC8F8", "#2E7FC9"] },

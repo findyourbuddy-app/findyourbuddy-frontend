@@ -2,7 +2,20 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { getToken, setToken } from "../utils/tokenStorage";
 import { translations, type TranslationKey } from "../constants/translations";
 
-export type ThemePresetKey = "purple" | "blue" | "green" | "orange" | "gold" | "pink" | "cyan" | "lavender";
+export type ThemePresetKey =
+  | "purple"
+  | "blue"
+  | "green"
+  | "orange"
+  | "gold"
+  | "pink"
+  | "cyan"
+  | "lavender"
+  | "emerald"
+  | "ruby"
+  | "nebula"
+  | "volcanic";
+
 export type LanguageKey = "tr" | "en";
 
 export interface ThemePreset {
@@ -23,6 +36,10 @@ export const THEME_PRESETS: ThemePreset[] = [
   { key: "pink", label: "Gece Pembe", labelEn: "Night Pink", color: "#FF2A7A", bgGradient: ["#FFF0F5", "#FFE0EC"], isPremium: true },
   { key: "cyan", label: "Siber Gece", labelEn: "Cyber Cyan", color: "#00F5D4", bgGradient: ["#E6FCF8", "#CCFBF3"], isPremium: true },
   { key: "lavender", label: "Gece Yarısı", labelEn: "Midnight Lavender", color: "#A55EEA", bgGradient: ["#F6F0FD", "#ECE0FA"], isPremium: true },
+  { key: "emerald", label: "Zümrüt Işığı", labelEn: "Neon Emerald", color: "#00E676", bgGradient: ["#E8FDF0", "#D0FBE1"], isPremium: true },
+  { key: "ruby", label: "Kraliyet Yakutu", labelEn: "Royal Ruby", color: "#E74C3C", bgGradient: ["#FDF0ED", "#FCDCD8"], isPremium: true },
+  { key: "nebula", label: "Kozmik Galaksi", labelEn: "Cosmic Nebula", color: "#9B51E0", bgGradient: ["#F5EEFD", "#EAD9FC"], isPremium: true },
+  { key: "volcanic", label: "Volkanik Ateş", labelEn: "Volcanic Flame", color: "#FF3366", bgGradient: ["#FFF0F3", "#FFE0E6"], isPremium: true },
 ];
 
 interface ThemeContextValue {

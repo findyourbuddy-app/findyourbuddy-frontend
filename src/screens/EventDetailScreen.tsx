@@ -71,7 +71,10 @@ export function EventDetailScreen({ route }: Props) {
       setEvent(updated);
       setJoinRequests((current) => current.filter((requester) => requester.id !== requesterId));
     } catch {
-      Alert.alert("Bir sorun oluştu", "İstek yanıtlanamadı. Lütfen tekrar dene.");
+      Alert.alert(
+        language === "en" ? "Error" : "Bir sorun oluştu",
+        language === "en" ? "Response to request failed. Please try again." : "İstek yanıtlanamadı. Lütfen tekrar dene."
+      );
     } finally {
       setRespondingUserId(null);
     }
@@ -92,7 +95,10 @@ export function EventDetailScreen({ route }: Props) {
         })
         .catch(() => {
           if (!cancelled) {
-            Alert.alert("Bir sorun oluştu", "Etkinlik yüklenemedi. Lütfen tekrar dene.");
+            Alert.alert(
+              language === "en" ? "Error" : "Bir sorun oluştu",
+              language === "en" ? "Event could not be loaded. Please try again." : "Etkinlik yüklenemedi. Lütfen tekrar dene."
+            );
           }
         })
         .finally(() => {
@@ -133,8 +139,23 @@ export function EventDetailScreen({ route }: Props) {
     Linking.openURL(url);
   };
 
-  function goToSwipe(): void {
+  async function goToSwipe(): Promise<void> {
     if (!event) return;
+    if (!event.is_group_event) {
+      try {
+        const { getSwipeCandidates } = require("../api/swipes");
+        const candidates = await getSwipeCandidates(event.id);
+        if (candidates && candidates.length > 0) {
+          navigation.navigate("CandidateProfile", {
+            candidate: candidates[0],
+            onSwipeLeft: () => {},
+            onSwipeRight: () => {},
+            onSwipeUp: () => {},
+          });
+          return;
+        }
+      } catch {}
+    }
     navigation.navigate("Tabs", {
       screen: "Swipe",
       params: { eventId: event.id, eventTitle: event.title },
@@ -144,18 +165,18 @@ export function EventDetailScreen({ route }: Props) {
   async function handleAttendAndSwipe(): Promise<void> {
     if (!event) return;
     if (event.is_attending) {
-      goToSwipe();
+      await goToSwipe();
       return;
     }
     setIsJoining(true);
     try {
       const updated = await attendEvent(event.id);
-      // Stay on this screen after joining -- the attendance verification
-      // step below (ticket upload for paid events, GPS check-in for free
-      // ones) needs to actually be visible instead of being skipped past.
       setEvent(updated);
     } catch {
-      Alert.alert("Bir sorun oluştu", "Etkinliğe katılamadın. Lütfen tekrar dene.");
+      Alert.alert(
+        language === "en" ? "Error" : "Bir sorun oluştu",
+        language === "en" ? "Could not join event. Please try again." : "Etkinliğe katılamadın. Lütfen tekrar dene."
+      );
     } finally {
       setIsJoining(false);
     }
@@ -398,7 +419,13 @@ export function EventDetailScreen({ route }: Props) {
           </View>
         ) : (
           <PrimaryButton
-            label={event.is_attending ? "Kankaları Gör" : "Bu Etkinliğe Gidiyorum"}
+            label={
+              event.is_attending
+                ? (!event.is_group_event
+                    ? (language === "en" ? "👤 View Buddy & Connect" : "👤 Kankayı Gör & İletişime Geç")
+                    : (language === "en" ? "See Buddies" : "Kankaları Gör"))
+                : (language === "en" ? "I'm Going to This Event" : "Bu Etkinliğe Gidiyorum")
+            }
             onPress={handleAttendAndSwipe}
             loading={isJoining}
           />

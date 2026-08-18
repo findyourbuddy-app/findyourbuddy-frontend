@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 
-type BadgeVariant = "yellow" | "green" | "red" | "primary";
+type BadgeVariant = "yellow" | "green" | "red" | "primary" | "blue";
 
 interface BadgeProps {
   label: string;
@@ -14,6 +14,7 @@ const VARIANT_STYLES: Record<BadgeVariant, { background: string; text: string }>
   green: { background: colors.accentGreen, text: colors.surface },
   red: { background: colors.accentRed, text: colors.surface },
   primary: { background: colors.primary, text: colors.surface },
+  blue: { background: "#1DA1F2", text: colors.surface },
 };
 
 export function Badge({ label, variant = "yellow", icon }: BadgeProps) {
