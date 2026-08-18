@@ -267,7 +267,7 @@ export function SwipeScreen() {
   return (
     <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
       <View style={[styles.headerRow, { marginTop: insets.top + spacing.md }]}>
-        <View style={{ gap: 2 }}>
+        <View style={{ flex: 1, marginRight: spacing.md, gap: 2 }}>
           <Text style={typeScale.eyebrow}>{t("buddiesNearYou")}</Text>
           <Text style={typeScale.h1}>{t("whoIsNextBuddy")}</Text>
         </View>
