@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { setAuthToken, setOnAuthFailure } from "../api/client";
-import { login as loginRequest, register as registerRequest } from "../api/auth";
+import { login as loginRequest, loginWithFirebase as loginWithFirebaseRequest, register as registerRequest } from "../api/auth";
 import { getCurrentUser } from "../api/users";
 import { registerDeviceToken, unregisterDeviceToken } from "../api/notifications";
 import { getMySubscription } from "../api/subscriptions";
@@ -37,6 +37,7 @@ interface AuthContextValue {
   premiumExpiresAt: string | null;
   refreshSubscription: () => Promise<void>;
   signIn: (payload: LoginPayload) => Promise<void>;
+  signInWithFirebase: (idToken: string) => Promise<void>;
   signUp: (payload: RegisterPayload) => Promise<void>;
   signOut: () => Promise<void>;
   updateUser: (user: User) => void;
@@ -100,6 +101,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 50);
   }
 
+  async function signInWithFirebase(idToken: string): Promise<void> {
+    const token = await loginWithFirebaseRequest(idToken);
+    setAuthToken(token.access_token);
+    setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token).catch(() => {});
+    setToken(REFRESH_TOKEN_STORAGE_KEY, token.refresh_token).catch(() => {});
+
+    const currentUser = await getCurrentUser();
+    setUser(currentUser);
+
+    setTimeout(() => {
+      syncPushToken().catch(() => {});
+      fetchSubscription().then((sub) => setSubscription(sub)).catch(() => {});
+    }, 50);
+  }
+
   async function refreshSubscription(): Promise<void> {
     setSubscription(await fetchSubscription());
   }
@@ -144,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       premiumExpiresAt: subscription.expires_at,
       refreshSubscription,
       signIn,
+      signInWithFirebase,
       signUp,
       signOut,
       updateUser,
