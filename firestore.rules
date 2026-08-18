@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Messages only ever enter Firestore via the backend's Admin SDK (which
+    // bypasses these rules entirely) -- after moderation and rate-limiting.
+    // Clients can read for real-time delivery, but can never write directly,
+    // which is exactly the bypass this was set up to close.
+    //
+    // Per-participant read restriction isn't possible yet: the app doesn't
+    // sign in with Firebase Auth (only our own backend JWT), so
+    // request.auth is always null here. match_id values are only ever
+    // handed to an authenticated user by the backend API for matches they
+    // participate in, so this isn't wide open in practice, just not
+    // cryptographically enforced at the Firestore layer.
+    match /matches/{matchId}/messages/{messageId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

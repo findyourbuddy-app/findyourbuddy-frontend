@@ -334,12 +334,29 @@ export function EditProfileScreen() {
   const [photoVerificationVisible, setPhotoVerificationVisible] = useState(false);
   const [isVerifyingPhoto, setIsVerifyingPhoto] = useState(false);
 
-  async function handleVerifyPhoto(): Promise<void> {
+  function handleVerifyPhoto(): void {
     if (!user?.photo_url) {
       Alert.alert("Profil Fotoğrafı Gerekli", "Doğrulama yapabilmek için lütfen önce ana profil fotoğrafı yükleyin.");
       return;
     }
 
+    // KVKK m.6 requires explicit, distinct consent before processing biometric
+    // data -- bundling it into the general ToS acceptance at signup isn't
+    // enough for a selfie/face-match flow specifically.
+    Alert.alert(
+      language === "en" ? "Biometric Data Consent" : "Biyometrik Veri Onayı",
+      language === "en"
+        ? "To grant a Blue Checkmark, we'll process your live selfie as biometric data (face comparison against your profile photo) under your explicit consent, per KVKK. It is not stored after verification. See Privacy Policy for details."
+        : "Mavi Tik doğrulaması için çekeceğin anlık selfie, KVKK kapsamında açık rızana istinaden biyometrik veri (yüz karşılaştırması) olarak işlenecek. Doğrulama sonrası saklanmaz. Detaylar için Gizlilik Politikası'na bakabilirsin.",
+      [
+        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
+        { text: language === "en" ? "I Consent" : "Onaylıyorum, Devam Et", onPress: () => runVerifyPhoto() },
+      ]
+    );
+  }
+
+  async function runVerifyPhoto(): Promise<void> {
+    if (!user) return;
     try {
       const cameraPerm = await ImagePicker.requestCameraPermissionsAsync();
       if (cameraPerm.status !== "granted") {

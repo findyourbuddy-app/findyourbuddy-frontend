@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { setAuthToken } from "../api/client";
+import { setAuthToken, setOnAuthFailure } from "../api/client";
 import { login as loginRequest, register as registerRequest } from "../api/auth";
 import { getCurrentUser } from "../api/users";
 import { registerDeviceToken, unregisterDeviceToken } from "../api/notifications";
 import { getMySubscription } from "../api/subscriptions";
-import { AUTH_TOKEN_STORAGE_KEY } from "../constants/config";
+import { AUTH_TOKEN_STORAGE_KEY, REFRESH_TOKEN_STORAGE_KEY } from "../constants/config";
 import { deleteToken, getToken, setToken } from "../utils/tokenStorage";
 import { getExpoPushToken } from "../utils/pushNotifications";
 import type { LoginPayload, RegisterPayload, SubscriptionStatus, User } from "../types";
@@ -56,6 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     restoreSession();
+    // Wired so client.ts can force a sign-out when a 401 survives a refresh
+    // attempt (refresh token itself expired/invalid), instead of leaving
+    // the app stuck with a dead session.
+    setOnAuthFailure(() => {
+      signOut();
+    });
+    return () => setOnAuthFailure(null);
   }, []);
 
   async function restoreSession(): Promise<void> {
@@ -81,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = await loginRequest(payload);
     setAuthToken(token.access_token);
     setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token).catch(() => {});
+    setToken(REFRESH_TOKEN_STORAGE_KEY, token.refresh_token).catch(() => {});
 
     const currentUser = await getCurrentUser();
     setUser(currentUser);
@@ -112,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Best-effort cleanup; sign-out must proceed regardless.
     }
     await deleteToken(AUTH_TOKEN_STORAGE_KEY);
+    await deleteToken(REFRESH_TOKEN_STORAGE_KEY);
     setAuthToken(null);
     setUser(null);
     setJustRegistered(false);

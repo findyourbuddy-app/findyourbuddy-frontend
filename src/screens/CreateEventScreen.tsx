@@ -67,15 +67,18 @@ export function CreateEventScreen() {
   const [isPaid, setIsPaid] = useState(false);
   const [ticketPrice, setTicketPrice] = useState("");
   const [quota, setQuota] = useState<EventCreationQuota | null>(null);
+  const [isQuotaLoading, setIsQuotaLoading] = useState(true);
   const [isBuyingCredits, setIsBuyingCredits] = useState(false);
   const [quotaModalVisible, setQuotaModalVisible] = useState(false);
 
   function refreshQuota(): void {
+    setIsQuotaLoading(true);
     getEventCreationQuota()
       .then(setQuota)
       .catch(() => {
         // Best-effort; the 429 on submit still guards the actual limit.
-      });
+      })
+      .finally(() => setIsQuotaLoading(false));
   }
 
   useEffect(refreshQuota, []);
@@ -238,7 +241,11 @@ export function CreateEventScreen() {
 
   return (
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
-      {quota && !quota.is_premium && quota.weekly_limit !== null ? (
+      {isQuotaLoading ? (
+        <View style={styles.topQuotaRow}>
+          <View style={[styles.topQuotaPill, styles.topQuotaPillSkeleton]} />
+        </View>
+      ) : quota && !quota.is_premium && quota.weekly_limit !== null ? (
         <View style={styles.topQuotaRow}>
           <Pressable style={styles.topQuotaPill} onPress={() => setQuotaModalVisible(true)}>
             <Feather name="zap" size={13} color="#F1C40F" />
@@ -634,6 +641,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(74, 194, 226, 0.35)",
     ...shadows.card,
+  },
+  topQuotaPillSkeleton: {
+    width: 80,
+    height: 24,
+    borderColor: "transparent",
+    backgroundColor: colors.border,
   },
   topQuotaPillText: {
     fontFamily: fontFamily.bodySemiBold,

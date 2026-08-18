@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
+import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import { API_BASE_URL } from "../../constants/config";
 import { colors, fontFamily } from "../../theme";
@@ -57,13 +58,27 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
   return (
     <View style={{ position: "relative", width: size, height: size }}>
       {resolvedUrl && !imageError ? (
-        <Image
-          source={{ uri: resolvedUrl }}
-          style={dimensionStyle}
-          contentFit="cover"
-          blurRadius={blurRadius}
-          onError={() => setImageError(true)}
-        />
+        <>
+          <Image
+            source={{ uri: resolvedUrl }}
+            style={dimensionStyle}
+            contentFit="cover"
+            onError={() => setImageError(true)}
+          />
+          {blurRadius && blurRadius > 0 ? (
+            // expo-image's own blurRadius prop is unreliable across
+            // platforms/caching -- an explicit BlurView overlay always
+            // visibly obscures the photo underneath, which matters here
+            // since this gates a paid feature (Premium unlock).
+            <BlurView
+              intensity={80}
+              tint="light"
+              style={[dimensionStyle, styles.blurOverlay]}
+            >
+              <Feather name="lock" size={size * 0.4} color={colors.surface} />
+            </BlurView>
+          ) : null}
+        </>
       ) : (
         <View style={[styles.fallback, dimensionStyle, { backgroundColor: colorForName(name) }]}>
           {blurRadius && blurRadius > 0 ? (
@@ -98,6 +113,14 @@ const styles = StyleSheet.create({
   fallback: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  blurOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
   initials: {
     fontFamily: fontFamily.bodySemiBold,

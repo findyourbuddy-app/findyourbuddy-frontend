@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Image } from "expo-image";
 import { apiClient } from "../api/client";
 import { createCheckoutSession } from "../api/subscriptions";
+import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
 import { useAuth } from "../context/AuthContext";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
@@ -28,7 +29,6 @@ export function AIRecommendationsScreen() {
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isUpgrading, setIsUpgrading] = useState(false);
-  const [playingVoiceId, setPlayingVoiceId] = useState<number | null>(null);
 
   useEffect(() => {
     if (isPremium) {
@@ -61,17 +61,6 @@ export function AIRecommendationsScreen() {
       Alert.alert("Bağlantı Hatası", "Ödeme sayfasına bağlanılamadı.");
     } finally {
       setIsUpgrading(false);
-    }
-  }
-
-  function handlePlayVoice(userId: number) {
-    if (playingVoiceId === userId) {
-      setPlayingVoiceId(null);
-    } else {
-      setPlayingVoiceId(userId);
-      setTimeout(() => {
-        setPlayingVoiceId((current) => (current === userId ? null : current));
-      }, 5000);
     }
   }
 
@@ -264,28 +253,10 @@ export function AIRecommendationsScreen() {
                 </Text>
               ) : null}
 
-              {/* Voice Note Player Mockup if voice note is present */}
               {user.voice_note_url && (
-                <Pressable
-                  style={[styles.voicePlayer, playingVoiceId === user.id && styles.voicePlayerActive]}
-                  onPress={() => handlePlayVoice(user.id)}
-                >
-                  <Feather
-                    name={playingVoiceId === user.id ? "pause-circle" : "play-circle"}
-                    size={28}
-                    color={playingVoiceId === user.id ? colors.surface : colors.primary}
-                  />
-                  <Text
-                    style={[
-                      styles.voiceText,
-                      playingVoiceId === user.id && { color: colors.surface }
-                    ]}
-                  >
-                    {playingVoiceId === user.id
-                      ? (language === "en" ? "Playing Voice Note..." : "Ses Kaydı Oynatılıyor...")
-                      : (language === "en" ? "Listen to Voice Intro" : "Ses Tanıtımını Dinle")}
-                  </Text>
-                </Pressable>
+                <View style={styles.voicePlayerWrapper}>
+                  <VoiceNotePlayer audioUrl={user.voice_note_url} />
+                </View>
               )}
 
               {/* Open Profile Button */}
@@ -409,25 +380,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
-  voicePlayer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
-  },
-  voicePlayerActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  voiceText: {
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 13,
-    color: colors.textPrimary,
+  voicePlayerWrapper: {
+    marginTop: spacing.xs,
   },
   viewProfileBtn: {
     flexDirection: "row",

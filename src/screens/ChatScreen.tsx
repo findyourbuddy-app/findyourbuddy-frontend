@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View, Modal } from "react-native";
 import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
@@ -6,7 +6,8 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import axios from "axios";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage } from "../api/messages";
 import { submitMatchFeedback } from "../api/matches";
@@ -334,6 +335,17 @@ export function ChatScreen({ route }: Props) {
     return [...olderHistory, ...liveMessages];
   }, [historicalMessages, liveMessages]);
 
+  const messageListRef = useRef<FlatList<Message>>(null);
+
+  // Without this, a new message (sent or received) or the keyboard opening
+  // leaves the list wherever it was -- the newest bubble ends up hidden
+  // behind the input row instead of scrolling into view.
+  useEffect(() => {
+    if (messages.length > 0) {
+      messageListRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [messages.length]);
+
   // Sync read status to PostgreSQL backend on screen focus
   useFocusEffect(
     useCallback(() => {
@@ -359,24 +371,18 @@ export function ChatScreen({ route }: Props) {
     setDraft("");
 
     try {
-      // 1. Add to Firestore for real-time delivery
-      const messagesRef = collection(db, "matches", String(matchId), "messages");
-      await addDoc(messagesRef, {
-        sender_id: user.id,
-        content: content,
-        message_type: "text",
-        media_url: null,
-        created_at: serverTimestamp(),
-        is_read: false,
-      });
-
-      // 2. Sync to Postgres and trigger Push Notifications in background
-      sendMessage(matchId, { content, message_type: "text", media_url: undefined }).catch(() => {
-        // Silently catch sync failures (offline mode support)
-      });
-
+      // Sent through the backend only -- it moderates and rate-limits the
+      // message, then relays it into Firestore itself for real-time
+      // delivery. The client never writes to Firestore directly, so it
+      // can't be used to bypass either check.
+      await sendMessage(matchId, { content, message_type: "text", media_url: undefined });
     } catch (error) {
-      setErrorText("Mesaj gönderilemedi. Lütfen tekrar dene.");
+      setDraft(content);
+      if (axios.isAxiosError(error) && error.response?.status === 422) {
+        setErrorText("Mesajın uygunsuz içerik nedeniyle gönderilemedi.");
+      } else {
+        setErrorText("Mesaj gönderilemedi. Lütfen tekrar dene.");
+      }
     } finally {
       setIsSending(false);
     }
@@ -386,21 +392,11 @@ export function ChatScreen({ route }: Props) {
     setGifModalVisible(false);
     setIsSending(true);
     try {
-      const messagesRef = collection(db, "matches", String(matchId), "messages");
-      await addDoc(messagesRef, {
-        sender_id: user!.id,
+      await sendMessage(matchId, {
         content: "[GIF]",
         message_type: "gif",
         media_url: gifUrl,
-        created_at: serverTimestamp(),
-        is_read: false,
       });
-
-      sendMessage(matchId, {
-        content: "[GIF]",
-        message_type: "gif",
-        media_url: gifUrl,
-      }).catch(() => {});
     } catch {
       Alert.alert("Hata", "GIF gönderilemedi.");
     } finally {
@@ -440,22 +436,11 @@ export function ChatScreen({ route }: Props) {
 
       const imageUrl = res.data.url;
 
-      const messagesRef = collection(db, "matches", String(matchId), "messages");
-      await addDoc(messagesRef, {
-        sender_id: user!.id,
+      await sendMessage(matchId, {
         content: "[Fotoğraf]",
         message_type: "image",
         media_url: imageUrl,
-        created_at: serverTimestamp(),
-        is_read: false,
       });
-
-      sendMessage(matchId, {
-        content: "[Fotoğraf]",
-        message_type: "image",
-        media_url: imageUrl,
-      }).catch(() => {});
-
     } catch (err) {
       Alert.alert("Hata", "Fotoğraf yüklenemedi. Lütfen tekrar dene.");
     } finally {
@@ -497,9 +482,11 @@ export function ChatScreen({ route }: Props) {
       ) : null}
 
       <FlatList
+        ref={messageListRef}
         contentContainerStyle={styles.messageList}
         data={messages}
         keyExtractor={(message) => String(message.id)}
+        onContentSizeChange={() => messageListRef.current?.scrollToEnd({ animated: false })}
         renderItem={({ item }) => {
           const isOwn = item.sender_id === user.id;
           return (

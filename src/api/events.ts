@@ -1,5 +1,4 @@
 import { apiClient } from "./client";
-import { toUploadFile } from "./users";
 import type { Event, EventCreate, EventCreationQuota, User } from "../types";
 
 export function listEvents(category?: string, upcomingOnly = true, skip = 0, limit = 20): Promise<Event[]> {
@@ -23,17 +22,6 @@ export function attendEvent(eventId: number): Promise<Event> {
 export function listMyAttendingEvents(upcomingOnly = true): Promise<Event[]> {
   return apiClient
     .get<Event[]>("/events/me/attending", { params: { upcoming_only: upcomingOnly } })
-    .then((res) => res.data);
-}
-
-export async function uploadEventTicket(eventId: number, uri: string, fileName: string): Promise<Event> {
-  const formData = new FormData();
-  formData.append("file", await toUploadFile(uri, fileName));
-
-  return apiClient
-    .post<Event>(`/events/${eventId}/ticket`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
     .then((res) => res.data);
 }
 

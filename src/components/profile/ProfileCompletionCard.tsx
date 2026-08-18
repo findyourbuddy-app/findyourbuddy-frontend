@@ -6,7 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { calculateProfileCompletion } from "../../utils/profileCompletion";
 import { useAppTheme } from "../../context/ThemeContext";
-import { colors, fontFamily, radius, shadows, spacing } from "../../theme";
+import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../../theme";
 import type { MainStackParamList } from "../../navigation/RootNavigator";
 import type { User } from "../../types";
 
@@ -41,7 +41,7 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
             <Text style={styles.cardTitle}>
               {language === "en" ? "Profile Completion" : "Profil Tamamlanma Oranı"}
             </Text>
-            <Text style={styles.percentageText}>
+            <Text style={[typeScale.h2, styles.percentageText]}>
               %{completion.percentage} {isComplete ? "🎉" : ""}
             </Text>
           </View>
@@ -159,8 +159,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   percentageText: {
-    fontFamily: fontFamily.displayBold,
-    fontSize: 18,
     color: colors.textPrimary,
   },
   editButtonTouch: {

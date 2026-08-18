@@ -26,7 +26,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   };
 
   return (
-    <View style={[styles.container, { bottom: insets.bottom + spacing.md }]}>
+    <View style={[styles.container, { bottom: insets.bottom }]}>
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
         const icon = TAB_ICON[route.name] ?? "circle";
