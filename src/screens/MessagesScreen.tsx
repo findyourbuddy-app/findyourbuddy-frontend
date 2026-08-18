@@ -48,26 +48,33 @@ export function MessagesScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [allMatchesModalVisible, setAllMatchesModalVisible] = useState(false);
 
-  const loadMatches = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      setMatches(await listMyMatches());
-      await refreshUnread();
-    } catch {
-      Alert.alert(
-        language === "en" ? "Error" : "Bir sorun oluştu",
-        language === "en"
-          ? "Matches could not be loaded. Please try again."
-          : "Eşleşmeler yüklenemedi. Lütfen tekrar dene."
-      );
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [refreshUnread, language]);
+  const loadMatches = useCallback(
+    async (showSpinner: boolean) => {
+      if (showSpinner) {
+        setIsRefreshing(true);
+      }
+      try {
+        setMatches(await listMyMatches());
+        await refreshUnread();
+      } catch {
+        Alert.alert(
+          language === "en" ? "Error" : "Bir sorun oluştu",
+          language === "en"
+            ? "Matches could not be loaded. Please try again."
+            : "Eşleşmeler yüklenemedi. Lütfen tekrar dene."
+        );
+      } finally {
+        if (showSpinner) {
+          setIsRefreshing(false);
+        }
+      }
+    },
+    [refreshUnread, language]
+  );
 
   useFocusEffect(
     useCallback(() => {
-      loadMatches();
+      loadMatches(false);
     }, [loadMatches])
   );
 
@@ -107,7 +114,7 @@ export function MessagesScreen() {
         contentContainerStyle={styles.list}
         data={mainConversations}
         keyExtractor={(match) => String(match.id)}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={loadMatches} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadMatches(true)} />}
         ListHeaderComponent={
           <View style={[styles.headerArea, { paddingTop: insets.top + spacing.md }]}>
             <View style={styles.topRow}>
@@ -160,7 +167,7 @@ export function MessagesScreen() {
               match={item}
               currentUserId={user.id}
               onPress={() => openChat(item)}
-              onBlocked={loadMatches}
+              onBlocked={() => loadMatches(true)}
             />
           </View>
         )}
@@ -215,7 +222,7 @@ export function MessagesScreen() {
                     match={item}
                     currentUserId={user.id}
                     onPress={() => openChat(item)}
-                    onBlocked={loadMatches}
+                    onBlocked={() => loadMatches(true)}
                   />
                 </View>
               )}
@@ -237,7 +244,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: 120,
+    paddingBottom: 75,
   },
   headerArea: {
     paddingTop: spacing.xl,

@@ -34,7 +34,7 @@ const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
 import { useAppTheme } from "../context/ThemeContext";
 
 export function ChatScreen({ route }: Props) {
-  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, eventTitle, isGroupEvent } = route.params;
+  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
@@ -246,8 +246,8 @@ export function ChatScreen({ route }: Props) {
             </Text>
             <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.primary }}>
               {isGroupEvent
-                ? (language === "en" ? `👥 Group Chat • ${eventTitle || "Event"}` : `👥 Grup Sohbeti • ${eventTitle || "Etkinlik"}`)
-                : (language === "en" ? `👤 1-on-1 Buddy ${eventTitle ? `• ${eventTitle}` : ""}` : `👤 1-on-1 Kanka ${eventTitle ? `• ${eventTitle}` : ""}`)}
+                ? (language === "en" ? "👥 Group Chat" : "👥 Grup Sohbeti")
+                : (language === "en" ? "👤 1-on-1 Buddy" : "👤 1-on-1 Kanka")}
             </Text>
           </View>
         </View>
@@ -267,7 +267,7 @@ export function ChatScreen({ route }: Props) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otherUserId, otherUserName, otherUserPhoto, accentColor, eventTitle, isGroupEvent, language]);
+  }, [otherUserId, otherUserName, otherUserPhoto, accentColor, isGroupEvent, language]);
 
   // Firestore only carries messages sent after the real-time chat migration --
   // older conversation history lives in Postgres and needs a one-time fetch so

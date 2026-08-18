@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Alert } from "../utils/alert";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
@@ -246,13 +246,17 @@ export function CreateEventScreen() {
     }
   }
 
+  if (isQuotaLoading) {
+    return (
+      <View style={[styles.background, styles.loadingContainer, { backgroundColor: bgGradient[0] }]}>
+        <ActivityIndicator color={accentColor} />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
-      {isQuotaLoading ? (
-        <View style={styles.topQuotaRow}>
-          <View style={[styles.topQuotaPill, styles.topQuotaPillSkeleton]} />
-        </View>
-      ) : quota && !quota.is_premium && quota.weekly_limit !== null ? (
+      {quota && !quota.is_premium && quota.weekly_limit !== null ? (
         <View style={styles.topQuotaRow}>
           <Pressable style={styles.topQuotaPill} onPress={() => setQuotaModalVisible(true)}>
             <Feather name="zap" size={13} color="#F1C40F" />
@@ -649,11 +653,9 @@ const styles = StyleSheet.create({
     borderColor: "rgba(74, 194, 226, 0.35)",
     ...shadows.card,
   },
-  topQuotaPillSkeleton: {
-    width: 80,
-    height: 24,
-    borderColor: "transparent",
-    backgroundColor: colors.border,
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   topQuotaPillText: {
     fontFamily: fontFamily.bodySemiBold,
