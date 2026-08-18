@@ -99,9 +99,12 @@ export function MessagesScreen() {
     match.other_user.display_name.toLowerCase().includes(modalQuery.trim().toLowerCase())
   );
 
+  const groupChats = filtered.filter((match) => match.event_is_group || (match as any).is_group_event);
+  const buddyChats = filtered.filter((match) => !(match.event_is_group || (match as any).is_group_event));
+
   const newMatches = filtered.filter((match) => isToday(match.created_at));
-  const mainConversations = filtered.slice(0, INITIAL_CHAT_LIMIT);
-  const totalCount = filtered.length;
+  const mainConversations = buddyChats.slice(0, INITIAL_CHAT_LIMIT);
+  const totalCount = buddyChats.length;
 
   if (!user) {
     return null;
@@ -151,8 +154,24 @@ export function MessagesScreen() {
               </View>
             ) : null}
 
+            {groupChats.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader title={language === "en" ? "👥 Group Chats" : "👥 Grup Sohbetleri"} />
+                {groupChats.map((match) => (
+                  <View key={match.id} style={styles.chatItemWrapper}>
+                    <ChatListItem
+                      match={match}
+                      currentUserId={user.id}
+                      onPress={() => openChat(match)}
+                      onBlocked={() => loadMatches(true)}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
             <SectionHeader
-              title={t("conversations")}
+              title={language === "en" ? "💬 Birebir Sohbetler" : "💬 Birebir Sohbetler"}
               actionLabel={totalCount > INITIAL_CHAT_LIMIT ? `${t("seeAll")} (${totalCount})` : t("seeAll")}
               onActionPress={() => setAllMatchesModalVisible(true)}
             />

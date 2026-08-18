@@ -86,25 +86,7 @@ export function CreateEventScreen() {
       .finally(() => setIsQuotaLoading(false));
   }
 
-  useEffect(() => {
-    refreshQuota();
-    async function initCurrentLocation() {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const pos = await Location.getCurrentPositionAsync({});
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          setCoordinates({ latitude: lat, longitude: lng });
-          const label = await resolveCityDistrict(lat, lng);
-          if (label) {
-            setLocationName((current) => (current.trim() ? current : label));
-          }
-        }
-      } catch {}
-    }
-    initCurrentLocation();
-  }, []);
+  useEffect(refreshQuota, []);
 
   async function handleBuyCredits(): Promise<void> {
     setIsBuyingCredits(true);
