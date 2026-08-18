@@ -8,6 +8,7 @@ interface EventsMapViewProps {
   centerLatitude: number;
   centerLongitude: number;
   onSelectEvent: (event: Event) => void;
+  onDeselectEvent?: () => void;
   selectedEventId?: number | null;
   height?: number;
 }
@@ -19,6 +20,7 @@ export function EventsMapView({
   centerLatitude,
   centerLongitude,
   onSelectEvent,
+  onDeselectEvent,
   selectedEventId,
   height = 320,
 }: EventsMapViewProps) {
@@ -31,15 +33,24 @@ export function EventsMapView({
 
   return (
     <View style={[styles.container, { height }]}>
-      <MapView style={StyleSheet.absoluteFill} initialRegion={region}>
+      <MapView
+        style={StyleSheet.absoluteFill}
+        initialRegion={region}
+        onPress={(e) => {
+          if (e.nativeEvent.action !== "marker-press") {
+            onDeselectEvent?.();
+          }
+        }}
+      >
         {events.map((event) => (
           <Marker
             key={event.id}
             coordinate={{ latitude: event.latitude, longitude: event.longitude }}
-            title={event.title}
-            description={event.location_name}
-            pinColor={selectedEventId === event.id ? colors.accentYellow : undefined}
-            onPress={() => onSelectEvent(event)}
+            pinColor={selectedEventId === event.id ? colors.accentYellow : colors.primary}
+            onPress={(e) => {
+              e.stopPropagation();
+              onSelectEvent(event);
+            }}
           />
         ))}
       </MapView>

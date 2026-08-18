@@ -664,27 +664,46 @@ export function DiscoverScreen() {
                     centerLatitude={userCoords?.latitude ?? 41.0082}
                     centerLongitude={userCoords?.longitude ?? 28.9784}
                     onSelectEvent={setSelectedMapEvent}
+                    onDeselectEvent={() => setSelectedMapEvent(null)}
                     selectedEventId={selectedMapEvent?.id ?? null}
                     height={380}
                   />
 
-                  {/* Selected Event Callout Overlay */}
+                  {/* Selected Event Callout Overlay - Tapping card opens details directly */}
                   {selectedMapEvent && (
-                    <View style={styles.mapCallout}>
-                      <View style={{ flex: 1, gap: 2 }}>
-                        <Text style={styles.calloutTitle}>{selectedMapEvent.title}</Text>
-                        <Text style={styles.calloutText} numberOfLines={1}>{selectedMapEvent.location_name}</Text>
-                        <Text style={styles.calloutText}>{getEventDistanceLabel(selectedMapEvent) || ""}</Text>
+                    <Pressable style={styles.mapCalloutCard} onPress={() => goToDetail(selectedMapEvent)}>
+                      <View style={{ flex: 1, gap: 4 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                          <View style={styles.categoryBadgePill}>
+                            <Text style={styles.categoryBadgeText}>
+                              {getCategoryMeta(selectedMapEvent.category, language).label}
+                            </Text>
+                          </View>
+                          <Pressable
+                            style={styles.calloutCloseIconBtn}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              setSelectedMapEvent(null);
+                            }}
+                            hitSlop={8}
+                          >
+                            <Feather name="x" size={16} color={colors.textSecondary} />
+                          </Pressable>
+                        </View>
+                        <Text style={styles.calloutTitle} numberOfLines={1}>{selectedMapEvent.title}</Text>
+                        <Text style={styles.calloutText} numberOfLines={1}>
+                          📍 {selectedMapEvent.location_name} {getEventDistanceLabel(selectedMapEvent) ? `· 📏 ${getEventDistanceLabel(selectedMapEvent)}` : ""}
+                        </Text>
+                        <Text style={styles.calloutSubText}>
+                          🕒 {formatEventDate(selectedMapEvent.starts_at, language)} · 👥 {selectedMapEvent.attendee_count} {language === "en" ? "Attendees" : "Katılımcı"}
+                        </Text>
+                        <View style={[styles.calloutDetailBtnRow, { backgroundColor: accentColor }]}>
+                          <Text style={styles.calloutDetailBtnText}>
+                            {language === "en" ? "View Event Details ➔" : "Etkinlik Detayına Git ➔"}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={{ gap: spacing.xs }}>
-                        <Pressable style={[styles.calloutDetailBtn, { backgroundColor: accentColor }]} onPress={() => goToDetail(selectedMapEvent)}>
-                          <Text style={styles.calloutDetailBtnText}>Detay</Text>
-                        </Pressable>
-                        <Pressable style={styles.calloutCloseBtn} onPress={() => setSelectedMapEvent(null)}>
-                          <Text style={styles.calloutCloseBtnText}>Kapat</Text>
-                        </Pressable>
-                      </View>
-                    </View>
+                    </Pressable>
                   )}
                 </View>
               ) : (
@@ -865,47 +884,50 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
   },
-  mapCallout: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
+  mapCalloutCard: {
+    backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: radius.sm,
-    alignItems: "center",
-    gap: spacing.sm,
+    borderRadius: radius.card,
+    gap: spacing.xs,
     borderWidth: 1.5,
     borderColor: colors.primary,
+    ...shadows.card,
+  },
+  calloutCloseIconBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
   },
   calloutTitle: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textPrimary,
   },
   calloutText: {
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  calloutDetailBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    alignItems: "center",
-  },
-  calloutDetailBtnText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 12,
-    color: colors.surface,
-  },
-  calloutCloseBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
-    alignItems: "center",
-  },
-  calloutCloseBtnText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  calloutSubText: {
+    fontFamily: fontFamily.body,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  calloutDetailBtnRow: {
+    marginTop: spacing.xs,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calloutDetailBtnText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.surface,
   },
   aiMatchingBanner: {
     marginTop: spacing.md,
