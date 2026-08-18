@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
@@ -52,6 +52,10 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
   const [imageError, setImageError] = useState(false);
   const resolvedUrl = resolvePhotoUrl(photoUrl);
 
+  useEffect(() => {
+    setImageError(false);
+  }, [photoUrl]);
+
   const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
   const badgeSize = Math.max(14, Math.round(size * 0.32));
 
@@ -60,6 +64,7 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
       {resolvedUrl && !imageError ? (
         <>
           <Image
+            key={resolvedUrl}
             source={{ uri: resolvedUrl }}
             style={dimensionStyle}
             contentFit="cover"

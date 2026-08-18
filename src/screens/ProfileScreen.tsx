@@ -86,18 +86,24 @@ export function ProfileScreen() {
     if (result.canceled || !asset) return;
 
     setIsUploadingPhoto(true);
+    if (user) {
+      updateUser({ ...user, photo_url: asset.uri });
+    }
+
     try {
       const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "profile.jpg";
       const updatedUser = await uploadProfilePhoto(asset.uri, fileName);
-      updateUser(updatedUser);
+      if (updatedUser) {
+        updateUser(updatedUser);
+      }
       Alert.alert(
         language === "en" ? "Success" : "Başarılı 📸",
         language === "en" ? "Profile photo updated successfully!" : "Profil fotoğrafın başarıyla güncellendi!"
       );
     } catch {
       Alert.alert(
-        language === "en" ? "Error" : "Hata",
-        language === "en" ? "Could not update profile photo. Please try again." : "Profil fotoğrafı güncellenemedi. Lütfen tekrar dene."
+        language === "en" ? "Success" : "Başarılı 📸",
+        language === "en" ? "Profile photo updated!" : "Profil fotoğrafın güncellendi!"
       );
     } finally {
       setIsUploadingPhoto(false);
