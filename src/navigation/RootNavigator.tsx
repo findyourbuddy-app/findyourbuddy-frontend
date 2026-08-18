@@ -31,7 +31,6 @@ import { ViewProfileScreen } from "../screens/ViewProfileScreen";
 import { CommunityGuidelinesScreen } from "../screens/CommunityGuidelinesScreen";
 import { CallScreen } from "../screens/CallScreen";
 import { AIRecommendationsScreen } from "../screens/AIRecommendationsScreen";
-import { VerifyPhoneScreen } from "../screens/VerifyPhoneScreen";
 import { OnboardingScreen } from "../screens/OnboardingScreen";
 import type { User } from "../types";
 
