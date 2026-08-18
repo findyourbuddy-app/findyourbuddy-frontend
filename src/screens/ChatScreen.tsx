@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View, Modal } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Modal } from "react-native";
 import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -49,12 +49,22 @@ export function ChatScreen({ route }: Props) {
 
   const POPULAR_GIFS = useMemo(
     () => [
-      { key: "hello", label: language === "en" ? "Hello 👋" : "Merhaba 👋", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHB1dzJsczd4MmFudDRid2t4YW1rYzQzajc5NXBhdDFtdzBtNHM2ciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VdfD8e415yLte/giphy.gif" },
-      { key: "wink", label: language === "en" ? "Wink 😉" : "Göz Kırp 😉", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZDY5cTJycGl1YWJldmt1aXZ5aG82Z3E0MTVkcDRpNHExMHVscDdyNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d1E2VyhFsxRxCLKw/giphy.gif" },
-      { key: "laugh", label: language === "en" ? "Laugh 😂" : "Kahkaha 😂", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdzB2M2xscXZicWc5M3pxZnpxdGlidDR6dGJnbnpvYTJ0MWpsOHZ5dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ltvJF9EQ135t155j6V/giphy.gif" },
-      { key: "coffee", label: language === "en" ? "Coffee Meetup ☕" : "Kahve Buluşması ☕", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDVqNml4ZmF0NWV1NHkxbjhvYnhkMGFqZjR1N3prOW1obWRtdm1xciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oriO0OEd9QIDdllqo/giphy.gif" },
-      { key: "celebrate", label: language === "en" ? "Celebration 🎉" : "Kutlama 🎉", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZnRna3ZsbGg3cG94czAydTV1MXJwbzdudDBhb3Z3OHh3c2syeG9xbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYt5jPR6QX5pnq0/giphy.gif" },
-      { key: "applause", label: language === "en" ? "Applause 👏" : "Alkış 👏", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExN3JpcTZxbGF0MGttOXA1ZnYwaGNnODR0MmY2M3hhazUzMW40dG12ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3Gm15eZf29HGVPKl53/giphy.gif" }
+      { key: "hello", label: language === "en" ? "Hello 👋" : "Merhaba 👋", url: "https://media.giphy.com/media/VdfD8e415yLte/giphy.gif" },
+      { key: "wink", label: language === "en" ? "Wink 😉" : "Göz Kırp 😉", url: "https://media.giphy.com/media/d1E2VyhFsxRxCLKw/giphy.gif" },
+      { key: "laugh", label: language === "en" ? "Laugh 😂" : "Kahkaha 😂", url: "https://media.giphy.com/media/ltvJF9EQ135t155j6V/giphy.gif" },
+      { key: "coffee", label: language === "en" ? "Coffee ☕" : "Kahve ☕", url: "https://media.giphy.com/media/3oriO0OEd9QIDdllqo/giphy.gif" },
+      { key: "celebrate", label: language === "en" ? "Celebration 🎉" : "Kutlama 🎉", url: "https://media.giphy.com/media/l0MYt5jPR6QX5pnq0/giphy.gif" },
+      { key: "applause", label: language === "en" ? "Applause 👏" : "Alkış 👏", url: "https://media.giphy.com/media/3Gm15eZf29HGVPKl53/giphy.gif" },
+      { key: "love", label: language === "en" ? "Love ❤️" : "Sevgi ❤️", url: "https://media.giphy.com/media/26hpK8sjGn5BLTOAU/giphy.gif" },
+      { key: "dance", label: language === "en" ? "Dance 💃" : "Dans 💃", url: "https://media.giphy.com/media/l3vRlT2k2L35Cvv5C/giphy.gif" },
+      { key: "hug", label: language === "en" ? "Hug 🤗" : "Sarıl 🤗", url: "https://media.giphy.com/media/3oEdv4hwWTzBhWvaU0/giphy.gif" },
+      { key: "thumbsup", label: language === "en" ? "Thumbs Up 👍" : "Süper 👍", url: "https://media.giphy.com/media/111ebonMs92shy/giphy.gif" },
+      { key: "party", label: language === "en" ? "Party 🥳" : "Parti 🥳", url: "https://media.giphy.com/media/artj92V8o75VPL7AeQ/giphy.gif" },
+      { key: "mindblown", label: language === "en" ? "Mind Blown 🤯" : "Şok 🤯", url: "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif" },
+      { key: "cool", label: language === "en" ? "Cool 😎" : "Harika 😎", url: "https://media.giphy.com/media/3o7TKMt1VVNkHV2PaE/giphy.gif" },
+      { key: "highfive", label: language === "en" ? "High Five 🙌" : "Çak 🙌", url: "https://media.giphy.com/media/3oEJHV0z8S7WM4MwnK/giphy.gif" },
+      { key: "shocked", label: language === "en" ? "OMG 😱" : "İnanılmaz 😱", url: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif" },
+      { key: "cheers", label: language === "en" ? "Cheers 🍻" : "Şerefe 🍻", url: "https://media.giphy.com/media/g9582DNuQppxC/giphy.gif" }
     ],
     [language]
   );
@@ -619,15 +629,15 @@ export function ChatScreen({ route }: Props) {
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setGifModalVisible(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={typeScale.h2}>{language === "en" ? "Send GIF" : "GIF Gönder"}</Text>
-            <View style={styles.gifGrid}>
+            <Text style={typeScale.h2}>{language === "en" ? "Send GIF 🎬" : "GIF Gönder 🎬"}</Text>
+            <ScrollView style={{ maxHeight: 340 }} contentContainerStyle={styles.gifGrid} showsVerticalScrollIndicator={true}>
               {POPULAR_GIFS.map((gif) => (
                 <Pressable key={gif.key} style={styles.gifTile} onPress={() => handleSendGif(gif.url)}>
-                  <Image source={{ uri: gif.url }} style={styles.gifImage} />
+                  <Image source={{ uri: gif.url }} style={styles.gifImage} contentFit="cover" />
                   <Text style={styles.gifLabel}>{gif.label}</Text>
                 </Pressable>
               ))}
-            </View>
+            </ScrollView>
             <Pressable style={styles.cancelButton} onPress={() => setGifModalVisible(false)}>
               <Text style={styles.cancelText}>{t("cancel")}</Text>
             </Pressable>
