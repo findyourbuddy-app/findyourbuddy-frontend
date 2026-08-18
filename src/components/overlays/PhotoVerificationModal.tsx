@@ -34,10 +34,12 @@ export function PhotoVerificationModal({
 
   const [step, setStep] = useState<Step>("intro");
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const [acceptedKvkk, setAcceptedKvkk] = useState(false);
 
   const resetState = () => {
     setStep("intro");
     setCapturedUri(null);
+    setAcceptedKvkk(false);
   };
 
   const handleClose = () => {
@@ -46,6 +48,16 @@ export function PhotoVerificationModal({
   };
 
   const handleLaunchCamera = async () => {
+    if (!acceptedKvkk) {
+      Alert.alert(
+        language === "en" ? "Consent Required" : "Açık Rıza Gerekli",
+        language === "en"
+          ? "Please accept the KVKK biometric data processing consent to proceed."
+          : "Devam edebilmek için lütfen KVKK biyometrik veri işleme açık rıza metnini onaylayın."
+      );
+      return;
+    }
+
     if (!user?.photo_url) {
       Alert.alert(
         language === "en" ? "Profile Photo Required" : "Profil Fotoğrafı Gerekli",
@@ -164,6 +176,23 @@ export function PhotoVerificationModal({
                   ? "Take a live selfie to compare against your profile photos with AI Vision to verify your identity."
                   : "Yapay Zeka Vision teknolojisi ile anlık çekeceğin selfie, yüklediğin profil fotoğraflarıyla karşılaştırılacak ve hesabın doğrulanacaktır."}
               </Text>
+              <Pressable
+                style={styles.consentRow}
+                onPress={() => setAcceptedKvkk(!acceptedKvkk)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: acceptedKvkk }}
+              >
+                <Feather
+                  name={acceptedKvkk ? "check-square" : "square"}
+                  size={18}
+                  color={acceptedKvkk ? colors.primary : colors.textSecondary}
+                />
+                <Text style={styles.consentText}>
+                  {language === "en"
+                    ? "I explicitly consent to the processing of my facial biometric data for identity verification (KVKK)."
+                    : "Biyometrik yüz verimin Mavi Tik doğrulaması amacıyla işlenmesine açık rıza veriyorum (KVKK m.6)."}
+                </Text>
+              </Pressable>
               <View style={styles.actionGroup}>
                 <PrimaryButton
                   label={language === "en" ? "📸 Take Live Selfie" : "📸 Canlı Selfie Çek"}
@@ -271,5 +300,19 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: spacing.sm,
     marginTop: spacing.sm,
+  },
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xs,
+    marginVertical: spacing.xs,
+  },
+  consentText: {
+    flex: 1,
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.textSecondary,
   },
 });
