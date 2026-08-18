@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 
 export function getApiBaseUrl(): string {
   // Allow explicit environment variable override if provided
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
   if (envUrl && envUrl.trim()) {
     return envUrl.trim();
   }
@@ -24,9 +24,9 @@ export function getApiBaseUrl(): string {
   const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
   if (hostUri) {
     const ip = hostUri.split(":")[0];
+    const isNumericIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip);
     if (
-      ip &&
-      ip !== "localhost" &&
+      isNumericIp &&
       ip !== "127.0.0.1" &&
       !ip.startsWith("192.168.56.") &&
       !ip.startsWith("192.168.99.") &&

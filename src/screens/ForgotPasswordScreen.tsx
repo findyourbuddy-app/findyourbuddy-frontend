@@ -16,6 +16,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BuddyLogo } from "../components/ui/BuddyLogo";
 import { confirmPasswordReset, requestPasswordReset } from "../api/auth";
 import { useAppTheme } from "../context/ThemeContext";
+import { formatApiError } from "../utils/error";
 import { colors, fontFamily, radius, shadows, spacing } from "../theme";
 import type { AuthStackParamList } from "../navigation/RootNavigator";
 
@@ -34,16 +35,18 @@ export function ForgotPasswordScreen() {
 
   async function handleRequest(): Promise<void> {
     setError(null);
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      setError(language === "en" ? "Please enter your email address." : "Lütfen e-posta adresinizi girin.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await requestPasswordReset(email.trim());
+      await requestPasswordReset(cleanEmail);
       setStep("confirm");
-    } catch {
-      setError(
-        language === "en"
-          ? "Request failed. Please try again."
-          : "İstek gönderilemedi. Lütfen tekrar dene."
-      );
+    } catch (err) {
+      setError(formatApiError(err, language));
     } finally {
       setIsSubmitting(false);
     }
@@ -51,16 +54,21 @@ export function ForgotPasswordScreen() {
 
   async function handleConfirm(): Promise<void> {
     setError(null);
+    if (!token.trim()) {
+      setError(language === "en" ? "Please enter the verification code." : "Lütfen sıfırlama kodunu girin.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError(language === "en" ? "Password must be at least 6 characters." : "Yeni şifreniz en az 6 karakter olmalıdır.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await confirmPasswordReset(token.trim(), newPassword);
       setStep("done");
-    } catch {
-      setError(
-        language === "en"
-          ? "Invalid code or expired. Please try again."
-          : "Kod geçersiz veya süresi dolmuş. Lütfen tekrar dene."
-      );
+    } catch (err) {
+      setError(formatApiError(err, language));
     } finally {
       setIsSubmitting(false);
     }
@@ -74,8 +82,18 @@ export function ForgotPasswordScreen() {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      <View style={styles.blobTopLeft} />
-      <View style={styles.blobBottomRight} />
+      {/* Absolute Top Right Language Selector */}
+      <View style={styles.topRightLangContainer}>
+        <Pressable
+          style={styles.langPill}
+          onPress={() => setLanguage(language === "tr" ? "en" : "tr")}
+        >
+          <Feather name="globe" size={13} color={colors.textPrimary} />
+          <Text style={styles.langPillText}>
+            {language === "tr" ? "🇹🇷 TR" : "🇬🇧 EN"}
+          </Text>
+        </Pressable>
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -83,7 +101,7 @@ export function ForgotPasswordScreen() {
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.headerBox}>
@@ -294,6 +312,28 @@ const styles = StyleSheet.create({
     borderRadius: 130,
     backgroundColor: "rgba(255, 107, 107, 0.18)",
   },
+  topRightLangContainer: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 54 : 40,
+    right: spacing.lg,
+    zIndex: 999,
+  },
+  langPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+  },
+  langPillText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
   backButton: {
     position: "absolute",
     top: spacing.lg,
@@ -316,6 +356,7 @@ const styles = StyleSheet.create({
   },
   headerBox: {
     alignItems: "center",
+    marginTop: spacing.lg + 4,
     marginBottom: 28,
   },
   formBox: {

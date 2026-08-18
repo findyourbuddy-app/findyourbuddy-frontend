@@ -4,6 +4,7 @@ import { validateBirthDateString, validateDisplayName } from "../utils/profile";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -399,6 +400,19 @@ export function OnboardingScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bgGradient[0] }]}>
+      {/* Absolute Top Right Language Selector */}
+      <View style={styles.topRightLangContainer}>
+        <TouchableOpacity
+          style={styles.langPill}
+          onPress={() => setLanguage(language === "tr" ? "en" : "tr")}
+        >
+          <Feather name="globe" size={13} color={colors.textPrimary} />
+          <Text style={styles.langPillText}>
+            {language === "tr" ? "🇹🇷 TR" : "🇬🇧 EN"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Header Progress Bar */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
@@ -412,7 +426,11 @@ export function OnboardingScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="always"
+        showsVerticalScrollIndicator={false}
+      >
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* STEP 1: Basic Personal Info */}
@@ -726,6 +744,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  topRightLangContainer: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 54 : 36,
+    right: spacing.lg,
+    zIndex: 999,
+  },
+  langPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+  },
+  langPillText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.textPrimary,
   },
   header: {
     paddingTop: spacing.xxl,

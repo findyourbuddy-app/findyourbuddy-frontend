@@ -10,6 +10,7 @@ import { getHobbyLabel } from "../constants/hobbies";
 import { formatMemberSince, isNewMember } from "../utils/date";
 import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
+import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import { useAppTheme } from "../context/ThemeContext";
 
@@ -139,19 +140,12 @@ export function CandidateProfileScreen({ route }: Props) {
             ) : null}
 
             {candidate.voice_note_url ? (
-              <Pressable
-                style={[styles.voicePlayer, isPlayingVoice && styles.voicePlayerActive]}
-                onPress={handlePlayVoice}
-              >
-                <Feather
-                  name={isPlayingVoice ? "pause-circle" : "play-circle"}
-                  size={26}
-                  color={isPlayingVoice ? colors.surface : colors.primary}
-                />
-                <Text style={[styles.voiceText, isPlayingVoice && { color: colors.surface }]}>
-                  {isPlayingVoice ? "Ses Kaydı Dinleniyor..." : "Ses Tanıtımını Dinle 🎙️"}
+              <View style={{ marginTop: spacing.xs }}>
+                <Text style={[styles.promptQuestion, { marginBottom: spacing.xs }]}>
+                  Ses Tanıtımı 🎙️
                 </Text>
-              </Pressable>
+                <VoiceNotePlayer audioUrl={candidate.voice_note_url} />
+              </View>
             ) : null}
           </View>
         ) : null}

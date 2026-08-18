@@ -10,6 +10,7 @@ import { getHobbyLabel } from "../constants/hobbies";
 import { formatMemberSince } from "../utils/date";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import { apiClient } from "../api/client";
+import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
 import type { User } from "../types";
 
 import { useAppTheme } from "../context/ThemeContext";
@@ -155,19 +156,12 @@ export function ViewProfileScreen() {
           ) : null}
 
           {profile.voice_note_url ? (
-            <Pressable
-              style={[styles.voicePlayer, isPlayingVoice && styles.voicePlayerActive]}
-              onPress={handlePlayVoice}
-            >
-              <Feather
-                name={isPlayingVoice ? "pause-circle" : "play-circle"}
-                size={26}
-                color={isPlayingVoice ? colors.surface : colors.primary}
-              />
-              <Text style={[styles.voiceText, isPlayingVoice && { color: colors.surface }]}>
-                {isPlayingVoice ? "Ses Kaydı Oynatılıyor..." : "Ses Tanıtımını Dinle 🎙️"}
+            <View style={{ marginTop: spacing.xs }}>
+              <Text style={[styles.promptQuestion, { marginBottom: spacing.xs }]}>
+                Ses Tanıtımı 🎙️
               </Text>
-            </Pressable>
+              <VoiceNotePlayer audioUrl={profile.voice_note_url} />
+            </View>
           ) : null}
         </View>
       ) : null}

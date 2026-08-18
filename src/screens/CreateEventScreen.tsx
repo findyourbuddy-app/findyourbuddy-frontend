@@ -304,17 +304,31 @@ export function CreateEventScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>{t("ticket")}</Text>
+        <Text style={typeScale.eyebrow}>
+          {language === "en" ? "Participation / Entry Cost" : "Katılım Ücreti / Tahmini Harcama"}
+        </Text>
         <View style={styles.chipGrid}>
-          <Chip label={t("free")} active={!isPaid} onPress={() => setIsPaid(false)} />
-          <Chip label={t("paidTicket")} active={isPaid} onPress={() => setIsPaid(true)} />
+          <Chip
+            label={language === "en" ? "Free / None" : "Ücretsiz / Harcamasız"}
+            active={!isPaid}
+            onPress={() => setIsPaid(false)}
+          />
+          <Chip
+            label={language === "en" ? "Entry Fee / Paid" : "Ücretli / Harcamalı"}
+            active={isPaid}
+            onPress={() => setIsPaid(true)}
+          />
         </View>
         {isPaid ? (
           <>
             <TextInput
               style={styles.input}
               keyboardType="decimal-pad"
-              placeholder={language === "en" ? "Ticket Price ($)" : "Bilet fiyatı (₺)"}
+              placeholder={
+                language === "en"
+                  ? "Estimated cost per person ($)"
+                  : "Kişi başı tahmini harcama / bilet bedeli (₺)"
+              }
               placeholderTextColor={colors.textSecondary}
               value={ticketPrice}
               onChangeText={setTicketPrice}

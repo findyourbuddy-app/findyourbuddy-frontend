@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -36,6 +37,7 @@ const INITIAL_CHAT_LIMIT = 5;
 
 export function MessagesScreen() {
   const navigation = useNavigation<MessagesNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
   const { t, language, bgGradient } = useAppTheme();
@@ -107,7 +109,7 @@ export function MessagesScreen() {
         keyExtractor={(match) => String(match.id)}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={loadMatches} />}
         ListHeaderComponent={
-          <View style={styles.headerArea}>
+          <View style={[styles.headerArea, { paddingTop: insets.top + spacing.md }]}>
             <View style={styles.topRow}>
               <Text style={typeScale.h1}>{t("messagesHeader")}</Text>
               <Pressable

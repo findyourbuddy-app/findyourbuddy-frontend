@@ -4,6 +4,7 @@ import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import axios from "axios";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CompositeNavigationProp, RouteProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -36,6 +37,7 @@ import { useAppTheme } from "../context/ThemeContext";
 
 export function SwipeScreen() {
   const navigation = useNavigation<SwipeNavigationProp>();
+  const insets = useSafeAreaInsets();
   const route = useRoute<RouteProp<MainTabParamList, "Swipe">>();
   const { isPremium, user, updateUser } = useAuth();
   const { t, language, accentColor, bgGradient } = useAppTheme();
@@ -264,7 +266,7 @@ export function SwipeScreen() {
 
   return (
     <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, { marginTop: insets.top + spacing.md }]}>
         <View>
           <Text style={typeScale.eyebrow}>{t("buddiesNearYou")}</Text>
           <Text style={typeScale.h1}>{t("whoIsNextBuddy")}</Text>
