@@ -237,19 +237,13 @@ export function ChatScreen({ route }: Props) {
 
   useEffect(() => {
     navigation.setOptions({
+      headerTitleAlign: "left",
       headerTitle: () => (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs + 2 }}>
-          <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={34} />
-          <View style={{ justifyContent: "center" }}>
-            <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 15, color: colors.textPrimary }}>
-              {otherUserName}
-            </Text>
-            <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.primary }}>
-              {isGroupEvent
-                ? (language === "en" ? "👥 Group Chat" : "👥 Grup Sohbeti")
-                : (language === "en" ? "👤 1-on-1 Buddy" : "👤 1-on-1 Kanka")}
-            </Text>
-          </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginLeft: Platform.OS === "ios" ? -8 : 0 }}>
+          <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={36} />
+          <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary }}>
+            {otherUserName}
+          </Text>
         </View>
       ),
       headerRight: () => (
@@ -267,7 +261,7 @@ export function ChatScreen({ route }: Props) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otherUserId, otherUserName, otherUserPhoto, accentColor, isGroupEvent, language]);
+  }, [otherUserId, otherUserName, otherUserPhoto, accentColor]);
 
   // Firestore only carries messages sent after the real-time chat migration --
   // older conversation history lives in Postgres and needs a one-time fetch so
