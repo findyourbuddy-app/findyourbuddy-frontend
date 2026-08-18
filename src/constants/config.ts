@@ -43,3 +43,4 @@ export function getApiBaseUrl(): string {
 
 export const API_BASE_URL = getApiBaseUrl();
 export const AUTH_TOKEN_STORAGE_KEY = "findyourbuddy_access_token";
+export const REFRESH_TOKEN_STORAGE_KEY = "findyourbuddy_refresh_token";

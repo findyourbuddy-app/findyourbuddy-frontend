@@ -20,18 +20,10 @@ export function CandidateProfileScreen({ route }: Props) {
   const { candidate, onSwipeLeft, onSwipeRight, onSwipeUp } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { bgGradient, language } = useAppTheme();
-  const [isPlayingVoice, setIsPlayingVoice] = useState(false);
 
   function act(action: () => void): void {
     action();
     navigation.goBack();
-  }
-
-  function handlePlayVoice(): void {
-    setIsPlayingVoice(!isPlayingVoice);
-    if (!isPlayingVoice) {
-      setTimeout(() => setIsPlayingVoice(false), 5000);
-    }
   }
 
   const [locationName, setLocationName] = useState<string | null>(null);

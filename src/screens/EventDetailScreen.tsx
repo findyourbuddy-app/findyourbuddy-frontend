@@ -7,7 +7,6 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { ActivityIndicator } from "react-native";
 import * as Location from "expo-location";
-import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -20,7 +19,6 @@ import {
   getEvent,
   listJoinRequests,
   respondToJoinRequest,
-  uploadEventTicket,
 } from "../api/events";
 import { Avatar } from "../components/ui/Avatar";
 import { FormattedHtmlText } from "../components/ui/FormattedHtmlText";
@@ -47,7 +45,6 @@ export function EventDetailScreen({ route }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
-  const [isUploadingTicket, setIsUploadingTicket] = useState(false);
   const [joinRequests, setJoinRequests] = useState<User[]>([]);
   const [respondingUserId, setRespondingUserId] = useState<number | null>(null);
 
@@ -215,39 +212,6 @@ export function EventDetailScreen({ route }: Props) {
     }
   }
 
-  async function handleUploadTicket(): Promise<void> {
-    if (!event) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (permission.status !== "granted") {
-      Alert.alert("Galeri izni gerekli", "Bilet fotoğrafını seçebilmek için galeri iznini açman gerekiyor.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.9 });
-    const asset = result.assets?.[0];
-    if (result.canceled || !asset) {
-      return;
-    }
-
-    setIsUploadingTicket(true);
-    try {
-      const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "ticket.jpg";
-      const updated = await uploadEventTicket(event.id, asset.uri, fileName);
-      setEvent(updated);
-      Alert.alert("Bilet Doğrulandı! ✓", "Biletindeki QR/barkod okundu, katılımın onaylandı.");
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 422) {
-        Alert.alert(
-          "Kod Okunamadı",
-          "Bu fotoğraftan bir QR kod/barkod okunamadı. Daha net bir fotoğrafla tekrar dener misin?"
-        );
-      } else {
-        Alert.alert("Bir sorun oluştu", "Bilet yüklenemedi. Lütfen tekrar dene.");
-      }
-    } finally {
-      setIsUploadingTicket(false);
-    }
-  }
-
   if (isLoading || !event) {
     return (
       <View style={styles.center}>
@@ -316,8 +280,8 @@ export function EventDetailScreen({ route }: Props) {
             <Feather name={event.is_paid ? "credit-card" : "gift"} size={16} color={colors.textSecondary} />
             <Text style={styles.metaText}>
               {event.is_paid
-                ? `Ücretli (Biletli)${event.ticket_price ? ` · ${event.ticket_price} ₺` : ""}`
-                : "Ücretsiz"}
+                ? `${t("ticket")}${event.ticket_price ? `: ${event.ticket_price} ₺` : ""}`
+                : t("free")}
             </Text>
           </View>
         ) : null}

@@ -20,17 +20,7 @@ export function ViewProfileScreen() {
   const { bgGradient, accentColor, language } = useAppTheme();
   const [profile, setProfile] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const [locationName, setLocationName] = useState<string | null>(null);
-
-  function handlePlayVoice() {
-    setIsPlayingVoice(!isPlayingVoice);
-    if (!isPlayingVoice) {
-      setTimeout(() => {
-        setIsPlayingVoice(false);
-      }, 5000);
-    }
-  }
 
   useFocusEffect(
     useCallback(() => {
