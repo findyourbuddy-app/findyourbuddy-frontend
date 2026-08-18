@@ -45,10 +45,13 @@ function parseLocalDateTime(dateText: string, timeText: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+import { getCurrentUser } from "../api/users";
+import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 
 export function CreateEventScreen() {
   const navigation = useNavigation<CreateEventNavigationProp>();
+  const { updateUser } = useAuth();
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -218,6 +221,10 @@ export function CreateEventScreen() {
         is_paid: isPaid,
         ticket_price: isPaid ? parsedPrice : null,
       });
+      try {
+        const freshUser = await getCurrentUser();
+        updateUser(freshUser);
+      } catch {}
       navigation.goBack();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {

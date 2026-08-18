@@ -665,14 +665,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     padding: spacing.lg,
-    paddingBottom: 120,
-    gap: spacing.md,
+    paddingBottom: 75,
+    gap: spacing.sm,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginTop: spacing.xl,
+    marginTop: spacing.md,
   },
   headerActions: {
     flexDirection: "row",
@@ -739,6 +739,7 @@ const styles = StyleSheet.create({
   },
   cardArea: {
     flex: 1,
+    marginVertical: spacing.xs,
   },
   center: {
     flex: 1,
@@ -756,8 +757,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.lg,
-    paddingVertical: spacing.sm,
+    gap: spacing.xl,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   actionButton: {
     alignItems: "center",
