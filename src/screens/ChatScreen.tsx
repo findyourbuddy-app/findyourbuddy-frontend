@@ -17,7 +17,7 @@ import { useMessagesContext } from "../context/MessagesContext";
 import { apiClient } from "../api/client";
 import { colors, fontFamily, radius, spacing, typeScale, shadows } from "../theme";
 import { Avatar } from "../components/ui/Avatar";
-import { formatRelativeTimestamp } from "../utils/date";
+import { formatMessageTime, formatRelativeTimestamp } from "../utils/date";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Message, ReportReason } from "../types";
 
@@ -493,7 +493,7 @@ export function ChatScreen({ route }: Props) {
                 )}
                 <View style={styles.bubbleFooter}>
                   <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>
-                    {formatRelativeTimestamp(item.created_at)}
+                    {formatMessageTime(item.created_at, language)}
                   </Text>
                   {isOwn ? (
                     <Feather

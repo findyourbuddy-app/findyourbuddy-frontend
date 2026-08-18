@@ -30,6 +30,19 @@ function pad(value: number): string {
   return String(value).padStart(2, "0");
 }
 
+export function formatMessageTime(iso: string, lang: LanguageKey = "tr"): string {
+  const date = parseApiDate(iso);
+  const timeStr = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+  if (isToday(iso)) {
+    return timeStr;
+  }
+  if (isYesterday(iso)) {
+    return lang === "en" ? `Yesterday ${timeStr}` : `Dün ${timeStr}`;
+  }
+  return `${pad(date.getDate())}.${pad(date.getMonth() + 1)} ${timeStr}`;
+}
+
 export function formatRelativeTimestamp(iso: string, lang: LanguageKey = "tr"): string {
   const date = parseApiDate(iso);
   const diffMinutes = (Date.now() - date.getTime()) / (1000 * 60);

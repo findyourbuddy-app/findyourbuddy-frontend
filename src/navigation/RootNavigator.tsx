@@ -159,7 +159,10 @@ function MainNavigator() {
       <MainStack.Screen
         name="Chat"
         component={ChatScreen}
-        options={({ route }) => ({ title: route.params.otherUserName })}
+        options={({ route }) => ({
+          title: route.params.otherUserName,
+          headerTitleAlign: "left",
+        })}
       />
       <MainStack.Screen
         name="Call"
