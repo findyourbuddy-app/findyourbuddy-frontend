@@ -86,6 +86,7 @@ export function DiscoverScreen() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const isLoadingMoreRef = useRef(false);
   const [hasMore, setHasMore] = useState(true);
 
   // Sorting, Search and Location States
@@ -317,20 +318,29 @@ export function DiscoverScreen() {
   }, [language]);
 
   const loadMoreEvents = useCallback(async () => {
-    if (isLoadingMore || !hasMore || isRefreshing) return;
-    
+    // FlatList can fire onEndReached more than once before the isLoadingMore
+    // state update commits (state is async) -- a ref-based guard closes that
+    // race, which otherwise fetches the same page twice and appends
+    // duplicate events (React "same key" warnings, wrong item updates).
+    if (isLoadingMoreRef.current || !hasMore || isRefreshing) return;
+    isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
     try {
       const currentLength = events.length;
       const result = await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT);
-      setEvents((prev) => [...prev, ...result]);
+      setEvents((prev) => {
+        const existingIds = new Set(prev.map((event) => event.id));
+        const deduped = result.filter((event) => !existingIds.has(event.id));
+        return [...prev, ...deduped];
+      });
       setHasMore(result.length === LIMIT);
     } catch {
       // Fail silently to avoid breaking infinite scrolling user experience
     } finally {
+      isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [events.length, selectedCategory, hasMore, isLoadingMore, isRefreshing]);
+  }, [events.length, selectedCategory, hasMore, isRefreshing]);
 
   const loadBookmarks = useCallback(async () => {
     try {
@@ -624,31 +634,18 @@ export function DiscoverScreen() {
               <View style={styles.subHeaderControlsRow}>
                 <Pressable style={styles.locationPill} onPress={handlePressLocationPill}>
                   <Feather name="map-pin" size={14} color={colors.textPrimary} />
-                  <Text style={styles.locationText}>{cityLabel}</Text>
+                  <Text style={styles.locationText} numberOfLines={1} ellipsizeMode="tail">
+                    {cityLabel}
+                  </Text>
                 </Pressable>
                 
-                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                  <Pressable
-                    style={[styles.sortPill, isMapView && { backgroundColor: `${accentColor}20` }]}
-                    onPress={() => setIsMapView(!isMapView)}
-                  >
-                    <Feather name={isMapView ? "list" : "map"} size={12} color={accentColor} />
-                    <Text style={[styles.sortText, { color: accentColor }]}>{isMapView ? t("list") : t("map")}</Text>
-                  </Pressable>
-
-                  <Pressable style={styles.sortPill} onPress={openSortPicker} disabled={isLocating}>
-                    {isLocating ? (
-                      <ActivityIndicator size="small" color={accentColor} />
-                    ) : (
-                      <>
-                        <Feather name="sliders" size={12} color={accentColor} />
-                        <Text style={[styles.sortText, { color: accentColor }]}>
-                          {sortBy === "distance" ? t("sortByDistance") : sortBy === "popularity" ? t("sortByPopularity") : t("sort")}
-                        </Text>
-                      </>
-                    )}
-                  </Pressable>
-                </View>
+                <Pressable
+                  style={[styles.sortPill, isMapView && { backgroundColor: `${accentColor}20` }]}
+                  onPress={() => setIsMapView(!isMapView)}
+                >
+                  <Feather name={isMapView ? "list" : "map"} size={12} color={accentColor} />
+                  <Text style={[styles.sortText, { color: accentColor }]}>{isMapView ? t("list") : t("map")}</Text>
+                </Pressable>
               </View>
 
               {isMapView ? (
@@ -785,10 +782,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 999,
+    flexShrink: 1,
   },
   locationText: {
     fontSize: 13,
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   sortPill: {
     flexDirection: "row",

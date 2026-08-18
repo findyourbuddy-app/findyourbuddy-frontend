@@ -141,7 +141,7 @@ export function ChatListItem({ match, currentUserId, onPress, onBlocked }: ChatL
             isVerified={match.other_user.is_verified}
             size={48}
           />
-          <View style={styles.textColumn}>
+          <View style={[styles.textColumn, { marginRight: spacing.sm }]}>
             <View style={styles.topRow}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 4 }}>
                 <Text style={[styles.name, isUnread && styles.unreadText]} numberOfLines={1}>

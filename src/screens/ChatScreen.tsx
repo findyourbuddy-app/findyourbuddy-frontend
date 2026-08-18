@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View, Modal } from "react-native";
 import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
@@ -335,6 +335,17 @@ export function ChatScreen({ route }: Props) {
     return [...olderHistory, ...liveMessages];
   }, [historicalMessages, liveMessages]);
 
+  const messageListRef = useRef<FlatList<Message>>(null);
+
+  // Without this, a new message (sent or received) or the keyboard opening
+  // leaves the list wherever it was -- the newest bubble ends up hidden
+  // behind the input row instead of scrolling into view.
+  useEffect(() => {
+    if (messages.length > 0) {
+      messageListRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [messages.length]);
+
   // Sync read status to PostgreSQL backend on screen focus
   useFocusEffect(
     useCallback(() => {
@@ -471,9 +482,11 @@ export function ChatScreen({ route }: Props) {
       ) : null}
 
       <FlatList
+        ref={messageListRef}
         contentContainerStyle={styles.messageList}
         data={messages}
         keyExtractor={(message) => String(message.id)}
+        onContentSizeChange={() => messageListRef.current?.scrollToEnd({ animated: false })}
         renderItem={({ item }) => {
           const isOwn = item.sender_id === user.id;
           return (

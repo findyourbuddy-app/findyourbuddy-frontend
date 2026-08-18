@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   list: {
     padding: spacing.xl,
     gap: spacing.md,
-    paddingLeft: spacing.xl + 20,
+    paddingLeft: spacing.xl + 8,
   },
   timelineLine: {
     position: "absolute",

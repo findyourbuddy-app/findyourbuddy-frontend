@@ -61,7 +61,13 @@
         }
       ],
       "expo-notifications",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Etkinlikleri takvimine ekleyebilmek için takvimine erişim izni gerekiyor."
+        }
+      ]
     ],
     "extra": {
       "eas": {

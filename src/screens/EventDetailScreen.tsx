@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { Animated, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { openAddToCalendar } from "../utils/calendar";
 import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
@@ -108,9 +108,15 @@ export function EventDetailScreen({ route }: Props) {
     }, [eventId, user, refreshJoinRequests])
   );
 
+  const bookmarkScale = useRef(new Animated.Value(1)).current;
+
   async function toggleBookmark(): Promise<void> {
     const wasBookmarked = isBookmarked;
     setIsBookmarked(!wasBookmarked);
+    Animated.sequence([
+      Animated.timing(bookmarkScale, { toValue: 1.35, duration: 120, useNativeDriver: true }),
+      Animated.spring(bookmarkScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+    ]).start();
     try {
       if (wasBookmarked) {
         await deleteBookmark(eventId);
@@ -240,11 +246,13 @@ export function EventDetailScreen({ route }: Props) {
           </View>
         ) : null}
         <Pressable style={styles.bookmark} onPress={toggleBookmark}>
-          <Feather
-            name="bookmark"
-            size={20}
-            color={isBookmarked ? colors.accentYellow : colors.surface}
-          />
+          <Animated.View style={{ transform: [{ scale: bookmarkScale }] }}>
+            <Feather
+              name="bookmark"
+              size={20}
+              color={isBookmarked ? colors.accentYellow : colors.surface}
+            />
+          </Animated.View>
         </Pressable>
       </View>
 
@@ -425,9 +433,16 @@ export function EventDetailScreen({ route }: Props) {
             <PrimaryButton
               label={language === "en" ? "🔗 Share" : "🔗 Paylaş"}
               onPress={() => {
+                // No public web domain yet to host a real https:// link that
+                // deep-links back into a specific event with an App Store
+                // fallback (Universal Links / App Links) -- share readable
+                // event info without exposing the raw internal event ID.
                 Share.share({
                   title: event.title,
-                  message: `FindYourBuddy etkinliğine göz at: ${event.title} - ${event.location_name}\n\nfindyourbuddy://event/${event.id}`,
+                  message:
+                    language === "en"
+                      ? `Check out this FindYourBuddy event: "${event.title}" at ${event.location_name}!`
+                      : `FindYourBuddy'de bu etkinliğe göz at: "${event.title}" - ${event.location_name}!`,
                 }).catch(() => {});
               }}
               variant="outline"

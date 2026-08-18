@@ -1,7 +1,8 @@
+import { useEffect, useRef } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { Badge } from "../ui/Badge";
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { getCategoryMeta } from "../../constants/categories";
@@ -25,6 +26,19 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
   const category = getCategoryMeta(event.category, language);
   const startLabel = formatEventDate(event.starts_at, language);
 
+  const bookmarkScale = useRef(new Animated.Value(1)).current;
+  const isFirstBookmarkRender = useRef(true);
+  useEffect(() => {
+    if (isFirstBookmarkRender.current) {
+      isFirstBookmarkRender.current = false;
+      return;
+    }
+    Animated.sequence([
+      Animated.timing(bookmarkScale, { toValue: 1.35, duration: 120, useNativeDriver: true }),
+      Animated.spring(bookmarkScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+    ]).start();
+  }, [bookmarked, bookmarkScale]);
+
   return (
     <Pressable style={styles.card} onPress={onPress} disabled={!onPress}>
       <View style={styles.banner}>
@@ -44,11 +58,13 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
           </View>
         ) : null}
         <Pressable style={styles.bookmark} onPress={onToggleBookmark}>
-          <Feather
-            name="bookmark"
-            size={18}
-            color={bookmarked ? colors.accentYellow : colors.surface}
-          />
+          <Animated.View style={{ transform: [{ scale: bookmarkScale }] }}>
+            <Feather
+              name="bookmark"
+              size={18}
+              color={bookmarked ? colors.accentYellow : colors.surface}
+            />
+          </Animated.View>
         </Pressable>
       </View>
 
