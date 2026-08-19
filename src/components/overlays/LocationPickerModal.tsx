@@ -48,10 +48,17 @@ export function LocationPickerModal({
   // picker is reopened, so a previous session's map pan doesn't linger.
   useEffect(() => {
     if (!visible) return;
-    setCoords({
-      latitude: initialLatitude ?? DEFAULT_CENTER.latitude,
-      longitude: initialLongitude ?? DEFAULT_CENTER.longitude,
-    });
+    if (initialLatitude && initialLongitude) {
+      setCoords({ latitude: initialLatitude, longitude: initialLongitude });
+    } else {
+      Location.requestForegroundPermissionsAsync().then(({ status }) => {
+        if (status === "granted") {
+          Location.getCurrentPositionAsync({}).then((pos) => {
+            setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    }
     setKnownDisplayName(null);
     setIsSearchOpen(false);
     setQuery("");

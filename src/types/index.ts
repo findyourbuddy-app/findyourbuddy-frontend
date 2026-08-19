@@ -169,6 +169,7 @@ export interface Message {
   media_url?: string | null;
   is_read: boolean;
   created_at: string;
+  reactions?: Record<string, string>;
 }
 
 export interface MessageCreate {

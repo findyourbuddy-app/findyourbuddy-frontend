@@ -49,6 +49,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "tunnel": "expo start --tunnel --go",
+    "lan": "expo start --lan --go",
     "test": "jest"
   },
   "private": true

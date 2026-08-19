@@ -267,7 +267,7 @@ export function SwipeScreen() {
   return (
     <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
       <View style={[styles.headerRow, { marginTop: insets.top + spacing.md }]}>
-        <View>
+        <View style={{ flex: 1, marginRight: spacing.md, gap: 2 }}>
           <Text style={typeScale.eyebrow}>{t("buddiesNearYou")}</Text>
           <Text style={typeScale.h1}>{t("whoIsNextBuddy")}</Text>
         </View>
@@ -664,15 +664,15 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.lg,
-    paddingBottom: 120,
-    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 60,
+    gap: spacing.xs,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginTop: spacing.xl,
+    marginBottom: 4,
   },
   headerActions: {
     flexDirection: "row",
@@ -739,6 +739,7 @@ const styles = StyleSheet.create({
   },
   cardArea: {
     flex: 1,
+    marginVertical: 2,
   },
   center: {
     flex: 1,
@@ -756,8 +757,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.lg,
-    paddingVertical: spacing.sm,
+    gap: spacing.xl,
+    marginTop: 2,
+    marginBottom: 4,
+    paddingVertical: 0,
   },
   actionButton: {
     alignItems: "center",

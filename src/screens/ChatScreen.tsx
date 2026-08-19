@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View, Modal } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Modal } from "react-native";
 import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -7,17 +7,18 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
 import axios from "axios";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage } from "../api/messages";
+import { uploadGalleryPhoto } from "../api/users";
 import { submitMatchFeedback } from "../api/matches";
 import { blockUser, reportUser } from "../api/safety";
 import { useAuth } from "../context/AuthContext";
 import { useMessagesContext } from "../context/MessagesContext";
 import { apiClient } from "../api/client";
 import { colors, fontFamily, radius, spacing, typeScale, shadows } from "../theme";
-import { Avatar } from "../components/ui/Avatar";
-import { formatRelativeTimestamp } from "../utils/date";
+import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
+import { formatMessageTime, formatRelativeTimestamp } from "../utils/date";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Message, ReportReason } from "../types";
 
@@ -34,7 +35,7 @@ const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
 import { useAppTheme } from "../context/ThemeContext";
 
 export function ChatScreen({ route }: Props) {
-  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, eventTitle, isGroupEvent } = route.params;
+  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
@@ -42,18 +43,29 @@ export function ChatScreen({ route }: Props) {
   const [historicalMessages, setHistoricalMessages] = useState<Message[]>([]);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
+  const [selectedImage, setSelectedImage] = useState<{ uri: string; base64?: string | null } | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
 
   const POPULAR_GIFS = useMemo(
     () => [
-      { key: "hello", label: language === "en" ? "Hello 👋" : "Merhaba 👋", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHB1dzJsczd4MmFudDRid2t4YW1rYzQzajc5NXBhdDFtdzBtNHM2ciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/VdfD8e415yLte/giphy.gif" },
-      { key: "wink", label: language === "en" ? "Wink 😉" : "Göz Kırp 😉", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZDY5cTJycGl1YWJldmt1aXZ5aG82Z3E0MTVkcDRpNHExMHVscDdyNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d1E2VyhFsxRxCLKw/giphy.gif" },
-      { key: "laugh", label: language === "en" ? "Laugh 😂" : "Kahkaha 😂", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdzB2M2xscXZicWc5M3pxZnpxdGlidDR6dGJnbnpvYTJ0MWpsOHZ5dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ltvJF9EQ135t155j6V/giphy.gif" },
-      { key: "coffee", label: language === "en" ? "Coffee Meetup ☕" : "Kahve Buluşması ☕", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDVqNml4ZmF0NWV1NHkxbjhvYnhkMGFqZjR1N3prOW1obWRtdm1xciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oriO0OEd9QIDdllqo/giphy.gif" },
-      { key: "celebrate", label: language === "en" ? "Celebration 🎉" : "Kutlama 🎉", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZnRna3ZsbGg3cG94czAydTV1MXJwbzdudDBhb3Z3OHh3c2syeG9xbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYt5jPR6QX5pnq0/giphy.gif" },
-      { key: "applause", label: language === "en" ? "Applause 👏" : "Alkış 👏", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExN3JpcTZxbGF0MGttOXA1ZnYwaGNnODR0MmY2M3hhazUzMW40dG12ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3Gm15eZf29HGVPKl53/giphy.gif" }
+      { key: "hello", label: language === "en" ? "Hello 👋" : "Merhaba 👋", url: "https://i.giphy.com/VdfD8e415yLte/giphy.gif" },
+      { key: "wink", label: language === "en" ? "Wink 😉" : "Göz Kırp 😉", url: "https://i.giphy.com/d1E2VyhFsxRxCLKw/giphy.gif" },
+      { key: "laugh", label: language === "en" ? "Laugh 😂" : "Kahkaha 😂", url: "https://i.giphy.com/ltvJF9EQ135t155j6V/giphy.gif" },
+      { key: "coffee", label: language === "en" ? "Coffee ☕" : "Kahve ☕", url: "https://i.giphy.com/3oriO0OEd9QIDdllqo/giphy.gif" },
+      { key: "celebrate", label: language === "en" ? "Celebration 🎉" : "Kutlama 🎉", url: "https://i.giphy.com/l0MYt5jPR6QX5pnq0/giphy.gif" },
+      { key: "applause", label: language === "en" ? "Applause 👏" : "Alkış 👏", url: "https://i.giphy.com/3Gm15eZf29HGVPKl53/giphy.gif" },
+      { key: "love", label: language === "en" ? "Love ❤️" : "Sevgi ❤️", url: "https://i.giphy.com/26hpK8sjGn5BLTOAU/giphy.gif" },
+      { key: "dance", label: language === "en" ? "Dance 💃" : "Dans 💃", url: "https://i.giphy.com/l3vRlT2k2L35Cvv5C/giphy.gif" },
+      { key: "hug", label: language === "en" ? "Hug 🤗" : "Sarıl 🤗", url: "https://i.giphy.com/3oEdv4hwWTzBhWvaU0/giphy.gif" },
+      { key: "thumbsup", label: language === "en" ? "Thumbs Up 👍" : "Süper 👍", url: "https://i.giphy.com/111ebonMs92shy/giphy.gif" },
+      { key: "party", label: language === "en" ? "Party 🥳" : "Parti 🥳", url: "https://i.giphy.com/artj92V8o75VPL7AeQ/giphy.gif" },
+      { key: "mindblown", label: language === "en" ? "Mind Blown 🤯" : "Şok 🤯", url: "https://i.giphy.com/26ufdipQqU2lhNA4g/giphy.gif" },
+      { key: "cool", label: language === "en" ? "Cool 😎" : "Harika 😎", url: "https://i.giphy.com/3o7TKMt1VVNkHV2PaE/giphy.gif" },
+      { key: "highfive", label: language === "en" ? "High Five 🙌" : "Çak 🙌", url: "https://i.giphy.com/3oEJHV0z8S7WM4MwnK/giphy.gif" },
+      { key: "shocked", label: language === "en" ? "OMG 😱" : "İnanılmaz 😱", url: "https://i.giphy.com/xT0xeJpnrWC4XWblEk/giphy.gif" },
+      { key: "cheers", label: language === "en" ? "Cheers 🍻" : "Şerefe 🍻", url: "https://i.giphy.com/g9582DNuQppxC/giphy.gif" }
     ],
     [language]
   );
@@ -66,6 +78,28 @@ export function ChatScreen({ route }: Props) {
     ],
     [language]
   );
+
+  const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
+  const [selectedMessageForReaction, setSelectedMessageForReaction] = useState<Message | null>(null);
+  const [visibleTimestampId, setVisibleTimestampId] = useState<string | number | null>(null);
+
+  async function handleToggleReaction(messageId: string | number, emoji: string) {
+    setSelectedMessageForReaction(null);
+    if (!user) return;
+    try {
+      const docRef = doc(db, "matches", String(matchId), "messages", String(messageId));
+      const targetMessage = liveMessages.find((m) => String(m.id) === String(messageId));
+      const currentReactions = targetMessage?.reactions || {};
+      const existing = currentReactions[user.id];
+      const newReactions = { ...currentReactions };
+      if (existing === emoji) {
+        delete newReactions[user.id];
+      } else {
+        newReactions[user.id] = emoji;
+      }
+      await updateDoc(docRef, { reactions: newReactions });
+    } catch {}
+  }
 
   const [gifModalVisible, setGifModalVisible] = useState(false);
 
@@ -104,7 +138,6 @@ export function ChatScreen({ route }: Props) {
     if (!user) return;
     const docRef = doc(db, "matches", String(matchId), "call", "signal");
     try {
-      const { setDoc } = require("firebase/firestore");
       await setDoc(docRef, {
         status: "ringing",
         call_type: type,
@@ -112,17 +145,15 @@ export function ChatScreen({ route }: Props) {
         caller_name: user.display_name,
         caller_photo: user.photo_url,
       });
+    } catch {}
 
-      navigation.navigate("Call", {
-        matchId,
-        otherUserName,
-        otherUserPhoto: null,
-        isCaller: true,
-        callType: type,
-      });
-    } catch {
-      Alert.alert("Arama Başlatılamadı", "Bir sorun oluştu.");
-    }
+    navigation.navigate("Call", {
+      matchId,
+      otherUserName,
+      otherUserPhoto: null,
+      isCaller: true,
+      callType: type,
+    });
   }
 
   async function handleAcceptCall() {
@@ -237,21 +268,27 @@ export function ChatScreen({ route }: Props) {
 
   useEffect(() => {
     navigation.setOptions({
-      headerTitle: () => (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs + 2 }}>
-          <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={34} />
-          <View style={{ justifyContent: "center" }}>
-            <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 15, color: colors.textPrimary }}>
+      headerTitleAlign: "left",
+      headerBackVisible: false,
+      headerLeft: () => (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs, marginLeft: Platform.OS === "ios" ? -8 : -4 }}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={{ paddingRight: 6, paddingVertical: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel="Geri"
+          >
+            <Feather name="chevron-left" size={26} color={colors.textPrimary} />
+          </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+            <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={36} />
+            <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary }}>
               {otherUserName}
-            </Text>
-            <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.primary }}>
-              {isGroupEvent
-                ? (language === "en" ? `👥 Group Chat • ${eventTitle || "Event"}` : `👥 Grup Sohbeti • ${eventTitle || "Etkinlik"}`)
-                : (language === "en" ? `👤 1-on-1 Buddy ${eventTitle ? `• ${eventTitle}` : ""}` : `👤 1-on-1 Kanka ${eventTitle ? `• ${eventTitle}` : ""}`)}
             </Text>
           </View>
         </View>
       ),
+      headerTitle: "",
       headerRight: () => (
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
           <Pressable onPress={() => initiateCall("voice")} style={styles.headerButton}>
@@ -267,7 +304,7 @@ export function ChatScreen({ route }: Props) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otherUserId, otherUserName, otherUserPhoto, accentColor, eventTitle, isGroupEvent, language]);
+  }, [otherUserId, otherUserName, otherUserPhoto, accentColor]);
 
   // Firestore only carries messages sent after the real-time chat migration --
   // older conversation history lives in Postgres and needs a one-time fetch so
@@ -303,6 +340,7 @@ export function ChatScreen({ route }: Props) {
             media_url: data.media_url || null,
             created_at: data.created_at?.toDate()?.toISOString() || new Date().toISOString(),
             is_read: data.is_read || false,
+            reactions: data.reactions || {},
           });
 
           // Mark incoming unread messages as read in Firestore
@@ -337,12 +375,15 @@ export function ChatScreen({ route }: Props) {
 
   const messageListRef = useRef<FlatList<Message>>(null);
 
-  // Without this, a new message (sent or received) or the keyboard opening
-  // leaves the list wherever it was -- the newest bubble ends up hidden
-  // behind the input row instead of scrolling into view.
+  function scrollToBottom(animated = true) {
+    setTimeout(() => {
+      messageListRef.current?.scrollToEnd({ animated });
+    }, 100);
+  }
+
   useEffect(() => {
     if (messages.length > 0) {
-      messageListRef.current?.scrollToEnd({ animated: true });
+      scrollToBottom(true);
     }
   }, [messages.length]);
 
@@ -363,21 +404,44 @@ export function ChatScreen({ route }: Props) {
 
   async function handleSend(): Promise<void> {
     const content = draft.trim();
-    if (!content || !user) {
+    if ((!content && !selectedImage) || !user) {
       return;
     }
     setErrorText(null);
     setIsSending(true);
+
+    const activeImage = selectedImage;
+    const activeText = content;
+
     setDraft("");
+    setSelectedImage(null);
 
     try {
-      // Sent through the backend only -- it moderates and rate-limits the
-      // message, then relays it into Firestore itself for real-time
-      // delivery. The client never writes to Firestore directly, so it
-      // can't be used to bypass either check.
-      await sendMessage(matchId, { content, message_type: "text", media_url: undefined });
+      if (activeImage) {
+        let imageUrl = activeImage.uri;
+        try {
+          const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
+          const uploaded = await uploadGalleryPhoto(activeImage.uri, fileName);
+          if (uploaded && uploaded.photo_url) {
+            imageUrl = uploaded.photo_url;
+          }
+        } catch {
+          if (activeImage.base64) {
+            imageUrl = `data:image/jpeg;base64,${activeImage.base64}`;
+          }
+        }
+
+        await sendMessage(matchId, {
+          content: activeText || "[Fotoğraf]",
+          message_type: "image",
+          media_url: imageUrl,
+        });
+      } else {
+        await sendMessage(matchId, { content: activeText, message_type: "text", media_url: undefined });
+      }
     } catch (error) {
-      setDraft(content);
+      if (activeText) setDraft(activeText);
+      if (activeImage) setSelectedImage(activeImage);
       if (axios.isAxiosError(error) && error.response?.status === 422) {
         setErrorText("Mesajın uygunsuz içerik nedeniyle gönderilemedi.");
       } else {
@@ -385,6 +449,7 @@ export function ChatScreen({ route }: Props) {
       }
     } finally {
       setIsSending(false);
+      scrollToBottom(true);
     }
   }
 
@@ -401,51 +466,29 @@ export function ChatScreen({ route }: Props) {
       Alert.alert("Hata", "GIF gönderilemedi.");
     } finally {
       setIsSending(false);
+      scrollToBottom(true);
     }
   }
 
   async function handlePickPhoto(): Promise<void> {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
-      Alert.alert("Galeri izni gerekli", "Fotoğraf göndermek için galeri iznini açman gerekiyor.");
+      Alert.alert("Galeri izni gerekli", "Fotoğraf seçmek için galeri iznini açman gerekiyor.");
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.8,
+      quality: 0.7,
+      allowsEditing: false,
+      base64: true,
     });
     const asset = result.assets?.[0];
     if (result.canceled || !asset) {
       return;
     }
 
-    setIsSending(true);
-    try {
-      const formData = new FormData();
-      const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "photo.jpg";
-      formData.append("file", {
-        uri: asset.uri,
-        name: fileName,
-        type: "image/jpeg",
-      } as any);
-
-      const res = await apiClient.post<{ url: string }>("/users/me/media", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      const imageUrl = res.data.url;
-
-      await sendMessage(matchId, {
-        content: "[Fotoğraf]",
-        message_type: "image",
-        media_url: imageUrl,
-      });
-    } catch (err) {
-      Alert.alert("Hata", "Fotoğraf yüklenemedi. Lütfen tekrar dene.");
-    } finally {
-      setIsSending(false);
-    }
+    setSelectedImage({ uri: asset.uri, base64: asset.base64 });
   }
 
   if (!user) {
@@ -486,30 +529,62 @@ export function ChatScreen({ route }: Props) {
         contentContainerStyle={styles.messageList}
         data={messages}
         keyExtractor={(message) => String(message.id)}
-        onContentSizeChange={() => messageListRef.current?.scrollToEnd({ animated: false })}
+        onContentSizeChange={() => scrollToBottom(true)}
+        onLayout={() => scrollToBottom(false)}
         renderItem={({ item }) => {
           const isOwn = item.sender_id === user.id;
+          const timeText = formatMessageTime(item.created_at, language);
+          const isTimeVisible = visibleTimestampId === item.id;
+          const reactionsMap = item.reactions || {};
+          const reactionEntries = Object.values(reactionsMap);
+
           return (
-            <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
-              <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
-                {item.message_type === "image" || item.message_type === "gif" ? (
-                  <Image source={{ uri: item.media_url || undefined }} style={styles.bubbleImage} />
-                ) : (
-                  <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
-                )}
-                <View style={styles.bubbleFooter}>
-                  <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>
-                    {formatRelativeTimestamp(item.created_at)}
-                  </Text>
-                  {isOwn ? (
-                    <Feather
-                      name={item.is_read ? "check-circle" : "check"}
-                      size={12}
-                      color="rgba(255,255,255,0.75)"
-                    />
+            <View style={{ marginBottom: spacing.xs }}>
+              <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
+                <Pressable
+                  style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}
+                  onPress={() => setVisibleTimestampId((prev) => (prev === item.id ? null : item.id))}
+                  onLongPress={() => setSelectedMessageForReaction(item)}
+                >
+                  {item.message_type === "image" || item.message_type === "gif" ? (
+                    <View>
+                      <Image source={{ uri: resolvePhotoUrl(item.media_url) || undefined }} style={styles.bubbleImage} contentFit="cover" />
+                      {item.content && item.content !== "[Fotoğraf]" && item.content !== "[GIF]" ? (
+                        <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn, { marginTop: spacing.xs }]}>
+                          {item.content}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : (
+                    <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
+                  )}
+
+                  {isTimeVisible ? (
+                    <View style={styles.bubbleFooter}>
+                      <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
+                      {isOwn ? (
+                        <Feather
+                          name={item.is_read ? "check-circle" : "check"}
+                          size={12}
+                          color="rgba(255,255,255,0.75)"
+                        />
+                      ) : null}
+                    </View>
                   ) : null}
-                </View>
+                </Pressable>
               </View>
+
+              {reactionEntries.length > 0 ? (
+                <View style={[styles.reactionPillsRow, isOwn ? { alignSelf: "flex-end" } : { alignSelf: "flex-start" }]}>
+                  {Array.from(new Set(reactionEntries)).map((emoji) => (
+                    <View key={emoji} style={styles.reactionPill}>
+                      <Text style={styles.reactionEmojiText}>
+                        {emoji} {reactionEntries.filter((e) => e === emoji).length}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </View>
           );
         }}
@@ -529,6 +604,23 @@ export function ChatScreen({ route }: Props) {
               </Pressable>
             ))}
           </View>
+        </View>
+      ) : null}
+
+      {selectedImage ? (
+        <View style={styles.attachedImagePreviewRow}>
+          <Image source={{ uri: selectedImage.uri }} style={styles.attachedImageThumbnail} contentFit="cover" />
+          <View style={styles.attachedImageInfo}>
+            <Text style={styles.attachedImageTitle}>
+              {language === "en" ? "Photo attached 📷" : "Fotoğraf eklendi 📷"}
+            </Text>
+            <Text style={styles.attachedImageSubtitle}>
+              {language === "en" ? "Add a message or tap Send" : "Aşağıya mesajını yazıp Gönder'e basabilirsin"}
+            </Text>
+          </View>
+          <Pressable style={styles.removeAttachedBtn} onPress={() => setSelectedImage(null)}>
+            <Feather name="x-circle" size={20} color={colors.textSecondary} />
+          </Pressable>
         </View>
       ) : null}
 
@@ -561,19 +653,50 @@ export function ChatScreen({ route }: Props) {
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setGifModalVisible(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={typeScale.h2}>{language === "en" ? "Send GIF" : "GIF Gönder"}</Text>
-            <View style={styles.gifGrid}>
+            <Text style={typeScale.h2}>{language === "en" ? "Send GIF 🎬" : "GIF Gönder 🎬"}</Text>
+            <ScrollView style={{ maxHeight: 340 }} contentContainerStyle={styles.gifGrid} showsVerticalScrollIndicator={true}>
               {POPULAR_GIFS.map((gif) => (
                 <Pressable key={gif.key} style={styles.gifTile} onPress={() => handleSendGif(gif.url)}>
-                  <Image source={{ uri: gif.url }} style={styles.gifImage} />
+                  <Image source={{ uri: gif.url }} style={styles.gifImage} contentFit="cover" />
                   <Text style={styles.gifLabel}>{gif.label}</Text>
                 </Pressable>
               ))}
-            </View>
+            </ScrollView>
             <Pressable style={styles.cancelButton} onPress={() => setGifModalVisible(false)}>
               <Text style={styles.cancelText}>{t("cancel")}</Text>
             </Pressable>
           </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Long-Press Emoji Reaction Modal */}
+      <Modal
+        visible={selectedMessageForReaction !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedMessageForReaction(null)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setSelectedMessageForReaction(null)}>
+          <View style={styles.reactionCard}>
+            <Text style={styles.reactionBarTitle}>
+              {language === "en" ? "React to message" : "Mesaja tepki ver"}
+            </Text>
+            <View style={styles.reactionBarRow}>
+              {REACTION_EMOJIS.map((emoji) => (
+                <Pressable
+                  key={emoji}
+                  style={styles.reactionEmojiBtn}
+                  onPress={() => {
+                    if (selectedMessageForReaction) {
+                      handleToggleReaction(selectedMessageForReaction.id, emoji);
+                    }
+                  }}
+                >
+                  <Text style={{ fontSize: 26 }}>{emoji}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
         </Pressable>
       </Modal>
 
@@ -709,6 +832,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "flex-end",
     gap: 4,
+    marginTop: 4,
   },
   bubbleTime: {
     fontFamily: fontFamily.body,
@@ -770,9 +894,41 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     overflow: "hidden",
   },
+  attachedImagePreviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  attachedImageThumbnail: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.background,
+  },
+  attachedImageInfo: {
+    flex: 1,
+  },
+  attachedImageTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  attachedImageSubtitle: {
+    fontFamily: fontFamily.body,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  removeAttachedBtn: {
+    padding: spacing.xs,
+  },
   bubbleImage: {
-    width: 200,
-    height: 150,
+    width: 220,
+    height: 160,
     borderRadius: radius.sm,
   },
   icebreakerContainer: {
@@ -910,5 +1066,44 @@ const styles = StyleSheet.create({
   },
   acceptBtn: {
     backgroundColor: colors.primary,
+  },
+  reactionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card * 1.5,
+    padding: spacing.lg,
+    alignItems: "center",
+    gap: spacing.md,
+    ...shadows.card,
+  },
+  reactionBarTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  reactionBarRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  reactionEmojiBtn: {
+    padding: spacing.xs,
+    borderRadius: radius.pill,
+  },
+  reactionPillsRow: {
+    flexDirection: "row",
+    gap: 4,
+    marginTop: 2,
+  },
+  reactionPill: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  reactionEmojiText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.textPrimary,
   },
 });

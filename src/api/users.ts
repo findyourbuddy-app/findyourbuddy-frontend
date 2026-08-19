@@ -29,11 +29,10 @@ export function deleteCurrentUser(): Promise<void> {
 export async function uploadProfilePhoto(uri: string, fileName: string): Promise<User> {
   const formData = new FormData();
   formData.append("file", await toUploadFile(uri, fileName));
+  const headers = Platform.OS === "web" ? { "Content-Type": "multipart/form-data" } : undefined;
 
   return apiClient
-    .post<User>("/users/me/photo", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
+    .post<User>("/users/me/photo", formData, { headers })
     .then((res) => res.data);
 }
 
@@ -44,11 +43,10 @@ export function listMyPhotos(): Promise<UserPhoto[]> {
 export async function uploadGalleryPhoto(uri: string, fileName: string): Promise<UserPhoto> {
   const formData = new FormData();
   formData.append("file", await toUploadFile(uri, fileName));
+  const headers = Platform.OS === "web" ? { "Content-Type": "multipart/form-data" } : undefined;
 
   return apiClient
-    .post<UserPhoto>("/users/me/photos", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
+    .post<UserPhoto>("/users/me/photos", formData, { headers })
     .then((res) => res.data);
 }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
@@ -32,15 +32,16 @@ function initialsForName(name: string): string {
   return (first + second).toUpperCase();
 }
 
-function resolvePhotoUrl(url?: string | null): string | null {
+export function resolvePhotoUrl(url?: string | null): string | null {
   if (!url || !url.trim()) return null;
   const trimmed = url.trim();
-  if (
-    trimmed.startsWith("http://") ||
-    trimmed.startsWith("https://") ||
-    trimmed.startsWith("file://") ||
-    trimmed.startsWith("data:")
-  ) {
+  if (trimmed.startsWith("file://") || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    if (trimmed.includes("localhost:8000") || trimmed.includes("127.0.0.1:8000")) {
+      return trimmed.replace(/http:\/\/(localhost|127\.0\.0\.1):8000/, API_BASE_URL.replace(/\/+$/, ""));
+    }
     return trimmed;
   }
   const base = API_BASE_URL.replace(/\/+$/, "");
@@ -52,6 +53,10 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
   const [imageError, setImageError] = useState(false);
   const resolvedUrl = resolvePhotoUrl(photoUrl);
 
+  useEffect(() => {
+    setImageError(false);
+  }, [photoUrl]);
+
   const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
   const badgeSize = Math.max(14, Math.round(size * 0.32));
 
@@ -60,6 +65,7 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
       {resolvedUrl && !imageError ? (
         <>
           <Image
+            key={resolvedUrl}
             source={{ uri: resolvedUrl }}
             style={dimensionStyle}
             contentFit="cover"
