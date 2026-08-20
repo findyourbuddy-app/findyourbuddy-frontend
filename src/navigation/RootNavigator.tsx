@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { AlertHost } from "../components/ui/AlertHost";
 import { FloatingTabBar } from "../components/navigation/FloatingTabBar";
 import { colors, spacing } from "../theme";
+import { WelcomeScreen } from "../screens/WelcomeScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
 import { ForgotPasswordScreen } from "../screens/ForgotPasswordScreen";
@@ -32,13 +33,16 @@ import { CommunityGuidelinesScreen } from "../screens/CommunityGuidelinesScreen"
 import { CallScreen } from "../screens/CallScreen";
 import { AIRecommendationsScreen } from "../screens/AIRecommendationsScreen";
 import { OnboardingScreen } from "../screens/OnboardingScreen";
+import { PhoneVerificationScreen } from "../screens/PhoneVerificationScreen";
 import type { User } from "../types";
 
 export type AuthStackParamList = {
+  Welcome: undefined;
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
   Legal: { kind: "terms" | "privacy" };
+  PhoneVerification: { fromGoogleSignIn: boolean };
 };
 
 export type SwipeParams = { eventId: number; eventTitle: string } | undefined;
@@ -100,9 +104,11 @@ function AuthNavigator() {
   const { language } = useAppTheme();
 
   return (
-    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+    <AuthStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Welcome">
+      <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
+      <AuthStack.Screen name="PhoneVerification" component={PhoneVerificationScreen} />
       <AuthStack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}
