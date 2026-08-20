@@ -11,6 +11,7 @@ import { formatMemberSince } from "../utils/date";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import { apiClient } from "../api/client";
 import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
+import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { User } from "../types";
 
 import { useAppTheme } from "../context/ThemeContext";
@@ -21,6 +22,7 @@ export function ViewProfileScreen() {
   const [profile, setProfile] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [locationName, setLocationName] = useState<string | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -71,11 +73,14 @@ export function ViewProfileScreen() {
   const remainingPhotos = allPhotoUrls.slice(3);
 
   return (
+    <>
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {/* Photo 1 Hero Header */}
       <View style={styles.mainPhotoCard}>
         {photo1 ? (
-          <Image source={{ uri: photo1 }} style={styles.fullImage} contentFit="cover" />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxPhoto(photo1)}>
+            <Image source={{ uri: photo1 }} style={styles.fullImage} contentFit="cover" />
+          </Pressable>
         ) : (
           <View style={styles.avatarPlaceholder}>
             <Avatar name={profile.display_name} photoUrl={null} size={96} />
@@ -158,9 +163,9 @@ export function ViewProfileScreen() {
 
       {/* Interspersed Photo 2 Card */}
       {photo2 ? (
-        <View style={styles.interspersedPhotoCard}>
+        <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo2)}>
           <Image source={{ uri: photo2 }} style={styles.fullImage} contentFit="cover" />
-        </View>
+        </Pressable>
       ) : null}
 
       {/* Verbal Card 2: Hobilerim & Yapmak İstediğim Aktiviteler */}
@@ -202,9 +207,9 @@ export function ViewProfileScreen() {
 
       {/* Interspersed Photo 3 Card */}
       {photo3 ? (
-        <View style={styles.interspersedPhotoCard}>
+        <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo3)}>
           <Image source={{ uri: photo3 }} style={styles.fullImage} contentFit="cover" />
-        </View>
+        </Pressable>
       ) : null}
 
       {/* Verbal Card 3: Kariyer & Beklentiler */}
@@ -240,11 +245,18 @@ export function ViewProfileScreen() {
 
       {/* Remaining Photos Interspersed */}
       {remainingPhotos.map((uri, idx) => (
-        <View key={idx} style={styles.interspersedPhotoCard}>
+        <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(uri)}>
           <Image source={{ uri }} style={styles.fullImage} contentFit="cover" />
-        </View>
+        </Pressable>
       ))}
     </ScrollView>
+
+    <PhotoLightboxModal
+      visible={lightboxPhoto !== null}
+      photoUrl={lightboxPhoto}
+      onClose={() => setLightboxPhoto(null)}
+    />
+    </>
   );
 }
 

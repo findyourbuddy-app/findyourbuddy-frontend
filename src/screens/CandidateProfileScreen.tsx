@@ -7,10 +7,14 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
-import { formatMemberSince, isNewMember } from "../utils/date";
+import { getUserUpcomingEvents } from "../api/events";
+import { formatEventDate, formatMemberSince, isNewMember } from "../utils/date";
+import { getCategoryMeta } from "../constants/categories";
+import type { EventPublicSummary } from "../types";
 import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
+import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import { useAppTheme } from "../context/ThemeContext";
 
@@ -20,6 +24,8 @@ export function CandidateProfileScreen({ route }: Props) {
   const { candidate, onSwipeLeft, onSwipeRight, onSwipeUp } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { bgGradient, language } = useAppTheme();
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<EventPublicSummary[]>([]);
 
   function act(action: () => void): void {
     action();
@@ -33,6 +39,14 @@ export function CandidateProfileScreen({ route }: Props) {
       resolveCityDistrict(candidate.latitude, candidate.longitude).then(setLocationName);
     }
   }, [candidate.latitude, candidate.longitude]);
+
+  useEffect(() => {
+    getUserUpcomingEvents(candidate.id)
+      .then(setUpcomingEvents)
+      .catch(() => {
+        // Best-effort; the section just stays hidden if this fails.
+      });
+  }, [candidate.id]);
 
   // Extract all photos (main photo_url + photos array)
   const allPhotoUrls: string[] = [];
@@ -58,7 +72,9 @@ export function CandidateProfileScreen({ route }: Props) {
         {/* SECTION 1: Main Photo 1 Hero with overlay */}
         <View style={styles.mainPhotoCard}>
           {photo1 ? (
-            <Image source={{ uri: photo1 }} style={styles.fullImage} contentFit="cover" />
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxPhoto(photo1)}>
+              <Image source={{ uri: photo1 }} style={styles.fullImage} contentFit="cover" />
+            </Pressable>
           ) : (
             <View style={styles.avatarPlaceholder}>
               <Feather name="user" size={64} color={colors.textSecondary} />
@@ -142,11 +158,44 @@ export function CandidateProfileScreen({ route }: Props) {
           </View>
         ) : null}
 
+        {/* Upcoming/created events -- shown so buddies can see shared plans, not just a bio */}
+        {upcomingEvents.length > 0 ? (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Feather name="calendar" size={18} color={colors.primary} />
+              <Text style={styles.cardTitle}>
+                {language === "en" ? "Going To" : "Katılacağı Etkinlikler"}
+              </Text>
+            </View>
+            {upcomingEvents.map((event) => {
+              const category = getCategoryMeta(event.category, language);
+              return (
+                <Pressable
+                  key={event.id}
+                  style={styles.eventRow}
+                  onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
+                  accessibilityRole="button"
+                  accessibilityLabel={event.title}
+                >
+                  <View style={styles.eventIcon}>
+                    <Feather name={category.icon} size={16} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
+                    <Text style={styles.eventDate}>{formatEventDate(event.starts_at, language)} · {event.location_name}</Text>
+                  </View>
+                  <Feather name="chevron-right" size={16} color={colors.textSecondary} />
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
         {/* SECTION 3: Interspersed Photo 2 Card */}
         {photo2 ? (
-          <View style={styles.interspersedPhotoCard}>
+          <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo2)}>
             <Image source={{ uri: photo2 }} style={styles.fullImage} contentFit="cover" />
-          </View>
+          </Pressable>
         ) : null}
 
         {/* SECTION 4: Verbal Card 2 - Hobilerim & Yapmak İstediğim Aktiviteler */}
@@ -188,9 +237,9 @@ export function CandidateProfileScreen({ route }: Props) {
 
         {/* SECTION 5: Interspersed Photo 3 Card */}
         {photo3 ? (
-          <View style={styles.interspersedPhotoCard}>
+          <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo3)}>
             <Image source={{ uri: photo3 }} style={styles.fullImage} contentFit="cover" />
-          </View>
+          </Pressable>
         ) : null}
 
         {/* SECTION 6: Verbal Card 3 - Career, University & Expectations */}
@@ -226,11 +275,17 @@ export function CandidateProfileScreen({ route }: Props) {
 
         {/* SECTION 7: Remaining Photos Interspersed */}
         {remainingPhotos.map((uri, idx) => (
-          <View key={idx} style={styles.interspersedPhotoCard}>
+          <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(uri)}>
             <Image source={{ uri }} style={styles.fullImage} contentFit="cover" />
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
+
+      <PhotoLightboxModal
+        visible={lightboxPhoto !== null}
+        photoUrl={lightboxPhoto}
+        onClose={() => setLightboxPhoto(null)}
+      />
 
       {/* Floating Bottom Action Bar */}
       <View style={styles.actionRow}>
@@ -439,6 +494,31 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: 14,
     color: colors.textPrimary,
+  },
+  eventRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  eventIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primaryMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eventTitle: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  eventDate: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 1,
   },
   actionRow: {
     position: "absolute",

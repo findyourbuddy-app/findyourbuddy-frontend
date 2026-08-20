@@ -11,6 +11,7 @@ import { Badge } from "../components/ui/Badge";
 import { IconSectionHeader } from "../components/ui/IconSectionHeader";
 import { ProfileCompletionCard } from "../components/profile/ProfileCompletionCard";
 import { QuickFieldEditModal } from "../components/profile/QuickFieldEditModal";
+import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { FieldKey } from "../utils/profileCompletion";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { useAuth } from "../context/AuthContext";
@@ -62,6 +63,7 @@ export function ProfileScreen() {
   const [quickEditKey, setQuickEditKey] = useState<FieldKey | null>(null);
   const [quickEditVisible, setQuickEditVisible] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
 
   async function handleAvatarPress() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -394,7 +396,9 @@ export function ProfileScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             renderItem={({ item }) => (
-              <Image source={{ uri: item.photo_url }} style={styles.galleryImage} />
+              <Pressable onPress={() => setLightboxPhoto(item.photo_url)}>
+                <Image source={{ uri: item.photo_url }} style={styles.galleryImage} />
+              </Pressable>
             )}
             ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
           />
@@ -529,6 +533,12 @@ export function ProfileScreen() {
         onSaved={() => {
           getCurrentUser().then(updateUser);
         }}
+      />
+
+      <PhotoLightboxModal
+        visible={lightboxPhoto !== null}
+        photoUrl={lightboxPhoto}
+        onClose={() => setLightboxPhoto(null)}
       />
     </ScrollView>
   );
