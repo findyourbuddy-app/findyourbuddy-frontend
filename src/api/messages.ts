@@ -16,3 +16,15 @@ export function markMessagesAsRead(matchId: number): Promise<{ count: number }> 
     .patch<{ count: number }>(`/matches/${matchId}/messages/read`)
     .then((res) => res.data);
 }
+
+export interface IcebreakerItem {
+  text: string;
+  type: "text" | "voice";
+}
+
+export function getIcebreakers(matchId: number): Promise<IcebreakerItem[]> {
+  return apiClient
+    .get<IcebreakerItem[]>(`/matches/${matchId}/messages/icebreakers`)
+    .then((res) => res.data);
+}
+
