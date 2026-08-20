@@ -44,9 +44,14 @@ export function getCategoryMeta(category: string, lang: LanguageKey = "tr"): Cat
   const match = CATEGORIES.find(
     (item) => item.slug === normalized || item.label.toLowerCase() === normalized
   );
-  const found = match ?? OTHER_CATEGORY;
-  if (lang === "en") {
-    return { ...found, label: found.labelEn };
+  if (match) {
+    return lang === "en" ? { ...match, label: match.labelEn } : match;
   }
-  return found;
+  // AI-assigned freeform categories (e.g. "kahve buluşması") don't map to a
+  // known slug -- fall back to the generic icon/gradient but keep showing
+  // the AI's actual label instead of silently replacing it with "Diğer".
+  const freeformLabel = category.trim()
+    ? category.trim().charAt(0).toUpperCase() + category.trim().slice(1)
+    : OTHER_CATEGORY.label;
+  return { ...OTHER_CATEGORY, label: freeformLabel, labelEn: freeformLabel };
 }

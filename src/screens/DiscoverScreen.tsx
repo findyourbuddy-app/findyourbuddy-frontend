@@ -83,6 +83,7 @@ export function DiscoverScreen() {
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [originFilter, setOriginFilter] = useState<"all" | "system" | "user">("all");
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -265,6 +266,11 @@ export function DiscoverScreen() {
     if (events.length === 0) return [];
 
     let list = [...events];
+    if (originFilter === "system") {
+      list = list.filter((e) => !e.creator_id);
+    } else if (originFilter === "user") {
+      list = list.filter((e) => Boolean(e.creator_id));
+    }
     if (searchQuery.trim()) {
       list = list.filter(
         (e) =>
@@ -290,7 +296,7 @@ export function DiscoverScreen() {
     }
     // Default: Sort by date
     return list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-  }, [events, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm]);
+  }, [events, originFilter, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm]);
 
   const loadEventsRequestIdRef = useRef(0);
 
@@ -591,6 +597,24 @@ export function DiscoverScreen() {
                     )}
                   </View>
                 ) : null}
+              </View>
+
+              <View style={[styles.chipList, { flexDirection: "row", gap: spacing.xs }]}>
+                <Chip
+                  label={t("all")}
+                  active={originFilter === "all"}
+                  onPress={() => setOriginFilter("all")}
+                />
+                <Chip
+                  label={t("systemEvents")}
+                  active={originFilter === "system"}
+                  onPress={() => setOriginFilter("system")}
+                />
+                <Chip
+                  label={t("userEvents")}
+                  active={originFilter === "user"}
+                  onPress={() => setOriginFilter("user")}
+                />
               </View>
 
               <FlatList
