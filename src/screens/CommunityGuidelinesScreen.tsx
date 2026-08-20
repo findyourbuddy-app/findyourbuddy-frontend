@@ -5,7 +5,7 @@ import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 
 interface GuidelineItem {
   id: string;
-  icon: string;
+  icon: keyof typeof Feather.glyphMap;
   title: string;
   shortDesc: string;
   longDesc: string;
@@ -78,7 +78,7 @@ export function CommunityGuidelinesScreen() {
             >
               <View style={styles.cardHeader}>
                 <View style={[styles.iconWrapper, { backgroundColor: `${item.accentColor}20` }]}>
-                  <Feather name={item.icon as any} size={20} color={item.accentColor} />
+                  <Feather name={item.icon} size={20} color={item.accentColor} />
                 </View>
                 <View style={styles.headerText}>
                   <Text style={typeScale.h2}>{item.title}</Text>

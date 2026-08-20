@@ -21,12 +21,6 @@ import type { User } from "../types";
 
 type PermissionStatus = "granted" | "denied" | "undetermined";
 
-const STATUS_LABEL: Record<PermissionStatus, string> = {
-  granted: "Açık",
-  denied: "Kapalı",
-  undetermined: "Henüz sorulmadı",
-};
-
 function formatExpiryDate(iso: string): string {
   const date = new Date(/Z$|[+-]\d{2}:\d{2}$/.test(iso) ? iso : `${iso}Z`);
   return date.toLocaleDateString("tr-TR");
@@ -170,7 +164,6 @@ export function SettingsScreen() {
   };
 
   const [isGhostMode, setIsGhostMode] = useState(false);
-  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
 
   function handleToggleGhostMode(val: boolean) {
     if (!isPremium && val) {

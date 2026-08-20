@@ -156,7 +156,20 @@ export function LegalScreen({ route }: Props) {
 
   return (
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
-      <Text style={typeScale.h1}>{title}</Text>
+      <View style={styles.topRow}>
+        <Text style={typeScale.h1}>{title}</Text>
+        <Pressable
+          style={styles.langPill}
+          onPress={() => setLanguage(language === "tr" ? "en" : "tr")}
+          accessibilityRole="button"
+          accessibilityLabel="Change Language"
+        >
+          <Feather name="globe" size={13} color={colors.textPrimary} />
+          <Text style={styles.langPillText}>
+            {language === "tr" ? "🇹🇷 TR" : "🇬🇧 EN"}
+          </Text>
+        </Pressable>
+      </View>
       <Text style={styles.body}>{contentText}</Text>
     </ScrollView>
   );
