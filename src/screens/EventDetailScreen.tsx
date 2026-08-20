@@ -21,6 +21,7 @@ import {
   respondToJoinRequest,
 } from "../api/events";
 import { Avatar } from "../components/ui/Avatar";
+import { DoubleBuddyModal } from "../components/overlays/DoubleBuddyModal";
 import { FormattedHtmlText } from "../components/ui/FormattedHtmlText";
 import { getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
@@ -47,6 +48,7 @@ export function EventDetailScreen({ route }: Props) {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [joinRequests, setJoinRequests] = useState<User[]>([]);
   const [respondingUserId, setRespondingUserId] = useState<number | null>(null);
+  const [doubleBuddyVisible, setDoubleBuddyVisible] = useState(false);
 
   const isOwnerOfGroupEvent = Boolean(
     event && event.is_group_event && user && event.creator_id === user.id
@@ -229,6 +231,7 @@ export function EventDetailScreen({ route }: Props) {
   const category = getCategoryMeta(event.category, language);
 
   return (
+    <>
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
       <View style={styles.banner}>
         {event.image_url ? (
@@ -245,15 +248,37 @@ export function EventDetailScreen({ route }: Props) {
             <Badge label={language === "en" ? "User Event" : "Kullanıcı Etkinliği"} variant="primary" />
           </View>
         ) : null}
-        <Pressable style={styles.bookmark} onPress={toggleBookmark}>
-          <Animated.View style={{ transform: [{ scale: bookmarkScale }] }}>
-            <Feather
-              name="bookmark"
-              size={20}
-              color={isBookmarked ? colors.accentYellow : colors.surface}
-            />
-          </Animated.View>
-        </Pressable>
+        <View style={styles.bannerActions}>
+          <Pressable
+            style={styles.bannerIconButton}
+            onPress={() => {
+              // No public web domain yet to host a real https:// link that
+              // deep-links back into a specific event with an App Store
+              // fallback (Universal Links / App Links) -- share readable
+              // event info without exposing the raw internal event ID.
+              Share.share({
+                title: event.title,
+                message:
+                  language === "en"
+                    ? `Check out this FindYourBuddy event: "${event.title}" at ${event.location_name}!`
+                    : `FindYourBuddy'de bu etkinliğe göz at: "${event.title}" - ${event.location_name}!`,
+              }).catch(() => {});
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={language === "en" ? "Share" : "Paylaş"}
+          >
+            <Feather name="share-2" size={18} color={colors.surface} />
+          </Pressable>
+          <Pressable style={styles.bannerIconButton} onPress={toggleBookmark}>
+            <Animated.View style={{ transform: [{ scale: bookmarkScale }] }}>
+              <Feather
+                name="bookmark"
+                size={18}
+                color={isBookmarked ? colors.accentYellow : colors.surface}
+              />
+            </Animated.View>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.body}>
@@ -391,17 +416,54 @@ export function EventDetailScreen({ route }: Props) {
             )}
           </View>
         ) : (
-          <PrimaryButton
-            label={
-              event.is_attending
-                ? (!event.is_group_event
-                    ? (language === "en" ? "👤 View Buddy & Connect" : "👤 Kankayı Gör & İletişime Geç")
-                    : (language === "en" ? "See Buddies" : "Kankaları Gör"))
-                : (language === "en" ? "I'm Going to This Event" : "Bu Etkinliğe Gidiyorum")
-            }
-            onPress={handleAttendAndSwipe}
-            loading={isJoining}
-          />
+          <View style={{ gap: spacing.xs }}>
+            <PrimaryButton
+              label={
+                event.is_attending
+                  ? (!event.is_group_event
+                      ? (language === "en" ? "👤 View Buddy & Connect" : "👤 Kankayı Gör & İletişime Geç")
+                      : (language === "en" ? "See Buddies" : "Kankaları Gör"))
+                  : (language === "en" ? "I'm Going to This Event" : "Bu Etkinliğe Gidiyorum")
+              }
+              onPress={handleAttendAndSwipe}
+              loading={isJoining}
+            />
+            {!event.is_attending ? (
+              <Pressable
+                style={styles.trustInfoRow}
+                onPress={() =>
+                  Alert.alert(
+                    language === "en" ? "How does the trust score work? 🛡️" : "Güven skoru nasıl işliyor? 🛡️",
+                    language === "en"
+                      ? "When you say you're going, we check your location at the event. Show up and check in: your trust score goes up. Don't show up: it goes down. If your score stays too low for a while, your account gets flagged as a troll account and may be restricted."
+                      : "Katılıyorum dediğinde etkinlikte GPS ile konumunu kontrol ediyoruz. Gidip check-in yaparsan güven skorun artar; gitmezsen düşer. Skorun bir süre çok düşük kalırsa hesabın troll hesap olarak değerlendirilip kısıtlanabilir."
+                  )
+                }
+                accessibilityRole="button"
+                accessibilityLabel={language === "en" ? "About trust score" : "Güven skoru hakkında"}
+              >
+                <Feather name="info" size={13} color={colors.textSecondary} />
+                <Text style={styles.trustInfoText}>
+                  {language === "en" ? "How does the trust score work?" : "Güven skoru nasıl işliyor?"}
+                </Text>
+              </Pressable>
+            ) : null}
+            {!event.is_attending ? (
+              <Pressable
+                style={styles.trustInfoRow}
+                onPress={() => setDoubleBuddyVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={language === "en" ? "Join as Double Buddy" : "İkili (Double Buddy) olarak katıl"}
+              >
+                <Feather name="users" size={13} color={colors.textSecondary} />
+                <Text style={styles.trustInfoText}>
+                  {language === "en"
+                    ? "Joining alone, or as a Double Buddy duo?"
+                    : "Tek mi katılıyorsun, yoksa ikili (Double Buddy) mi?"}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         )}
 
         {!isOwnerOfGroupEvent && event.is_attending ? (
@@ -420,37 +482,23 @@ export function EventDetailScreen({ route }: Props) {
           )
         ) : null}
 
-        {/* Share & Add to Calendar Buttons */}
-        <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs }}>
-          <View style={{ flex: 1 }}>
-            <PrimaryButton
-              label={language === "en" ? "📅 Calendar" : "📅 Takvime Ekle"}
-              onPress={() => openAddToCalendar(event)}
-              variant="outline"
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <PrimaryButton
-              label={language === "en" ? "🔗 Share" : "🔗 Paylaş"}
-              onPress={() => {
-                // No public web domain yet to host a real https:// link that
-                // deep-links back into a specific event with an App Store
-                // fallback (Universal Links / App Links) -- share readable
-                // event info without exposing the raw internal event ID.
-                Share.share({
-                  title: event.title,
-                  message:
-                    language === "en"
-                      ? `Check out this FindYourBuddy event: "${event.title}" at ${event.location_name}!`
-                      : `FindYourBuddy'de bu etkinliğe göz at: "${event.title}" - ${event.location_name}!`,
-                }).catch(() => {});
-              }}
-              variant="outline"
-            />
-          </View>
+        {/* Add to Calendar */}
+        <View style={{ marginTop: spacing.xs }}>
+          <PrimaryButton
+            label={language === "en" ? "📅 Add to Calendar" : "📅 Takvime Ekle"}
+            onPress={() => openAddToCalendar(event)}
+            variant="outline"
+          />
         </View>
       </View>
     </ScrollView>
+
+    <DoubleBuddyModal
+      visible={doubleBuddyVisible}
+      onClose={() => setDoubleBuddyVisible(false)}
+      language={language}
+    />
+    </>
   );
 }
 
@@ -476,16 +524,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  bookmark: {
+  bannerActions: {
     position: "absolute",
     top: spacing.lg,
     right: spacing.lg,
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  bannerIconButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: "rgba(0,0,0,0.2)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  trustInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 4,
+  },
+  trustInfoText: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+    textDecorationLine: "underline",
   },
   badgeSlot: {
     position: "absolute",

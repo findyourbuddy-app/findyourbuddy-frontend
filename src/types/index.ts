@@ -111,6 +111,14 @@ export interface Event {
   is_ticket_verified: boolean;
 }
 
+export interface EventPublicSummary {
+  id: number;
+  title: string;
+  category: string;
+  starts_at: string;
+  location_name: string;
+}
+
 export interface EventCreate {
   title: string;
   description?: string;
@@ -161,7 +169,9 @@ export interface UserPublic {
 }
 
 export interface Message {
-  id: number;
+  // Postgres-sourced history has numeric ids; Firestore-sourced live
+  // messages (see ChatScreen) use Firestore's string document ids.
+  id: number | string;
   match_id: number;
   sender_id: number;
   content: string;

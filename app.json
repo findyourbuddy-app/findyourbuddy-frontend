@@ -2,6 +2,7 @@
   "expo": {
     "name": "FindYourBuddy",
     "slug": "findyourbuddy-frontend",
+    "scheme": "findyourbuddy",
     "owner": "engincts",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -65,7 +66,8 @@
         {
           "calendarPermission": "Etkinlikleri takvimine ekleyebilmek için takvimine erişim izni gerekiyor."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

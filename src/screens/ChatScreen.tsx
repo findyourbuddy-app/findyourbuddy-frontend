@@ -9,7 +9,8 @@ import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-n
 import axios from "axios";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { listMessages, markMessagesAsRead, sendMessage } from "../api/messages";
+import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, type IcebreakerItem } from "../api/messages";
+import { IcebreakerStrip } from "../components/chat/IcebreakerStrip";
 import { uploadGalleryPhoto } from "../api/users";
 import { submitMatchFeedback } from "../api/matches";
 import { blockUser, reportUser } from "../api/safety";
@@ -21,6 +22,7 @@ import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { formatMessageTime, formatRelativeTimestamp } from "../utils/date";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Message, ReportReason } from "../types";
+
 
 type Props = NativeStackScreenProps<MainStackParamList, "Chat">;
 
@@ -48,6 +50,26 @@ export function ChatScreen({ route }: Props) {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
 
+  const [aiIcebreakers, setAiIcebreakers] = useState<IcebreakerItem[]>([]);
+  const [isLoadingIcebreakers, setIsLoadingIcebreakers] = useState(false);
+
+  const fetchAiIcebreakers = useCallback(async () => {
+    setIsLoadingIcebreakers(true);
+    try {
+      const items = await getIcebreakers(matchId);
+      setAiIcebreakers(items);
+    } catch {
+      // Fallback if network or server fails
+    } finally {
+      setIsLoadingIcebreakers(false);
+    }
+  }, [matchId]);
+
+  useEffect(() => {
+    fetchAiIcebreakers();
+  }, [fetchAiIcebreakers]);
+
+
   const POPULAR_GIFS = useMemo(
     () => [
       { key: "hello", label: language === "en" ? "Hello 👋" : "Merhaba 👋", url: "https://i.giphy.com/VdfD8e415yLte/giphy.gif" },
@@ -66,15 +88,6 @@ export function ChatScreen({ route }: Props) {
       { key: "highfive", label: language === "en" ? "High Five 🙌" : "Çak 🙌", url: "https://i.giphy.com/3oEJHV0z8S7WM4MwnK/giphy.gif" },
       { key: "shocked", label: language === "en" ? "OMG 😱" : "İnanılmaz 😱", url: "https://i.giphy.com/xT0xeJpnrWC4XWblEk/giphy.gif" },
       { key: "cheers", label: language === "en" ? "Cheers 🍻" : "Şerefe 🍻", url: "https://i.giphy.com/g9582DNuQppxC/giphy.gif" }
-    ],
-    [language]
-  );
-
-  const ICEBREAKERS = useMemo(
-    () => [
-      language === "en" ? "Hi! See you at the event 😊" : "Selam! Etkinlikte görüşmek üzere 😊",
-      language === "en" ? "Where would you prefer to meet? ☕" : "Buluşma noktası için nereyi tercih edersin? ☕",
-      language === "en" ? "Hi! Which event categories do you like most? 🎨" : "Selam, hangi kategori etkinlikleri daha çok seversin? 🎨",
     ],
     [language]
   );
@@ -332,7 +345,7 @@ export function ChatScreen({ route }: Props) {
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           list.push({
-            id: docSnap.id as any,
+            id: docSnap.id,
             match_id: matchId,
             sender_id: data.sender_id,
             content: data.content,
@@ -592,22 +605,16 @@ export function ChatScreen({ route }: Props) {
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
-      {messages.length === 0 ? (
-        <View style={styles.icebreakerContainer}>
-          <Text style={styles.icebreakerTitle}>
-            {language === "en" ? "💡 Icebreakers (Conversation Starters)" : "💡 Tanışma Önerileri (Buz Kırıcı)"}
-          </Text>
-          <View style={styles.icebreakerRow}>
-            {ICEBREAKERS.map((text) => (
-              <Pressable key={text} style={styles.icebreakerPill} onPress={() => setDraft(text)}>
-                <Text style={styles.icebreakerText}>{text}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      ) : null}
+      <IcebreakerStrip
+        icebreakers={aiIcebreakers}
+        isLoading={isLoadingIcebreakers}
+        onRefresh={fetchAiIcebreakers}
+        onSelect={(item) => setDraft(item.text)}
+        language={language}
+      />
 
       {selectedImage ? (
+
         <View style={styles.attachedImagePreviewRow}>
           <Image source={{ uri: selectedImage.uri }} style={styles.attachedImageThumbnail} contentFit="cover" />
           <View style={styles.attachedImageInfo}>
@@ -930,32 +937,6 @@ const styles = StyleSheet.create({
     width: 220,
     height: 160,
     borderRadius: radius.sm,
-  },
-  icebreakerContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    gap: spacing.xs,
-  },
-  icebreakerTitle: {
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  icebreakerRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-  },
-  icebreakerPill: {
-    backgroundColor: colors.primaryMuted,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-  },
-  icebreakerText: {
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-    color: colors.primary,
   },
   modalBackdrop: {
     flex: 1,

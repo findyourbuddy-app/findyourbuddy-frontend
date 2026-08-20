@@ -12,6 +12,7 @@ import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Avatar } from "../components/ui/Avatar";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
+import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import {
   deleteGalleryPhoto,
   listMyPhotos,
@@ -34,6 +35,7 @@ export function MyPhotosScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingMain, setIsUploadingMain] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
 
   const loadPhotos = useCallback(async () => {
     try {
@@ -190,7 +192,9 @@ export function MyPhotosScreen() {
               if (photo) {
                 return (
                   <View key={photo.id} style={styles.photoBox}>
-                    <Image source={{ uri: photo.photo_url }} style={styles.photoImage} />
+                    <Pressable onPress={() => setLightboxPhoto(photo.photo_url)}>
+                      <Image source={{ uri: photo.photo_url }} style={styles.photoImage} />
+                    </Pressable>
                     <Pressable
                       style={styles.deleteBtn}
                       onPress={() => handleDeletePhoto(photo.id)}
@@ -222,6 +226,12 @@ export function MyPhotosScreen() {
           </View>
         )}
       </View>
+
+      <PhotoLightboxModal
+        visible={lightboxPhoto !== null}
+        photoUrl={lightboxPhoto}
+        onClose={() => setLightboxPhoto(null)}
+      />
     </ScrollView>
   );
 }

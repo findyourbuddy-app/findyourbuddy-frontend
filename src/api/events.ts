@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { Event, EventCreate, EventCreationQuota, User } from "../types";
+import type { Event, EventCreate, EventCreationQuota, EventPublicSummary, User } from "../types";
 
 export function listEvents(category?: string, upcomingOnly = true, skip = 0, limit = 20): Promise<Event[]> {
   return apiClient
@@ -22,6 +22,12 @@ export function attendEvent(eventId: number): Promise<Event> {
 export function listMyAttendingEvents(upcomingOnly = true): Promise<Event[]> {
   return apiClient
     .get<Event[]>("/events/me/attending", { params: { upcoming_only: upcomingOnly } })
+    .then((res) => res.data);
+}
+
+export function getUserUpcomingEvents(userId: number): Promise<EventPublicSummary[]> {
+  return apiClient
+    .get<EventPublicSummary[]>(`/events/user/${userId}/upcoming`)
     .then((res) => res.data);
 }
 

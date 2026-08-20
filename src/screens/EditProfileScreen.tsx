@@ -20,7 +20,6 @@ import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
 import { OptionPickerModal } from "../components/overlays/OptionPickerModal";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
-import { MapLocationPicker } from "../components/maps/MapLocationPicker";
 import { PhotoVerificationModal } from "../components/overlays/PhotoVerificationModal";
 import * as Location from "expo-location";
 import { reverseGeocode } from "../api/geocoding";
@@ -534,7 +533,7 @@ export function EditProfileScreen() {
     try {
       const updated = await updateCurrentUser({
         voice_note_url: null,
-      } as any);
+      });
       updateUser(updated);
       setVoiceNoteUrl(null);
       Alert.alert(
@@ -1220,37 +1219,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
   },
-  verifiedBadgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#E8F8F0",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    marginTop: 4,
-  },
-  verifiedBadgeText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 13,
-    color: "#2ECC71",
-  },
-  verifyProfileBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    marginTop: 4,
-    ...shadows.soft,
-  },
-  verifyProfileBtnText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 13,
-  },
   avatarBadge: {
     position: "absolute",
     bottom: 0,
@@ -1427,14 +1395,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  voiceNoteTitle: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
-  voiceNoteDeleteBtn: {
-    padding: spacing.xs,
   },
   voiceNotePlaceholder: {
     flexDirection: "row",

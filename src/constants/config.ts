@@ -8,38 +8,41 @@ export function getApiBaseUrl(): string {
     return envUrl.trim();
   }
 
-  // 1. On Web (PC browser): map 'localhost' to IPv4 '127.0.0.1' to prevent Windows IPv6 (::1) connection refusal
+  // 1. On Web (PC browser)
   if (Platform.OS === "web") {
     if (typeof window !== "undefined" && window.location?.hostname) {
       const hostname = window.location.hostname;
       if (hostname === "localhost" || hostname === "127.0.0.1") {
-        return "http://127.0.0.1:8000";
+        return "http://127.0.0.1:8001";
       }
-      return `http://${hostname}:8000`;
+      return `http://${hostname}:8001`;
     }
-    return "http://127.0.0.1:8000";
+    return "http://127.0.0.1:8001";
   }
 
   // 2. On native mobile (Expo Go / physical phone): auto-detect developer machine's LAN IP from Expo hostUri
   const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
   if (hostUri) {
-    const ip = hostUri.split(":")[0];
-    const isNumericIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip);
+    const host = hostUri.split(":")[0];
     if (
-      isNumericIp &&
-      ip !== "127.0.0.1" &&
-      !ip.startsWith("192.168.56.") &&
-      !ip.startsWith("192.168.99.") &&
-      !ip.startsWith("10.0.75.") &&
-      !ip.startsWith("169.254.")
+      host &&
+      host !== "localhost" &&
+      host !== "127.0.0.1" &&
+      !host.startsWith("192.168.56.") &&
+      !host.startsWith("192.168.99.") &&
+      !host.startsWith("10.0.75.") &&
+      !host.startsWith("169.254.")
     ) {
-      return `http://${ip}:8000`;
+      return `http://${host}:8001`;
     }
   }
 
-  // 3. Fallback: Default to host machine's Wi-Fi IP (192.168.0.27:8000) so physical Android & iOS devices on LAN can connect seamlessly
-  return "http://192.168.0.27:8000";
+  // 3. Fallback for physical mobile devices on LAN: Wi-Fi IP
+  return "http://192.168.0.27:8001";
 }
+
+
+
 
 export const API_BASE_URL = getApiBaseUrl();
 export const AUTH_TOKEN_STORAGE_KEY = "findyourbuddy_access_token";

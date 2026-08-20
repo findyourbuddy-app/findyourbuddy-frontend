@@ -32,6 +32,7 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<"email" | "password" | null>(null);
 
   async function handleSubmit(): Promise<void> {
     setError(null);
@@ -63,20 +64,27 @@ export function LoginScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* Background Soft Gradient & Organic Shapes */}
+      {/* Background Soft Gradient */}
       <LinearGradient
-        colors={["#E3F7FA", "#F8F9FE", "#FFF0EB"]}
+        colors={["#E8F0FE", "#F4F0FF", "#FFF3EF"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      {/* Top Left Liquid Blob */}
       <View style={styles.blobTopLeft} />
-      {/* Bottom Right Liquid Blob */}
       <View style={styles.blobBottomRight} />
 
-      {/* Absolute Top Right Language Selector */}
-      <View style={styles.topRightLangContainer}>
+      {/* Top Header Bar (Back button + Language selector) */}
+      <View style={styles.topHeaderBar}>
+        <Pressable
+          style={styles.backPill}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Feather name="chevron-left" size={20} color={colors.textPrimary} />
+        </Pressable>
+
         <Pressable
           style={styles.langPill}
           onPress={() => setLanguage(language === "tr" ? "en" : "tr")}
@@ -99,92 +107,130 @@ export function LoginScreen() {
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >
-
           {/* Logo & Brand Header */}
           <View style={styles.headerBox}>
-            <BuddyLogo size={90} showText={true} />
+            <BuddyLogo size={85} showText={true} />
+            <Text style={styles.headerTitle}>
+              {language === "en" ? "Welcome Back! 👋" : "Tekrar Hoş Geldin! 👋"}
+            </Text>
+            <Text style={styles.headerSubtitle}>
+              {language === "en"
+                ? "Log in to discover new events & buddies around you"
+                : "Etkinlikleri ve kankalarını keşfetmek için giriş yap"}
+            </Text>
           </View>
 
-          {/* Form Fields Box */}
-          <View style={styles.formBox}>
-            {/* Email Input */}
-            <View style={styles.inputWrapper}>
-              <Feather name="mail" size={18} color="#94A3B8" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={language === "en" ? "Email Address" : "E-posta Adresi"}
-                placeholderTextColor="#94A3B8"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputWrapper}>
-              <Feather name="lock" size={18} color="#94A3B8" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={language === "en" ? "Password" : "Şifre"}
-                placeholderTextColor="#94A3B8"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-              />
-              <Pressable
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword((prev) => !prev)}
+          {/* Form Card */}
+          <View style={styles.card}>
+            <View style={styles.formBox}>
+              {/* Email Input */}
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedInput === "email" && styles.inputWrapperFocused,
+                ]}
               >
                 <Feather
-                  name={showPassword ? "eye-off" : "eye"}
+                  name="mail"
                   size={18}
-                  color="#94A3B8"
+                  color={focusedInput === "email" ? colors.primary : "#94A3B8"}
+                  style={styles.inputIcon}
                 />
+                <TextInput
+                  style={styles.input}
+                  placeholder={language === "en" ? "Email Address" : "E-posta Adresi"}
+                  placeholderTextColor="#94A3B8"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setFocusedInput("email")}
+                  onBlur={() => setFocusedInput(null)}
+                />
+              </View>
+
+              {/* Password Input */}
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedInput === "password" && styles.inputWrapperFocused,
+                ]}
+              >
+                <Feather
+                  name="lock"
+                  size={18}
+                  color={focusedInput === "password" ? colors.primary : "#94A3B8"}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder={language === "en" ? "Password" : "Şifre"}
+                  placeholderTextColor="#94A3B8"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setFocusedInput("password")}
+                  onBlur={() => setFocusedInput(null)}
+                />
+                <Pressable
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword((prev) => !prev)}
+                >
+                  <Feather
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={18}
+                    color="#94A3B8"
+                  />
+                </Pressable>
+              </View>
+
+              {/* Error Message */}
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Feather name="alert-circle" size={14} color={colors.accentRed} />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              {/* Forgot Password Link */}
+              <Pressable
+                style={styles.forgotBtn}
+                onPress={() => navigation.navigate("ForgotPassword")}
+              >
+                <Text style={styles.linkTextText}>
+                  {language === "en" ? "Forgot Password?" : "Şifremi Unuttum?"}
+                </Text>
+              </Pressable>
+
+              {/* Gradient Primary Action Button */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.buttonTouch,
+                  pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+                  isSubmitting && { opacity: 0.7 },
+                ]}
+                onPress={handleSubmit}
+                disabled={isSubmitting}
+              >
+                <LinearGradient
+                  colors={["#6C4CF1", "#FF6B6B"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.buttonGradient}
+                >
+                  <Text style={styles.buttonText}>
+                    {isSubmitting
+                      ? (language === "en" ? "Logging In..." : "Giriş Yapılıyor...")
+                      : (language === "en" ? "Log In" : "Giriş Yap")}
+                  </Text>
+                  <Feather name="arrow-right" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                </LinearGradient>
               </Pressable>
             </View>
-
-            {/* Error Message */}
-            {error ? (
-              <View style={styles.errorBox}>
-                <Feather name="alert-circle" size={14} color={colors.accentRed} />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-
-            {/* Gradient Primary Action Button */}
-            <Pressable
-              style={({ pressed }) => [
-                styles.buttonTouch,
-                pressed && { opacity: 0.9 },
-                isSubmitting && { opacity: 0.7 },
-              ]}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-            >
-              <LinearGradient
-                colors={["#4AC2E2", "#FF6B6B"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.buttonGradient}
-              >
-                <Text style={styles.buttonText}>
-                  {isSubmitting
-                    ? (language === "en" ? "Logging In..." : "Giriş Yapılıyor...")
-                    : (language === "en" ? "Log In" : "Giriş Yap")}
-                </Text>
-              </LinearGradient>
-            </Pressable>
           </View>
 
           {/* Links Section */}
           <View style={styles.linksBox}>
-            <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
-              <Text style={styles.linkTextText}>
-                {language === "en" ? "Forgot Password?" : "Şifremi Unuttum?"}
-              </Text>
-            </Pressable>
-
             <Pressable onPress={() => navigation.navigate("Register")}>
               <Text style={styles.signUpText}>
                 {language === "en" ? "Don't have an account? " : "Hesabın yok mu? "}
@@ -207,38 +253,54 @@ const styles = StyleSheet.create({
   },
   blobTopLeft: {
     position: "absolute",
-    top: -60,
-    left: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "rgba(74, 194, 226, 0.22)",
+    top: -70,
+    left: -70,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: "rgba(108, 76, 241, 0.15)",
   },
   blobBottomRight: {
     position: "absolute",
-    bottom: -80,
-    right: -60,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: "rgba(255, 107, 107, 0.18)",
+    bottom: -90,
+    right: -70,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: "rgba(255, 107, 107, 0.14)",
   },
-  topRightLangContainer: {
+  topHeaderBar: {
     position: "absolute",
     top: Platform.OS === "ios" ? 54 : 40,
+    left: spacing.lg,
     right: spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     zIndex: 999,
+  },
+  backPill: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+    ...shadows.soft,
   },
   langPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: "rgba(226, 232, 240, 0.8)",
+    ...shadows.soft,
   },
   langPillText: {
     fontFamily: fontFamily.bodySemiBold,
@@ -248,13 +310,35 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: Platform.OS === "ios" ? 100 : 80,
+    paddingBottom: spacing.xxl,
   },
   headerBox: {
     alignItems: "center",
-    marginTop: spacing.lg + 4,
-    marginBottom: 36,
+    marginBottom: 24,
+  },
+  headerTitle: {
+    fontFamily: fontFamily.displayBold,
+    fontSize: 24,
+    color: colors.textPrimary,
+    marginTop: spacing.md,
+  },
+  headerSubtitle: {
+    fontFamily: fontFamily.body,
+    fontSize: 14,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  card: {
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    borderRadius: 28,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.8)",
+    ...shadows.card,
   },
   formBox: {
     gap: spacing.md,
@@ -262,12 +346,16 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F8FAFC",
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
     height: 56,
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.8)",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+  },
+  inputWrapperFocused: {
+    borderColor: colors.primary,
+    backgroundColor: "#FFFFFF",
     ...shadows.soft,
   },
   inputIcon: {
@@ -282,12 +370,21 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: spacing.xs,
   },
+  forgotBtn: {
+    alignSelf: "flex-end",
+    paddingVertical: 2,
+  },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingHorizontal: spacing.sm,
+    backgroundColor: "#FEF2F2",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
   },
   errorText: {
     fontFamily: fontFamily.bodyMedium,
@@ -302,6 +399,7 @@ const styles = StyleSheet.create({
   },
   buttonGradient: {
     height: 56,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
@@ -314,13 +412,12 @@ const styles = StyleSheet.create({
   },
   linksBox: {
     alignItems: "center",
-    gap: spacing.md,
-    marginTop: 28,
+    marginTop: 24,
   },
   linkTextText: {
     fontFamily: fontFamily.bodyMedium,
-    fontSize: 14,
-    color: "#64748B",
+    fontSize: 13,
+    color: colors.primary,
   },
   signUpText: {
     fontFamily: fontFamily.body,
@@ -328,7 +425,8 @@ const styles = StyleSheet.create({
     color: "#64748B",
   },
   signUpHighlight: {
-    fontFamily: fontFamily.bodySemiBold,
-    color: "#1B4958",
+    fontFamily: fontFamily.displayBold,
+    color: colors.primary,
   },
 });
+

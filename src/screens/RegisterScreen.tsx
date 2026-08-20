@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BuddyLogo } from "../components/ui/BuddyLogo";
@@ -38,6 +37,7 @@ export function RegisterScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<"name" | "email" | "phone" | "password" | null>(null);
 
   async function handleSubmit(): Promise<void> {
     if (!displayName.trim()) {
@@ -83,7 +83,7 @@ export function RegisterScreen() {
   return (
     <View style={styles.screen}>
       <LinearGradient
-        colors={["#E3F7FA", "#F8F9FE", "#FFF0EB"]}
+        colors={["#E8F0FE", "#F4F0FF", "#FFF3EF"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -91,8 +91,17 @@ export function RegisterScreen() {
       <View style={styles.blobTopLeft} />
       <View style={styles.blobBottomRight} />
 
-      {/* Absolute Top Right Language Selector */}
-      <View style={styles.topRightLangContainer}>
+      {/* Top Header Bar (Back button + Language selector) */}
+      <View style={styles.topHeaderBar}>
+        <Pressable
+          style={styles.backPill}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Feather name="chevron-left" size={20} color={colors.textPrimary} />
+        </Pressable>
+
         <Pressable
           style={styles.langPill}
           onPress={() => setLanguage(language === "tr" ? "en" : "tr")}
@@ -113,9 +122,12 @@ export function RegisterScreen() {
           keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >
-
+          {/* Header Box */}
           <View style={styles.headerBox}>
             <BuddyLogo size={80} showText={true} />
+            <Text style={styles.headerTitle}>
+              {language === "en" ? "Join FindYourBuddy ✨" : "Aramıza Katıl! ✨"}
+            </Text>
             <Text style={styles.headerSub}>
               {language === "en"
                 ? "Create a free account, find new buddies!"
@@ -123,136 +135,148 @@ export function RegisterScreen() {
             </Text>
           </View>
 
-          <View style={styles.formBox}>
-            {/* Display Name */}
-            <View style={styles.inputWrapper}>
-              <Feather name="user" size={18} color="#94A3B8" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={language === "en" ? "Full Name" : "Ad Soyad"}
-                placeholderTextColor="#94A3B8"
-                value={displayName}
-                onChangeText={setDisplayName}
-              />
-            </View>
+          {/* Form Card */}
+          <View style={styles.card}>
+            <View style={styles.formBox}>
+              {/* Display Name */}
+              <View style={[styles.inputWrapper, focusedInput === "name" && styles.inputWrapperFocused]}>
+                <Feather name="user" size={18} color={focusedInput === "name" ? colors.primary : "#94A3B8"} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder={language === "en" ? "Full Name" : "Ad Soyad"}
+                  placeholderTextColor="#94A3B8"
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  onFocus={() => setFocusedInput("name")}
+                  onBlur={() => setFocusedInput(null)}
+                />
+              </View>
 
-            {/* Email */}
-            <View style={styles.inputWrapper}>
-              <Feather name="mail" size={18} color="#94A3B8" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={language === "en" ? "Email Address" : "E-posta Adresi"}
-                placeholderTextColor="#94A3B8"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
+              {/* Email */}
+              <View style={[styles.inputWrapper, focusedInput === "email" && styles.inputWrapperFocused]}>
+                <Feather name="mail" size={18} color={focusedInput === "email" ? colors.primary : "#94A3B8"} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder={language === "en" ? "Email Address" : "E-posta Adresi"}
+                  placeholderTextColor="#94A3B8"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setFocusedInput("email")}
+                  onBlur={() => setFocusedInput(null)}
+                />
+              </View>
 
-            {/* Phone */}
-            <View style={styles.inputWrapper}>
-              <Feather name="phone" size={18} color="#94A3B8" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={language === "en" ? "Phone Number (e.g. +905XXXXXXXXX)" : "Telefon Numarası (örn. 05XXXXXXXXX)"}
-                placeholderTextColor="#94A3B8"
-                keyboardType="phone-pad"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-              />
-            </View>
+              {/* Phone */}
+              <View style={[styles.inputWrapper, focusedInput === "phone" && styles.inputWrapperFocused]}>
+                <Feather name="phone" size={18} color={focusedInput === "phone" ? colors.primary : "#94A3B8"} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder={language === "en" ? "Phone Number (e.g. +905XXXXXXXXX)" : "Telefon Numarası (örn. 05XXXXXXXXX)"}
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="phone-pad"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  onFocus={() => setFocusedInput("phone")}
+                  onBlur={() => setFocusedInput(null)}
+                />
+              </View>
 
-            {/* Password */}
-            <View style={styles.inputWrapper}>
-              <Feather name="lock" size={18} color="#94A3B8" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={language === "en" ? "Password (min 6 chars)" : "Şifre (en az 6 karakter)"}
-                placeholderTextColor="#94A3B8"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-              />
+              {/* Password */}
+              <View style={[styles.inputWrapper, focusedInput === "password" && styles.inputWrapperFocused]}>
+                <Feather name="lock" size={18} color={focusedInput === "password" ? colors.primary : "#94A3B8"} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder={language === "en" ? "Password (min 6 chars)" : "Şifre (en az 6 karakter)"}
+                  placeholderTextColor="#94A3B8"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setFocusedInput("password")}
+                  onBlur={() => setFocusedInput(null)}
+                />
+                <Pressable
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword((prev) => !prev)}
+                >
+                  <Feather
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={18}
+                    color="#94A3B8"
+                  />
+                </Pressable>
+              </View>
+
+              {/* Terms Checkbox */}
               <Pressable
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword((prev) => !prev)}
+                style={styles.termsRow}
+                onPress={() => setAcceptedTerms((current) => !current)}
               >
                 <Feather
-                  name={showPassword ? "eye-off" : "eye"}
+                  name={acceptedTerms ? "check-square" : "square"}
                   size={18}
-                  color="#94A3B8"
+                  color={acceptedTerms ? colors.primary : "#94A3B8"}
                 />
+                <Text style={styles.termsText}>
+                  {language === "en" ? "I have read and accept the " : ""}
+                  <Text
+                    onPress={() => navigation.navigate("Legal", { kind: "terms" })}
+                    style={styles.termsLink}
+                  >
+                    {language === "en" ? "Terms of Service" : "Kullanım Şartları"}
+                  </Text>
+                  {language === "en" ? " and " : " ve "}
+                  <Text
+                    onPress={() => navigation.navigate("Legal", { kind: "privacy" })}
+                    style={styles.termsLink}
+                  >
+                    {language === "en" ? "Privacy Policy" : "Gizlilik Politikası"}
+                  </Text>
+                  {language === "en" ? "." : "'nı okudum, kabul ediyorum."}
+                </Text>
+              </Pressable>
+
+              {/* Error Message */}
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Feather name="alert-circle" size={14} color={colors.accentRed} />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              {/* Gradient Submit Button */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.buttonTouch,
+                  pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+                  (!acceptedTerms || isSubmitting) && { opacity: 0.6 },
+                ]}
+                onPress={handleSubmit}
+                disabled={!acceptedTerms || isSubmitting}
+              >
+                <LinearGradient
+                  colors={["#6C4CF1", "#FF6B6B"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.buttonGradient}
+                >
+                  <Text style={styles.buttonText}>
+                    {isSubmitting
+                      ? (language === "en" ? "Creating Account..." : "Kayıt Yapılıyor...")
+                      : (language === "en" ? "Create Account" : "Ücretsiz Kayıt Ol")}
+                  </Text>
+                  <Feather name="arrow-right" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                </LinearGradient>
               </Pressable>
             </View>
-
-            {/* Terms Checkbox */}
-            <Pressable
-              style={styles.termsRow}
-              onPress={() => setAcceptedTerms((current) => !current)}
-            >
-              <Feather
-                name={acceptedTerms ? "check-square" : "square"}
-                size={18}
-                color={acceptedTerms ? "#FF6B6B" : "#94A3B8"}
-              />
-              <Text style={styles.termsText}>
-                {language === "en" ? "I have read and accept the " : ""}
-                <Text
-                  onPress={() => navigation.navigate("Legal", { kind: "terms" })}
-                  style={styles.termsLink}
-                >
-                  {language === "en" ? "Terms of Service" : "Kullanım Şartları"}
-                </Text>
-                {language === "en" ? " and " : " ve "}
-                <Text
-                  onPress={() => navigation.navigate("Legal", { kind: "privacy" })}
-                  style={styles.termsLink}
-                >
-                  {language === "en" ? "Privacy Policy" : "Gizlilik Politikası"}
-                </Text>
-                {language === "en" ? "." : "'nı okudum, kabul ediyorum."}
-              </Text>
-            </Pressable>
-
-            {/* Error Message */}
-            {error ? (
-              <View style={styles.errorBox}>
-                <Feather name="alert-circle" size={14} color={colors.accentRed} />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-
-            {/* Gradient Submit Button */}
-            <Pressable
-              style={({ pressed }) => [
-                styles.buttonTouch,
-                pressed && { opacity: 0.9 },
-                (!acceptedTerms || isSubmitting) && { opacity: 0.6 },
-              ]}
-              onPress={handleSubmit}
-              disabled={!acceptedTerms || isSubmitting}
-            >
-              <LinearGradient
-                colors={["#4AC2E2", "#FF6B6B"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.buttonGradient}
-              >
-                <Text style={styles.buttonText}>
-                  {isSubmitting
-                    ? (language === "en" ? "Creating Account..." : "Kayıt Yapılıyor...")
-                    : (language === "en" ? "Create Account" : "Ücretsiz Kayıt Ol")}
-                </Text>
-              </LinearGradient>
-            </Pressable>
           </View>
 
           <View style={styles.linksBox}>
             <Pressable onPress={() => navigation.navigate("Login")}>
-              <Text style={styles.signUpText}>
+              <Text style={styles.loginText}>
                 {language === "en" ? "Already have an account? " : "Zaten hesabın var mı? "}
-                <Text style={styles.signUpHighlight}>
+                <Text style={styles.loginHighlight}>
                   {language === "en" ? "Log In" : "Giriş Yap"}
                 </Text>
               </Text>
@@ -271,61 +295,91 @@ const styles = StyleSheet.create({
   },
   blobTopLeft: {
     position: "absolute",
-    top: -60,
-    left: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "rgba(74, 194, 226, 0.22)",
+    top: -70,
+    left: -70,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: "rgba(108, 76, 241, 0.15)",
   },
   blobBottomRight: {
     position: "absolute",
-    bottom: -80,
-    right: -60,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: "rgba(255, 107, 107, 0.18)",
+    bottom: -90,
+    right: -70,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: "rgba(255, 107, 107, 0.14)",
   },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
-  },
-  topRightLangContainer: {
+  topHeaderBar: {
     position: "absolute",
     top: Platform.OS === "ios" ? 54 : 40,
+    left: spacing.lg,
     right: spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     zIndex: 999,
+  },
+  backPill: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+    ...shadows.soft,
   },
   langPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: "rgba(226, 232, 240, 0.8)",
+    ...shadows.soft,
   },
   langPillText: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 13,
     color: colors.textPrimary,
   },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+    paddingTop: Platform.OS === "ios" ? 100 : 80,
+    paddingBottom: spacing.xxl,
+  },
   headerBox: {
     alignItems: "center",
-    marginTop: spacing.lg + 4,
-    marginBottom: 28,
+    marginBottom: 20,
+  },
+  headerTitle: {
+    fontFamily: fontFamily.displayBold,
+    fontSize: 24,
+    color: colors.textPrimary,
+    marginTop: spacing.md,
   },
   headerSub: {
     fontFamily: fontFamily.body,
     fontSize: 14,
     color: "#64748B",
-    marginTop: 8,
+    marginTop: spacing.xs,
     textAlign: "center",
+  },
+  card: {
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    borderRadius: 28,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.8)",
+    ...shadows.card,
   },
   formBox: {
     gap: spacing.md,
@@ -333,12 +387,16 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F8FAFC",
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
-    height: 54,
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.8)",
+    height: 56,
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+  },
+  inputWrapperFocused: {
+    borderColor: colors.primary,
+    backgroundColor: "#FFFFFF",
     ...shadows.soft,
   },
   inputIcon: {
@@ -357,24 +415,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: spacing.xs + 2,
-    marginVertical: 4,
+    paddingHorizontal: spacing.xs,
+    marginVertical: spacing.xs,
   },
   termsText: {
     flex: 1,
     fontFamily: fontFamily.body,
     fontSize: 12,
-    lineHeight: 18,
     color: "#64748B",
+    lineHeight: 18,
   },
   termsLink: {
     fontFamily: fontFamily.bodySemiBold,
-    color: "#1B4958",
+    color: colors.primary,
+    textDecorationLine: "underline",
   },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
+    backgroundColor: "#FEF2F2",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
   },
   errorText: {
     fontFamily: fontFamily.bodyMedium,
@@ -388,7 +454,8 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   buttonGradient: {
-    height: 54,
+    height: 56,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
@@ -397,18 +464,19 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 16,
     color: "#FFFFFF",
+    letterSpacing: 0.3,
   },
   linksBox: {
     alignItems: "center",
     marginTop: 24,
   },
-  signUpText: {
+  loginText: {
     fontFamily: fontFamily.body,
     fontSize: 14,
     color: "#64748B",
   },
-  signUpHighlight: {
-    fontFamily: fontFamily.bodySemiBold,
-    color: "#1B4958",
+  loginHighlight: {
+    fontFamily: fontFamily.displayBold,
+    color: colors.primary,
   },
 });
