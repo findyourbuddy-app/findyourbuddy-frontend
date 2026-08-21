@@ -176,6 +176,9 @@ export function ForgotPasswordScreen() {
                 <Pressable
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword((prev) => !prev)}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
                 >
                   <Feather
                     name={showPassword ? "eye-off" : "eye"}

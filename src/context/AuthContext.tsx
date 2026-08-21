@@ -46,6 +46,9 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+import { AppState } from "react-native";
+import { Alert } from "../utils/alert";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,14 +60,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     restoreSession();
+
+    const appStateSub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        fetchSubscription()
+          .then((sub) => {
+            setSubscription((prev) => {
+              if (!prev.is_premium && sub.is_premium) {
+                Alert.alert(
+                  "⭐ Premium Aktif Edildi!",
+                  "Ödemen başarıyla onaylandı. Tüm premium ayrıcalıklar hesabına tanımlandı!"
+                );
+              }
+              return sub;
+            });
+          })
+          .catch(() => {});
+      }
+    });
+
     // Wired so client.ts can force a sign-out when a 401 survives a refresh
     // attempt (refresh token itself expired/invalid), instead of leaving
     // the app stuck with a dead session.
     setOnAuthFailure(() => {
       signOut();
     });
-    return () => setOnAuthFailure(null);
+    return () => {
+      appStateSub.remove();
+      setOnAuthFailure(null);
+    };
   }, []);
+
 
   async function restoreSession(): Promise<void> {
     const token = await getToken(AUTH_TOKEN_STORAGE_KEY);

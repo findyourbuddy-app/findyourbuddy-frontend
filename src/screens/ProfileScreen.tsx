@@ -55,7 +55,7 @@ function getZodiacLabel(key: string, language: string): string {
 
 export function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
-  const { user, signOut, isPremium, updateUser } = useAuth();
+  const { user, signOut, isPremium, updateUser, refreshSubscription } = useAuth();
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [attendingEvents, setAttendingEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
@@ -122,6 +122,7 @@ export function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      refreshSubscription().catch(() => {});
       getCurrentUser()
         .then((u) => {
           updateUser(u);
@@ -130,6 +131,7 @@ export function ProfileScreen() {
           }
         })
         .catch(() => {});
+
 
       if (user && hasValidCoordinates(user.latitude, user.longitude)) {
         resolveCityDistrict(user.latitude, user.longitude).then(setLocationName);

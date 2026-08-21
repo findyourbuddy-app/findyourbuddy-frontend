@@ -58,7 +58,11 @@ export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, di
               {"  ·  "}{distanceLabel}
             </Text>
           )}
-          {event.creator_id ? <Text style={styles.userEventTag}>{"  ·  "}{language === "en" ? "User Event" : "Kullanıcı Etkinliği"}</Text> : null}
+          {event.creator_id ? (
+            <Text style={styles.userEventTag}>{"  ·  "}{language === "en" ? "User Event" : "Kullanıcı Etkinliği"}</Text>
+          ) : (
+            <Text style={styles.systemEventTag}>{"  ·  "}{language === "en" ? "Official Event" : "Resmi Etkinlik"}</Text>
+          )}
         </View>
         <Text style={typeScale.h2}>{event.title}</Text>
       </View>
@@ -104,5 +108,10 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 12,
     color: colors.primary,
+  },
+  systemEventTag: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: "#1DA1F2",
   },
 });
