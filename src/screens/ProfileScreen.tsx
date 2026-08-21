@@ -79,8 +79,9 @@ export function ProfileScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.8,
-      allowsEditing: false,
+      quality: 0.9,
+      allowsEditing: true,
+      aspect: [1, 1],
     });
 
     const asset = result.assets?.[0];

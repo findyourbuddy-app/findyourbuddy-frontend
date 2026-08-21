@@ -44,6 +44,8 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
       <View style={styles.banner}>
         {event.image_url ? (
           <Image source={{ uri: event.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : event.creator?.photo_url ? (
+          <Image source={{ uri: event.creator.photo_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
           <LinearGradient colors={category.gradient} style={StyleSheet.absoluteFill}>
             <View style={styles.bannerIcon}>

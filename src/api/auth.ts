@@ -9,8 +9,10 @@ export function register(payload: RegisterPayload): Promise<User> {
   return apiClient.post<User>("/auth/register", payload).then((res) => res.data);
 }
 
-export function requestPasswordReset(email: string): Promise<void> {
-  return apiClient.post("/auth/password-reset/request", { email }).then(() => undefined);
+export function requestPasswordReset(email: string): Promise<{ message?: string; reset_code?: string }> {
+  return apiClient
+    .post<{ message?: string; reset_code?: string }>("/auth/password-reset/request", { email })
+    .then((res) => res.data);
 }
 
 export function confirmPasswordReset(token: string, newPassword: string): Promise<void> {

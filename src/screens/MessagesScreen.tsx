@@ -1,7 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
-  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -17,7 +16,7 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ChatListItem } from "../components/cards/ChatListItem";
 import { MatchPreviewCard } from "../components/cards/MatchPreviewCard";
-import { SectionHeader } from "../components/ui/SectionHeader";
+import { Chip } from "../components/ui/Chip";
 import { listMyMatches } from "../api/matches";
 import { useAuth } from "../context/AuthContext";
 import { useMessagesContext } from "../context/MessagesContext";
@@ -33,8 +32,6 @@ type MessagesNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<MainStackParamList>
 >;
 
-const INITIAL_CHAT_LIMIT = 5;
-
 export function MessagesScreen() {
   const navigation = useNavigation<MessagesNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -44,9 +41,8 @@ export function MessagesScreen() {
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [query, setQuery] = useState("");
-  const [modalQuery, setModalQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [allMatchesModalVisible, setAllMatchesModalVisible] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "matches" | "groups">("all");
 
   const loadMatches = useCallback(
     async (showSpinner: boolean) => {
@@ -79,7 +75,6 @@ export function MessagesScreen() {
   );
 
   function openChat(match: Match): void {
-    setAllMatchesModalVisible(false);
     navigation.navigate("Chat", {
       matchId: match.id,
       otherUserId: match.other_user.id,
@@ -91,20 +86,25 @@ export function MessagesScreen() {
     });
   }
 
-  const filtered = matches.filter((match) =>
-    match.other_user.display_name.toLowerCase().includes(query.trim().toLowerCase())
-  );
+  const displayMatches = useMemo(() => {
+    let list = matches.filter((match) =>
+      match.other_user.display_name.toLowerCase().includes(query.trim().toLowerCase())
+    );
 
-  const modalFiltered = matches.filter((match) =>
-    match.other_user.display_name.toLowerCase().includes(modalQuery.trim().toLowerCase())
-  );
+    if (activeFilter === "unread") {
+      list = list.filter(
+        (m) => m.last_message && m.last_message.sender_id !== user?.id && !m.last_message.is_read
+      );
+    } else if (activeFilter === "matches") {
+      list = list.filter((m) => !m.event_is_group);
+    } else if (activeFilter === "groups") {
+      list = list.filter((m) => m.event_is_group);
+    }
 
-  const groupChats = filtered.filter((match) => match.event_is_group);
-  const buddyChats = filtered.filter((match) => !match.event_is_group);
+    return list;
+  }, [matches, query, activeFilter, user]);
 
-  const newMatches = filtered.filter((match) => isToday(match.created_at));
-  const mainConversations = buddyChats.slice(0, INITIAL_CHAT_LIMIT);
-  const totalCount = buddyChats.length;
+  const newMatches = matches.filter((match) => isToday(match.created_at));
 
   if (!user) {
     return null;
@@ -115,7 +115,7 @@ export function MessagesScreen() {
       <FlatList
         style={[styles.background, { backgroundColor: bgGradient[0] }]}
         contentContainerStyle={styles.list}
-        data={mainConversations}
+        data={displayMatches}
         keyExtractor={(match) => String(match.id)}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadMatches(true)} />}
         ListHeaderComponent={
@@ -143,9 +143,16 @@ export function MessagesScreen() {
               />
             </View>
 
-            {newMatches.length > 0 ? (
+            <View style={styles.filterChipRow}>
+              <Chip label={language === "en" ? "All" : "Tümü"} active={activeFilter === "all"} onPress={() => setActiveFilter("all")} />
+              <Chip label={language === "en" ? "🔴 Unread" : "🔴 Okunmamış"} active={activeFilter === "unread"} onPress={() => setActiveFilter("unread")} />
+              <Chip label={language === "en" ? "🤝 Matches" : "🤝 Eşleşmeler"} active={activeFilter === "matches"} onPress={() => setActiveFilter("matches")} />
+              <Chip label={language === "en" ? "👥 Groups" : "👥 Gruplar"} active={activeFilter === "groups"} onPress={() => setActiveFilter("groups")} />
+            </View>
+
+            {newMatches.length > 0 && activeFilter === "all" ? (
               <View style={styles.section}>
-                <SectionHeader title={t("newMatchesTitle")} actionLabel={t("today")} />
+                <Text style={styles.sectionSubTitle}>{t("newMatchesTitle")}</Text>
                 {newMatches.map((match) => (
                   <View key={match.id} style={styles.matchCardWrapper}>
                     <MatchPreviewCard match={match} onPressMessage={() => openChat(match)} />
@@ -153,28 +160,6 @@ export function MessagesScreen() {
                 ))}
               </View>
             ) : null}
-
-            {groupChats.length > 0 ? (
-              <View style={styles.section}>
-                <SectionHeader title={language === "en" ? "👥 Group Chats" : "👥 Grup Sohbetleri"} />
-                {groupChats.map((match) => (
-                  <View key={match.id} style={styles.chatItemWrapper}>
-                    <ChatListItem
-                      match={match}
-                      currentUserId={user.id}
-                      onPress={() => openChat(match)}
-                      onBlocked={() => loadMatches(true)}
-                    />
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            <SectionHeader
-              title={language === "en" ? "💬 Birebir Sohbetler" : "💬 Birebir Sohbetler"}
-              actionLabel={totalCount > INITIAL_CHAT_LIMIT ? `${t("seeAll")} (${totalCount})` : t("seeAll")}
-              onActionPress={() => setAllMatchesModalVisible(true)}
-            />
           </View>
         }
         ListEmptyComponent={
@@ -191,64 +176,6 @@ export function MessagesScreen() {
           </View>
         )}
       />
-
-      {/* See All Conversations Popup Modal */}
-      <Modal
-        visible={allMatchesModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setAllMatchesModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => setAllMatchesModalVisible(false)}
-        >
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeaderRow}>
-              <Text style={typeScale.h2}>
-                {language === "en" ? `All Conversations (${modalFiltered.length})` : `Tüm Sohbetler (${modalFiltered.length})`}
-              </Text>
-              <Pressable
-                style={styles.modalCloseBtn}
-                onPress={() => setAllMatchesModalVisible(false)}
-              >
-                <Feather name="x" size={20} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-
-            <View style={styles.modalSearchBar}>
-              <Feather name="search" size={16} color={colors.textSecondary} />
-              <TextInput
-                placeholder={t("searchPlaceholder")}
-                placeholderTextColor={colors.textSecondary}
-                value={modalQuery}
-                onChangeText={setModalQuery}
-                style={styles.searchInput}
-              />
-            </View>
-
-            <FlatList
-              style={styles.modalList}
-              data={modalFiltered}
-              keyExtractor={(item) => String(item.id)}
-              showsVerticalScrollIndicator={true}
-              ListEmptyComponent={
-                <Text style={styles.emptyText}>{t("noMatchesYetFindEvents")}</Text>
-              }
-              renderItem={({ item }) => (
-                <View style={styles.chatItemWrapper}>
-                  <ChatListItem
-                    match={item}
-                    currentUserId={user.id}
-                    onPress={() => openChat(item)}
-                    onBlocked={() => loadMatches(true)}
-                  />
-                </View>
-              )}
-            />
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -352,5 +279,17 @@ const styles = StyleSheet.create({
   },
   modalList: {
     marginTop: spacing.xs,
+  },
+  filterChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  sectionSubTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
 });

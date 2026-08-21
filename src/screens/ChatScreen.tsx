@@ -45,7 +45,7 @@ export function ChatScreen({ route }: Props) {
   const [historicalMessages, setHistoricalMessages] = useState<Message[]>([]);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
-  const [selectedImage, setSelectedImage] = useState<{ uri: string; base64?: string | null } | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{ uri: string } | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
@@ -441,23 +441,20 @@ export function ChatScreen({ route }: Props) {
 
     try {
       if (activeImage) {
-        let imageUrl = activeImage.uri;
-        try {
-          const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
-          const uploaded = await uploadGalleryPhoto(activeImage.uri, fileName);
-          if (uploaded && uploaded.photo_url) {
-            imageUrl = uploaded.photo_url;
-          }
-        } catch {
-          if (activeImage.base64) {
-            imageUrl = `data:image/jpeg;base64,${activeImage.base64}`;
-          }
+        // Uploaded (server-compressed) URL only -- never fall back to the
+        // local file:// URI or an inline base64 data URI, both unreadable
+        // for the other participant, with base64 also bloating every future
+        // read of this chat thread.
+        const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
+        const uploaded = await uploadGalleryPhoto(activeImage.uri, fileName);
+        if (!uploaded?.photo_url) {
+          throw new Error("Image upload did not return a URL");
         }
 
         await sendMessage(matchId, {
           content: activeText || "[Fotoğraf]",
           message_type: "image",
-          media_url: imageUrl,
+          media_url: uploaded.photo_url,
         });
       } else {
         await sendMessage(matchId, { content: activeText, message_type: "text", media_url: undefined });
@@ -504,19 +501,20 @@ export function ChatScreen({ route }: Props) {
       mediaTypes: ["images"],
       quality: 0.7,
       allowsEditing: false,
-      base64: true,
     });
     const asset = result.assets?.[0];
     if (result.canceled || !asset) {
       return;
     }
 
-    setSelectedImage({ uri: asset.uri, base64: asset.base64 });
+    setSelectedImage({ uri: asset.uri });
   }
 
   if (!user) {
     return null;
   }
+
+  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   return (
     <KeyboardAvoidingView
@@ -549,11 +547,10 @@ export function ChatScreen({ route }: Props) {
 
       <FlatList
         ref={messageListRef}
+        inverted
         contentContainerStyle={styles.messageList}
-        data={messages}
+        data={reversedMessages}
         keyExtractor={(message) => String(message.id)}
-        onContentSizeChange={() => scrollToBottom(true)}
-        onLayout={() => scrollToBottom(false)}
         renderItem={({ item }) => {
           const isOwn = item.sender_id === user.id;
           const timeText = formatMessageTime(item.created_at, language);
@@ -615,13 +612,21 @@ export function ChatScreen({ route }: Props) {
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
-      <IcebreakerStrip
-        icebreakers={aiIcebreakers}
-        isLoading={isLoadingIcebreakers}
-        onRefresh={fetchAiIcebreakers}
-        onSelect={(item) => setDraft(item.text)}
-        language={language}
-      />
+      {messages.length === 0 ? (
+        <IcebreakerStrip
+          icebreakers={aiIcebreakers}
+          isLoading={isLoadingIcebreakers}
+          onRefresh={() => {
+            Alert.alert(
+              language === "en" ? "AI Icebreakers ✨" : "Yapay Zeka ✨",
+              language === "en" ? "Refreshing conversation starters..." : "Yeni tanışma önerileri hazırlanıyor..."
+            );
+            fetchAiIcebreakers();
+          }}
+          onSelect={(item) => setDraft(item.text)}
+          language={language}
+        />
+      ) : null}
 
       {selectedImage ? (
 

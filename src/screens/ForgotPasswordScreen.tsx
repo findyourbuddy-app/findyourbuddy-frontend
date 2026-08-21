@@ -18,6 +18,7 @@ import { confirmPasswordReset, requestPasswordReset } from "../api/auth";
 import { useAppTheme } from "../context/ThemeContext";
 import { formatApiError } from "../utils/error";
 import { colors, fontFamily, radius, shadows, spacing } from "../theme";
+import { Alert } from "../utils/alert";
 import type { AuthStackParamList } from "../navigation/RootNavigator";
 
 type Step = "request" | "confirm" | "done";
@@ -43,7 +44,16 @@ export function ForgotPasswordScreen() {
 
     setIsSubmitting(true);
     try {
-      await requestPasswordReset(cleanEmail);
+      const res = await requestPasswordReset(cleanEmail);
+      if (res && res.reset_code) {
+        setToken(res.reset_code);
+        Alert.alert(
+          language === "en" ? "Reset Code Created 🔑" : "Sıfırlama Kodu Oluşturuldu 🔑",
+          language === "en"
+            ? `Your reset code is: ${res.reset_code}\n\nIt has been automatically filled below.`
+            : `Sıfırlama kodunuz: ${res.reset_code}\n\nKutucuğa otomatik dolduruldu.`
+        );
+      }
       setStep("confirm");
     } catch (err) {
       setError(formatApiError(err, language));
