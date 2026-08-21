@@ -7,6 +7,7 @@ import { createCheckoutSession } from "../../api/subscriptions";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../../theme";
 import type { SwipeCandidateFilters } from "../../api/swipes";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTheme } from "../../context/ThemeContext";
 
 interface SwipeFiltersModalProps {
@@ -41,6 +42,7 @@ export function SwipeFiltersModal({
   onApply,
   onDismiss,
 }: SwipeFiltersModalProps) {
+  const insets = useSafeAreaInsets();
   const { t, language } = useAppTheme();
   const [minAge, setMinAge] = useState(toText(initialFilters.minAge));
   const [maxAge, setMaxAge] = useState(toText(initialFilters.maxAge));
@@ -343,7 +345,7 @@ export function SwipeFiltersModal({
           </ScrollView>
 
           {/* Sticky Bottom Actions */}
-          <View style={styles.actions}>
+          <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 20) + spacing.md }]}>
             <PrimaryButton label={language === "en" ? "Apply Filters ✨" : "Filtreleri Uygula ✨"} onPress={handleApply} />
             <Pressable onPress={handleClear} style={styles.clearLink} hitSlop={8}>
               <Text style={styles.clearLinkText}>{language === "en" ? "Clear All Filters" : "Filtreleri Sıfırla"}</Text>
