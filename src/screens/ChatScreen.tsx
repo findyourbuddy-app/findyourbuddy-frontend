@@ -50,24 +50,34 @@ export function ChatScreen({ route }: Props) {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
 
-  const [aiIcebreakers, setAiIcebreakers] = useState<IcebreakerItem[]>([]);
+  const defaultIcebreakers = useMemo<IcebreakerItem[]>(
+    () => [
+      { text: language === "en" ? `Hi ${otherUserName}! So excited for our event ☕` : `Selam ${otherUserName}! Katılacağımız etkinlik için heyecanlıyım ☕`, type: "text" },
+      { text: language === "en" ? "10-second voice note challenge: say your favorite movie line! 🎙️" : "10 saniyelik ses kaydıyla en sevdiğin film repliğini söyle! 🎙️", type: "voice" },
+      { text: language === "en" ? "Checked your profile, let's connect! 🎨" : "Profilindeki hobilerine baktım, ne zaman buluşuyoruz? 🎨", type: "text" },
+    ],
+    [otherUserName, language]
+  );
+
+  const [aiIcebreakers, setAiIcebreakers] = useState<IcebreakerItem[]>(defaultIcebreakers);
   const [isLoadingIcebreakers, setIsLoadingIcebreakers] = useState(false);
 
   const fetchAiIcebreakers = useCallback(async () => {
-    setIsLoadingIcebreakers(true);
+    // Background fetch: update icebreakers seamlessly without blocking UI spinner
     try {
       const items = await getIcebreakers(matchId);
-      setAiIcebreakers(items);
+      if (items && items.length > 0) {
+        setAiIcebreakers(items);
+      }
     } catch {
-      // Fallback if network or server fails
-    } finally {
-      setIsLoadingIcebreakers(false);
+      // Best-effort; default/cached icebreakers stay in place.
     }
   }, [matchId]);
 
   useEffect(() => {
     fetchAiIcebreakers();
   }, [fetchAiIcebreakers]);
+
 
 
   const POPULAR_GIFS = useMemo(

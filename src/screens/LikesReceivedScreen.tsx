@@ -3,8 +3,10 @@ import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, Text, View
 import { Alert } from "../utils/alert";
 import axios from "axios";
 import { Feather } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Avatar } from "../components/ui/Avatar";
+import type { MainStackParamList } from "../navigation/RootNavigator";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { createSwipe, getIncomingLikes } from "../api/swipes";
 import type { LikerResponse } from "../api/swipes";
@@ -20,9 +22,12 @@ function maskName(name: string): string {
   return `${trimmed[0]}${"•".repeat(Math.max(3, Math.min(trimmed.length - 1, 6)))}`;
 }
 
+type LikesReceivedNavigationProp = NativeStackNavigationProp<MainStackParamList>;
+
 export function LikesReceivedScreen() {
   const { isPremium } = useAuth();
   const { t, language, bgGradient, accentColor } = useAppTheme();
+  const navigation = useNavigation<LikesReceivedNavigationProp>();
   const [likers, setLikers] = useState<LikerResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpgrading, setIsUpgrading] = useState(false);
@@ -115,6 +120,26 @@ export function LikesReceivedScreen() {
     }
   };
 
+  const handleViewProfile = (item: LikerResponse) => {
+    if (!isPremium) {
+      Alert.alert(
+        t("premiumFeature"),
+        t("upgradeToMatchDesc"),
+        [
+          { text: t("cancel"), style: "cancel" },
+          { text: t("upgradeToPremium"), onPress: handleUpgrade },
+        ]
+      );
+      return;
+    }
+    navigation.navigate("CandidateProfile", {
+      candidate: item.user,
+      onSwipeLeft: () => {},
+      onSwipeRight: () => {},
+      onSwipeUp: () => {},
+    });
+  };
+
   const handleUpgrade = async () => {
     setIsUpgrading(true);
     try {
@@ -192,7 +217,12 @@ export function LikesReceivedScreen() {
         ) : null
       }
       renderItem={({ item }) => (
-        <View style={styles.row}>
+        <Pressable
+          style={styles.row}
+          onPress={() => handleViewProfile(item)}
+          accessibilityRole="button"
+          accessibilityLabel={item.user.display_name}
+        >
           <Avatar
             name={item.user.display_name}
             photoUrl={item.user.photo_url}
@@ -229,7 +259,7 @@ export function LikesReceivedScreen() {
               <Feather name="heart" size={16} color={colors.surface} />
             </Pressable>
           </View>
-        </View>
+        </Pressable>
       )}
     />
   );

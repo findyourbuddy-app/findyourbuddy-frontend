@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { AppState } from "react-native";
 import { setAuthToken, setOnAuthFailure } from "../api/client";
 import { login as loginRequest, loginWithFirebase as loginWithFirebaseRequest, register as registerRequest } from "../api/auth";
 import { getCurrentUser } from "../api/users";
@@ -8,6 +9,7 @@ import { getMySubscription } from "../api/subscriptions";
 import { AUTH_TOKEN_STORAGE_KEY, REFRESH_TOKEN_STORAGE_KEY } from "../constants/config";
 import { deleteToken, getToken, setToken } from "../utils/tokenStorage";
 import { getExpoPushToken } from "../utils/pushNotifications";
+import { Alert } from "../utils/alert";
 import type { LoginPayload, RegisterPayload, SubscriptionStatus, User } from "../types";
 
 async function fetchSubscription(): Promise<SubscriptionStatus> {
@@ -45,9 +47,6 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-import { AppState } from "react-native";
-import { Alert } from "../utils/alert";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
