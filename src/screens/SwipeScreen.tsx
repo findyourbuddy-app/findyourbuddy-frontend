@@ -28,6 +28,18 @@ interface ActiveEvent {
   title: string;
 }
 
+// `listEvents` returns a fixed, date-sorted page -- an event the user is already
+// attending (especially an older group event) can fall outside that window and
+// never appear on the "Kullanıcı Etkinlikleri" tab. Merging in `listMyAttendingEvents`
+// guarantees attended events always show up regardless of pagination.
+function mergeEvents(base: Event[], attending: Event[]): Event[] {
+  const merged = new Map(base.map((event) => [event.id, event]));
+  for (const event of attending) {
+    if (!merged.has(event.id)) merged.set(event.id, event);
+  }
+  return Array.from(merged.values());
+}
+
 type SwipeNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, "Swipe">,
   NativeStackNavigationProp<MainStackParamList>
@@ -66,9 +78,13 @@ export function SwipeScreen() {
   useEffect(() => {
     if (activeTab === "user" && userSubTab === "group") {
       setIsLoadingGroups(true);
-      listEvents(undefined, true, 0, 50)
-        .then((all) => {
-          setUserGroupEvents(all.filter((e) => Boolean(e.creator_id) && Boolean(e.is_group_event)));
+      // origin="user" is required here -- without it, this shares its 50-item
+      // budget with thousands of system events, which crowd out user/group
+      // events almost entirely (the same pagination bug fixed earlier on Discover).
+      Promise.all([listEvents(undefined, true, 0, 50, "user"), listMyAttendingEvents(true).catch(() => [])])
+        .then(([all, attending]) => {
+          const merged = mergeEvents(all, attending);
+          setUserGroupEvents(merged.filter((e) => Boolean(e.creator_id) && Boolean(e.is_group_event)));
         })
         .catch(() => {})
         .finally(() => setIsLoadingGroups(false));
@@ -97,8 +113,12 @@ export function SwipeScreen() {
             tab: matched?.creator_id ? "user" : "system",
           };
         }
+        // Group events have their own card list (userSubTab === "group") and are
+        // never swiped via activeEvent -- excluding them here keeps this fallback
+        // in sync with `user1on1Events`/`tabEvents`, so the "Birebir" tab can never
+        // silently auto-select a group event that isn't even in the event picker.
         const currentTabEvents = upcoming.filter((event) =>
-          activeTab === "system" ? !event.creator_id : event.creator_id
+          activeTab === "system" ? !event.creator_id : Boolean(event.creator_id) && !event.is_group_event
         );
         const fallback = currentTabEvents[0];
         return { event: fallback ? { id: fallback.id, title: fallback.title } : null, tab: activeTab };
@@ -106,19 +126,24 @@ export function SwipeScreen() {
 
       setIsLoading(true);
       refreshQuota();
-      listMyAttendingEvents()
-        .then(async (upcoming) => {
+      // Fetch system and user events separately (origin=system / origin=user) so
+      // neither crowds the other out of its 50-item budget -- otherwise system
+      // events (far more numerous) push nearly all user/1-on-1 events off this page.
+      Promise.all([
+        listEvents(undefined, true, 0, 50, "system"),
+        listEvents(undefined, true, 0, 50, "user"),
+        listMyAttendingEvents(true).catch(() => []),
+      ])
+        .then(async ([systemEvts, userEvts, attending]) => {
           if (cancelled) return;
-          setAvailableEvents(upcoming);
-          const { event, tab } = await resolveActiveEvent(upcoming);
+          const allEvents = mergeEvents(mergeEvents(systemEvts, userEvts), attending);
+          setAvailableEvents(allEvents);
+          const { event, tab } = await resolveActiveEvent(allEvents);
           if (cancelled) return;
           setActiveTab(tab);
           setActiveEvent(event);
           setCurrentIndex(0);
           if (event) {
-            attendEvent(event.id).catch(() => {
-              // Non-critical; worst case the attendee count doesn't reflect this visit yet.
-            });
             const list = await getSwipeCandidates(event.id, filters);
             if (!cancelled) setCandidates(list);
           } else {
@@ -468,8 +493,8 @@ export function SwipeScreen() {
               <>
                 <Text style={styles.emptyText}>
                   {language === "en"
-                    ? "To swipe in this tab, you need to join a user event first."
-                    : "Bu sekmede kaydırabilmek için önce bir kullanıcı etkinliğine katıldığını belirtmen gerekiyor."}
+                    ? "No 1-on-1 user events available to swipe in yet."
+                    : "Şu anda kaydırabileceğin bir birebir kullanıcı etkinliği yok."}
                 </Text>
                 <View style={{ marginTop: spacing.md }}>
                   <PrimaryButton

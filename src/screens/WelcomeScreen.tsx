@@ -15,6 +15,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { BuddyLogo } from "../components/ui/BuddyLogo";
+import { GoogleIcon } from "../components/ui/GoogleIcon";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { formatApiError } from "../utils/error";
@@ -122,13 +123,16 @@ export function WelcomeScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.googleButton,
-                pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+                pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
                 (isGoogleSubmitting || !googleRequest) && { opacity: 0.7 },
               ]}
               onPress={handleGoogleSignIn}
               disabled={isGoogleSubmitting || !googleRequest}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={language === "en" ? "Continue with Google" : "Google ile Devam Et"}
             >
-              <Feather name="chrome" size={18} color="#1E293B" />
+              <GoogleIcon size={20} />
               <Text style={styles.googleButtonText}>
                 {isGoogleSubmitting
                   ? (language === "en" ? "Signing in..." : "Giriş yapılıyor...")
@@ -148,9 +152,12 @@ export function WelcomeScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.emailButtonTouch,
-                pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+                pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
               ]}
               onPress={() => navigation.navigate("Login")}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={language === "en" ? "Continue with Email" : "E-posta ile Devam Et"}
             >
               <LinearGradient
                 colors={["#6C4CF1", "#FF6B6B"]}
@@ -172,18 +179,6 @@ export function WelcomeScreen() {
               </View>
             ) : null}
           </View>
-        </View>
-
-        {/* Footer Sign Up Link */}
-        <View style={styles.footerBox}>
-          <Pressable onPress={() => navigation.navigate("Register")}>
-            <Text style={styles.signUpText}>
-              {language === "en" ? "Don't have an account? " : "Hesabın yok mu? "}
-              <Text style={styles.signUpHighlight}>
-                {language === "en" ? "Sign Up Free" : "Ücretsiz Kayıt Ol"}
-              </Text>
-            </Text>
-          </Pressable>
         </View>
       </ScrollView>
     </View>
@@ -340,19 +335,5 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 13,
     color: colors.accentRed,
-  },
-  footerBox: {
-    alignItems: "center",
-    marginTop: 24,
-  },
-  signUpText: {
-    fontFamily: fontFamily.body,
-    fontSize: 14,
-    color: "#64748B",
-  },
-  signUpHighlight: {
-    fontFamily: fontFamily.displayBold,
-
-    color: colors.primary,
   },
 });

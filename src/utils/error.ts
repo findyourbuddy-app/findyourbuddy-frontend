@@ -36,7 +36,7 @@ export function formatApiError(err: unknown, language: "tr" | "en"): string {
   if (typeof detail === "string" && detail.trim()) {
     const lower = detail.toLowerCase();
     
-    if (lower.includes("incorrect email or password")) {
+    if (lower.includes("invalid email or password") || lower.includes("incorrect email or password")) {
       return language === "en"
         ? "Incorrect email address or password. Please check your credentials."
         : "Hatalı e-posta adresi veya şifre. Lütfen bilgilerinizi kontrol edin.";
