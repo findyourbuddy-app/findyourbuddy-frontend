@@ -107,11 +107,15 @@ export function DiscoverScreen() {
   // The map view isn't limited by list-view pagination -- it loads a much
   // larger batch once, on entry, so "haritada göster" actually means
   // everything in the system with a location, not just the first page.
+  // origin is filtered server-side (see loadEvents) for the same reason it
+  // is there: with ~2900 system events clustered in the near term, a
+  // client-side filter over any fixed-size page would rarely surface user
+  // events at all.
   useEffect(() => {
     if (!isMapView) return;
     let cancelled = false;
     setIsLoadingMapEvents(true);
-    listEvents(selectedCategory ?? undefined, true, 0, 200)
+    listEvents(selectedCategory ?? undefined, true, 0, 200, originFilter === "all" ? undefined : originFilter)
       .then((result) => {
         if (!cancelled) setMapEvents(result);
       })
@@ -124,11 +128,12 @@ export function DiscoverScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isMapView, selectedCategory]);
+  }, [isMapView, selectedCategory, originFilter]);
 
   const filteredMapEvents = useMemo(() => {
-    const withValidLocation = mapEvents.filter((event) => hasValidCoordinates(event.latitude, event.longitude));
-    if (mapDateFilter === "all") return withValidLocation;
+    const list = mapEvents.filter((event) => hasValidCoordinates(event.latitude, event.longitude));
+
+    if (mapDateFilter === "all") return list;
     const now = new Date();
     const cutoff = new Date(now);
     if (mapDateFilter === "today") {
@@ -136,8 +141,9 @@ export function DiscoverScreen() {
     } else {
       cutoff.setDate(cutoff.getDate() + 7);
     }
-    return withValidLocation.filter((event) => new Date(event.starts_at) <= cutoff);
+    return list.filter((event) => new Date(event.starts_at) <= cutoff);
   }, [mapEvents, mapDateFilter]);
+
 
   // Ask for location up front so the app opens showing where the user
   // actually is (old behavior hardcoded "İstanbul" for everyone). Also
@@ -265,12 +271,10 @@ export function DiscoverScreen() {
   const sortedEvents = useMemo(() => {
     if (events.length === 0) return [];
 
+    // originFilter is applied server-side (see loadEvents) since client-side
+    // filtering over a date-sorted page would never surface user events
+    // once enough system events (there can be thousands) sort before them.
     let list = [...events];
-    if (originFilter === "system") {
-      list = list.filter((e) => !e.creator_id);
-    } else if (originFilter === "user") {
-      list = list.filter((e) => Boolean(e.creator_id));
-    }
     if (searchQuery.trim()) {
       list = list.filter(
         (e) =>
@@ -296,16 +300,16 @@ export function DiscoverScreen() {
     }
     // Default: Sort by date
     return list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-  }, [events, originFilter, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm]);
+  }, [events, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm]);
 
   const loadEventsRequestIdRef = useRef(0);
 
-  const loadEvents = useCallback(async (category: string | null) => {
+  const loadEvents = useCallback(async (category: string | null, origin: "system" | "user" | null) => {
     const requestId = ++loadEventsRequestIdRef.current;
     setHasMore(true);
     try {
       // Fetch batch of events for fast category filtering
-      const result = await listEvents(category ?? undefined, true, 0, 100);
+      const result = await listEvents(category ?? undefined, true, 0, 100, origin ?? undefined);
       if (requestId !== loadEventsRequestIdRef.current) return;
       setEvents(result);
       setHasMore(result.length === 100);
@@ -333,7 +337,7 @@ export function DiscoverScreen() {
     setIsLoadingMore(true);
     try {
       const currentLength = events.length;
-      const result = await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT);
+      const result = await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT, originFilter === "all" ? undefined : originFilter);
       setEvents((prev) => {
         const existingIds = new Set(prev.map((event) => event.id));
         const deduped = result.filter((event) => !existingIds.has(event.id));
@@ -346,7 +350,7 @@ export function DiscoverScreen() {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [events.length, selectedCategory, hasMore, isRefreshing]);
+  }, [events.length, selectedCategory, originFilter, hasMore, isRefreshing]);
 
   const loadBookmarks = useCallback(async () => {
     try {
@@ -360,9 +364,9 @@ export function DiscoverScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadEvents(selectedCategory);
+      loadEvents(selectedCategory, originFilter === "all" ? null : originFilter);
       loadBookmarks();
-      // selectedCategory intentionally omitted: chip taps already trigger their own reload
+      // selectedCategory/originFilter intentionally omitted: chip taps already trigger their own reload
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loadEvents, loadBookmarks])
   );
@@ -370,7 +374,12 @@ export function DiscoverScreen() {
   function handleSelectCategory(slug: string): void {
     const next = selectedCategory === slug ? null : slug;
     setSelectedCategory(next);
-    loadEvents(next);
+    loadEvents(next, originFilter === "all" ? null : originFilter);
+  }
+
+  function handleSelectOrigin(next: "all" | "system" | "user"): void {
+    setOriginFilter(next);
+    loadEvents(selectedCategory, next === "all" ? null : next);
   }
 
   async function toggleBookmark(eventId: number): Promise<void> {
@@ -483,7 +492,7 @@ export function DiscoverScreen() {
       data={isMapView ? [] : rest}
       keyExtractor={(event) => String(event.id)}
       refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={() => loadEvents(selectedCategory)} />
+        <RefreshControl refreshing={isRefreshing} onRefresh={() => loadEvents(selectedCategory, originFilter === "all" ? null : originFilter)} />
       }
       onEndReached={isMapView ? undefined : loadMoreEvents}
       onEndReachedThreshold={0.4}
@@ -603,17 +612,17 @@ export function DiscoverScreen() {
                 <Chip
                   label={t("all")}
                   active={originFilter === "all"}
-                  onPress={() => setOriginFilter("all")}
+                  onPress={() => handleSelectOrigin("all")}
                 />
                 <Chip
                   label={t("systemEvents")}
                   active={originFilter === "system"}
-                  onPress={() => setOriginFilter("system")}
+                  onPress={() => handleSelectOrigin("system")}
                 />
                 <Chip
                   label={t("userEvents")}
                   active={originFilter === "user"}
-                  onPress={() => setOriginFilter("user")}
+                  onPress={() => handleSelectOrigin("user")}
                 />
               </View>
 
@@ -757,11 +766,15 @@ export function DiscoverScreen() {
         </View>
       }
       ListEmptyComponent={
-        !isMapView && events.length === 0 && !isRefreshing ? (
+        !isMapView && filteredEvents.length === 0 && !isRefreshing ? (
           <Text style={styles.emptyText}>
             {selectedCategory
               ? `${getCategoryMeta(selectedCategory).label} kategorisinde şu an etkinlik yok. Başka bir kategori dener misin?`
-              : "Şu an gösterilecek etkinlik yok. Daha sonra tekrar kontrol et!"}
+              : originFilter === "user"
+                ? "Şu an kullanıcıların oluşturduğu bir etkinlik yok."
+                : originFilter === "system"
+                  ? "Şu an sistem etkinliği yok."
+                  : "Şu an gösterilecek etkinlik yok. Daha sonra tekrar kontrol et!"}
           </Text>
         ) : null
       }

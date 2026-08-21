@@ -211,6 +211,8 @@ export function LoginScreen() {
                 ]}
                 onPress={handleSubmit}
                 disabled={isSubmitting}
+                hitSlop={8}
+                accessibilityRole="button"
               >
                 <LinearGradient
                   colors={["#6C4CF1", "#FF6B6B"]}

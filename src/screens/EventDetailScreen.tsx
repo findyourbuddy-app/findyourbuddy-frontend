@@ -251,11 +251,15 @@ export function EventDetailScreen({ route }: Props) {
         <View style={styles.bannerActions}>
           <Pressable
             style={styles.bannerIconButton}
+            onPress={() => openAddToCalendar(event)}
+            accessibilityRole="button"
+            accessibilityLabel={language === "en" ? "Add to Calendar" : "Takvime Ekle"}
+          >
+            <Feather name="calendar" size={18} color={colors.surface} />
+          </Pressable>
+          <Pressable
+            style={styles.bannerIconButton}
             onPress={() => {
-              // No public web domain yet to host a real https:// link that
-              // deep-links back into a specific event with an App Store
-              // fallback (Universal Links / App Links) -- share readable
-              // event info without exposing the raw internal event ID.
               Share.share({
                 title: event.title,
                 message:
@@ -481,15 +485,6 @@ export function EventDetailScreen({ route }: Props) {
             />
           )
         ) : null}
-
-        {/* Add to Calendar */}
-        <View style={{ marginTop: spacing.xs }}>
-          <PrimaryButton
-            label={language === "en" ? "📅 Add to Calendar" : "📅 Takvime Ekle"}
-            onPress={() => openAddToCalendar(event)}
-            variant="outline"
-          />
-        </View>
       </View>
     </ScrollView>
 

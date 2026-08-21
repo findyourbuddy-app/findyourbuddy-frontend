@@ -42,17 +42,31 @@ export function EventsMapView({
           }
         }}
       >
-        {events.map((event) => (
-          <Marker
-            key={event.id}
-            coordinate={{ latitude: event.latitude, longitude: event.longitude }}
-            pinColor={selectedEventId === event.id ? colors.accentYellow : colors.primary}
-            onPress={(e) => {
-              e.stopPropagation();
-              onSelectEvent(event);
-            }}
-          />
-        ))}
+        {events.map((event) => {
+          const isUserCreated = Boolean(event.creator_id) && !event.source;
+          const isSelected = selectedEventId === event.id;
+
+          // Red marker for user-created events, Violet/Blue for system events, Gold for selected
+          const pinColor = isSelected
+            ? "#FFD166"
+            : isUserCreated
+            ? "#FF4D5E"
+            : "#6C4CF1";
+
+          return (
+            <Marker
+              key={event.id}
+              coordinate={{ latitude: event.latitude, longitude: event.longitude }}
+              pinColor={pinColor}
+              title={event.title}
+              description={isUserCreated ? "👤 Kullanıcı Etkinliği" : "🏛️ Sistem Etkinliği"}
+              onPress={(e) => {
+                e.stopPropagation();
+                onSelectEvent(event);
+              }}
+            />
+          );
+        })}
       </MapView>
     </View>
   );
