@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View, Modal, ActivityIndicator } from "react-native";
 import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
@@ -69,6 +69,7 @@ export function SwipeScreen() {
   const [userSubTab, setUserSubTab] = useState<"birebir" | "group">("birebir");
   const [userGroupEvents, setUserGroupEvents] = useState<Event[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [isSwiping, setIsSwiping] = useState(false);
 
   const systemEvents = useMemo(() => availableEvents.filter((event) => !event.creator_id), [availableEvents]);
   const user1on1Events = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id) && !event.is_group_event), [availableEvents]);
@@ -204,10 +205,12 @@ export function SwipeScreen() {
   }
 
   async function handleSwipe(direction: "like" | "pass" | "super_like"): Promise<void> {
+    if (isSwiping) return;
     const target = candidates[currentIndex];
     if (!activeEvent || !target) {
       return;
     }
+    setIsSwiping(true);
     try {
       const result = await createSwipe({ target_id: target.id, event_id: activeEvent.id, direction });
       if (result.match_id !== null && result.matched_user !== null) {
@@ -229,6 +232,8 @@ export function SwipeScreen() {
       } else {
         Alert.alert("Bir sorun oluştu", "Swipe kaydedilemedi. Lütfen tekrar dene.");
       }
+    } finally {
+      setIsSwiping(false);
     }
   }
 
@@ -264,9 +269,17 @@ export function SwipeScreen() {
     try {
       const updatedUser = await activateBoost();
       updateUser(updatedUser);
-      Alert.alert("Spotlight Başlatıldı! 🚀", "Profilin 60 dakika boyunca bulunduğun bölgede en üste taşındı!");
+      Alert.alert(
+        language === "en" ? "Spotlight Started! 🚀" : "Spotlight Başlatıldı! 🚀",
+        language === "en"
+          ? "Your profile has been moved to the top for 60 minutes in your area!"
+          : "Profilin 60 dakika boyunca bulunduğun bölgede en üste taşındı!"
+      );
     } catch {
-      Alert.alert("Hata", "Spotlight başlatılamadı. Lütfen tekrar dene.");
+      Alert.alert(
+        language === "en" ? "Error" : "Hata",
+        language === "en" ? "Could not start Spotlight. Please try again." : "Spotlight başlatılamadı. Lütfen tekrar dene."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -540,6 +553,7 @@ export function SwipeScreen() {
           <Pressable
             style={[styles.actionButton, styles.passButton]}
             onPress={() => handleSwipe("pass")}
+            disabled={isSwiping}
             accessibilityRole="button"
             accessibilityLabel="Geç"
           >
@@ -548,6 +562,7 @@ export function SwipeScreen() {
           <Pressable
             style={[styles.actionButton, styles.superLikeButton]}
             onPress={() => handleSwipe("super_like")}
+            disabled={isSwiping}
             accessibilityRole="button"
             accessibilityLabel="Süper beğen"
           >
@@ -556,6 +571,7 @@ export function SwipeScreen() {
           <Pressable
             style={[styles.actionButton, styles.likeButton]}
             onPress={() => handleSwipe("like")}
+            disabled={isSwiping}
             accessibilityRole="button"
             accessibilityLabel="Beğen"
           >
@@ -664,18 +680,30 @@ export function SwipeScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setBoostConfirmVisible(false)}>
           <Pressable style={styles.confirmCard} onPress={(e) => e.stopPropagation()}>
             <Feather name="zap" size={36} color="#F1C40F" style={{ alignSelf: "center", marginBottom: spacing.sm }} />
-            <Text style={[typeScale.h1, { textAlign: "center" }]}>Spotlight Başlatılsın mı?</Text>
-            <Text style={styles.confirmSubtitle}>
-              Spotlight'ı aktifleştirdiğinde profilin 60 dakika boyunca bölgedeki tüm kanka adaylarına en ön sırada gösterilecektir.
+            <Text style={[typeScale.h1, { textAlign: "center" }]}>
+              {language === "en" ? "Start Spotlight?" : "Spotlight Başlatılsın mı?"}
             </Text>
-            <Text style={styles.confirmBalanceText}>Mevcut Spotlight Hakkın: {user?.boosts_balance ?? 0} adet</Text>
+            <Text style={styles.confirmSubtitle}>
+              {language === "en"
+                ? "When you activate Spotlight, your profile will be shown at the very top to all buddy candidates in the area for 60 minutes."
+                : "Spotlight'ı aktifleştirdiğinde profilin 60 dakika boyunca bölgedeki tüm kanka adaylarına en ön sırada gösterilecektir."}
+            </Text>
+            <Text style={styles.confirmBalanceText}>
+              {language === "en"
+                ? `Your Spotlight Credits: ${user?.boosts_balance ?? 0}`
+                : `Mevcut Spotlight Hakkın: ${user?.boosts_balance ?? 0} adet`}
+            </Text>
 
             <View style={styles.confirmActions}>
               <Pressable style={styles.confirmBtn} onPress={handleActivateBoost}>
-                <Text style={styles.confirmBtnText}>Başlat (1 Hak Kullan)</Text>
+                <Text style={styles.confirmBtnText}>
+                  {language === "en" ? "Start (Use 1 Credit)" : "Başlat (1 Hak Kullan)"}
+                </Text>
               </Pressable>
               <Pressable style={styles.cancelConfirmBtn} onPress={() => setBoostConfirmVisible(false)}>
-                <Text style={styles.cancelConfirmBtnText}>Vazgeç</Text>
+                <Text style={styles.cancelConfirmBtnText}>
+                  {language === "en" ? "Cancel" : "Vazgeç"}
+                </Text>
               </Pressable>
             </View>
           </Pressable>

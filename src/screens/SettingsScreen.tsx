@@ -16,6 +16,7 @@ import { getExpoPushToken } from "../utils/pushNotifications";
 import { apiClient } from "../api/client";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import { PhotoVerificationModal } from "../components/overlays/PhotoVerificationModal";
+import { StealthModeInfoModal } from "../components/overlays/StealthModeInfoModal";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { User } from "../types";
 
@@ -164,6 +165,7 @@ export function SettingsScreen() {
   };
 
   const [isGhostMode, setIsGhostMode] = useState(false);
+  const [stealthModalVisible, setStealthModalVisible] = useState(false);
 
   function handleToggleGhostMode(val: boolean) {
     if (!isPremium && val) {
@@ -375,7 +377,7 @@ export function SettingsScreen() {
           <Feather name="chevron-right" size={18} color={colors.textSecondary} />
         </Pressable>
 
-        <Pressable style={styles.notifModuleBox} onPress={() => handleToggleGhostMode(!isGhostMode)}>
+        <Pressable style={styles.notifModuleBox} onPress={() => setStealthModalVisible(true)}>
           <View style={[styles.notifIconContainer, { backgroundColor: `${accentColor}18` }]}>
             <Feather name="eye-off" size={20} color={accentColor} />
           </View>
@@ -388,8 +390,8 @@ export function SettingsScreen() {
             </View>
             <Text style={styles.notifSubText}>
               {language === "en"
-                ? "Browse profiles completely invisibly. Only people you like can see you."
-                : "Profilleri tamamen gizli gez. Sadece beğendiğin kişiler seni görebilsin."}
+                ? "Browse profiles completely invisibly. Tap to see preview!"
+                : "Profilleri tamamen gizli gez. Önizlemek için dokun!"}
             </Text>
           </View>
           <Switch
@@ -465,6 +467,13 @@ export function SettingsScreen() {
       <PhotoVerificationModal
         visible={verificationModalVisible}
         onClose={() => setVerificationModalVisible(false)}
+      />
+
+      <StealthModeInfoModal
+        visible={stealthModalVisible}
+        isEnabled={isGhostMode}
+        onToggle={handleToggleGhostMode}
+        onClose={() => setStealthModalVisible(false)}
       />
     </ScrollView>
   );

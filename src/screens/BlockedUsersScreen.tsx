@@ -15,7 +15,9 @@ export function BlockedUsersScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadBlockedUsers = useCallback(async () => {
-    setIsLoading(true);
+    if (blockedUsers.length === 0) {
+      setIsLoading(true);
+    }
     try {
       setBlockedUsers(await listMyBlocks());
     } catch {
@@ -23,7 +25,7 @@ export function BlockedUsersScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [blockedUsers.length]);
 
   useFocusEffect(
     useCallback(() => {
