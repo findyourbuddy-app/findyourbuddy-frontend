@@ -3,6 +3,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -106,9 +107,20 @@ export function MessagesScreen() {
 
   const newMatches = matches.filter((match) => isToday(match.created_at));
 
-  if (!user) {
-    return null;
-  }
+  const unreadCount = useMemo(
+    () =>
+      matches.filter(
+        (m) => m.last_message && m.last_message.sender_id !== user?.id && !m.last_message.is_read
+      ).length,
+    [matches, user]
+  );
+
+  const filterTabs = [
+    { id: "all", label: language === "en" ? "💬 All" : "💬 Tümü", count: matches.length },
+    { id: "unread", label: language === "en" ? "🔴 Unread" : "🔴 Okunmamış", count: unreadCount },
+    { id: "matches", label: language === "en" ? "🤝 Matches" : "🤝 Eşleşmeler", count: matches.filter((m) => !m.event_is_group).length },
+    { id: "groups", label: language === "en" ? "👥 Groups" : "👥 Gruplar", count: matches.filter((m) => m.event_is_group).length },
+  ];
 
   return (
     <View style={styles.container}>
@@ -143,12 +155,29 @@ export function MessagesScreen() {
               />
             </View>
 
-            <View style={styles.filterChipRow}>
-              <Chip label={language === "en" ? "All" : "Tümü"} active={activeFilter === "all"} onPress={() => setActiveFilter("all")} />
-              <Chip label={language === "en" ? "🔴 Unread" : "🔴 Okunmamış"} active={activeFilter === "unread"} onPress={() => setActiveFilter("unread")} />
-              <Chip label={language === "en" ? "🤝 Matches" : "🤝 Eşleşmeler"} active={activeFilter === "matches"} onPress={() => setActiveFilter("matches")} />
-              <Chip label={language === "en" ? "👥 Groups" : "👥 Gruplar"} active={activeFilter === "groups"} onPress={() => setActiveFilter("groups")} />
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabContainer}>
+              {filterTabs.map((tab) => {
+                const isActive = activeFilter === tab.id;
+                return (
+                  <Pressable
+                    key={tab.id}
+                    style={[styles.filterTab, isActive && styles.filterTabActive]}
+                    onPress={() => setActiveFilter(tab.id as any)}
+                  >
+                    <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
+                      {tab.label}
+                    </Text>
+                    {tab.count > 0 ? (
+                      <View style={[styles.filterBadge, isActive && styles.filterBadgeActive]}>
+                        <Text style={[styles.filterBadgeText, isActive && styles.filterBadgeTextActive]}>
+                          {tab.count}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
 
             {newMatches.length > 0 && activeFilter === "all" ? (
               <View style={styles.section}>
@@ -169,7 +198,7 @@ export function MessagesScreen() {
           <View style={styles.chatItemWrapper}>
             <ChatListItem
               match={item}
-              currentUserId={user.id}
+              currentUserId={user ? user.id : 0}
               onPress={() => openChat(item)}
               onBlocked={() => loadMatches(true)}
             />
@@ -280,11 +309,51 @@ const styles = StyleSheet.create({
   modalList: {
     marginTop: spacing.xs,
   },
-  filterChipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  filterTabContainer: {
     gap: spacing.xs,
-    marginTop: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  filterTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.soft,
+  },
+  filterTabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterTabText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  filterTabTextActive: {
+    color: colors.surface,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  filterBadge: {
+    backgroundColor: colors.background,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  filterBadgeActive: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+  },
+  filterBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  filterBadgeTextActive: {
+    color: colors.surface,
   },
   sectionSubTitle: {
     fontFamily: fontFamily.bodySemiBold,

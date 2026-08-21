@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Alert } from "../../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { PrimaryButton } from "../ui/PrimaryButton";
@@ -152,7 +152,7 @@ export function SwipeFiltersModal({
               <View style={styles.headerIconBadge}>
                 <Feather name="sliders" size={16} color={colors.primary} />
               </View>
-              <Text style={typeScale.h1}>{language === "en" ? "Advanced Filters" : "Gelişmiş Filtreler"}</Text>
+              <Text style={typeScale.h1}>{language === "en" ? "Advanced Filters 🎛️" : "Gelişmiş Filtreler 🎛️"}</Text>
             </View>
             <Pressable
               onPress={onDismiss}
@@ -165,76 +165,78 @@ export function SwipeFiltersModal({
             </Pressable>
           </View>
 
-          {/* Gender Preference Chips */}
-          <View style={styles.field}>
-            <Text style={styles.label}>{language === "en" ? "Gender Preference" : "Cinsiyet Tercihi"}</Text>
-            <View style={styles.genderRow}>
-              {GENDER_PREFERENCES.map((g) => {
-                const isSelected = genderPreference === g.id;
-                return (
-                  <Pressable
-                    key={g.id}
-                    style={[styles.genderChip, isSelected && styles.genderChipSelected]}
-                    onPress={() => setGenderPreference(g.id)}
-                  >
-                    <Text style={[styles.genderText, isSelected && styles.genderTextSelected]}>
-                      {g.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>{language === "en" ? "Age Range" : "Yaş Aralığı"}</Text>
-            <View style={styles.ageRow}>
-              <View style={styles.ageInputWrap}>
-                <TextInput
-                  style={styles.ageInput}
-                  keyboardType="number-pad"
-                  value={minAge}
-                  onChangeText={setMinAge}
-                  placeholder="18"
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
-              <View style={styles.ageDash} />
-              <View style={styles.ageInputWrap}>
-                <TextInput
-                  style={styles.ageInput}
-                  keyboardType="number-pad"
-                  value={maxAge}
-                  onChangeText={setMaxAge}
-                  placeholder="99"
-                  placeholderTextColor={colors.textSecondary}
-                />
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {/* Gender Preference Chips */}
+            <View style={styles.field}>
+              <Text style={styles.label}>{language === "en" ? "Gender Preference 👤" : "Cinsiyet Tercihi 👤"}</Text>
+              <View style={styles.genderRow}>
+                {GENDER_PREFERENCES.map((g) => {
+                  const isSelected = genderPreference === g.id;
+                  return (
+                    <Pressable
+                      key={g.id}
+                      style={[styles.genderChip, isSelected && styles.genderChipSelected]}
+                      onPress={() => setGenderPreference(g.id)}
+                    >
+                      <Text style={[styles.genderText, isSelected && styles.genderTextSelected]}>
+                        {g.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
-          </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>{language === "en" ? "Max Distance" : "Maksimum Mesafe"}</Text>
-            <View style={styles.distanceInputWrap}>
-              <Feather name="navigation" size={16} color={colors.textSecondary} />
-              <TextInput
-                style={styles.distanceInput}
-                keyboardType="number-pad"
-                value={maxDistanceKm}
-                onChangeText={setMaxDistanceKm}
-                placeholder="50"
-                placeholderTextColor={colors.textSecondary}
-              />
-              <Text style={styles.unitText}>km</Text>
+            <View style={styles.field}>
+              <Text style={styles.label}>{language === "en" ? "Age Range (Min - Max) 🎂" : "Yaş Aralığı (En Az - En Çok) 🎂"}</Text>
+              <View style={styles.ageRow}>
+                <View style={styles.ageInputWrap}>
+                  <TextInput
+                    style={styles.ageInput}
+                    keyboardType="number-pad"
+                    value={minAge}
+                    onChangeText={setMinAge}
+                    placeholder="Min (18)"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
+                <Text style={styles.ageDashText}>-</Text>
+                <View style={styles.ageInputWrap}>
+                  <TextInput
+                    style={styles.ageInput}
+                    keyboardType="number-pad"
+                    value={maxAge}
+                    onChangeText={setMaxAge}
+                    placeholder="Max (99)"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
+              </View>
             </View>
-          </View>
 
-          <View style={styles.actions}>
-            <PrimaryButton label={language === "en" ? "Apply" : "Uygula"} onPress={handleApply} />
-            <Pressable onPress={handleClear} style={styles.clearLink} hitSlop={8}>
-              <Text style={styles.clearLinkText}>{language === "en" ? "Clear Filters" : "Filtreleri Temizle"}</Text>
-            </Pressable>
-          </View>
+            <View style={styles.field}>
+              <Text style={styles.label}>{language === "en" ? "Max Distance (km) 📍" : "Maksimum Mesafe (Mesafe Limiti) 📍"}</Text>
+              <View style={styles.distanceInputWrap}>
+                <Feather name="navigation" size={16} color={colors.primary} />
+                <TextInput
+                  style={styles.distanceInput}
+                  keyboardType="number-pad"
+                  value={maxDistanceKm}
+                  onChangeText={setMaxDistanceKm}
+                  placeholder="Mesafe (örn. 50)"
+                  placeholderTextColor={colors.textSecondary}
+                />
+                <Text style={styles.unitText}>km</Text>
+              </View>
+            </View>
+
+            <View style={styles.actions}>
+              <PrimaryButton label={language === "en" ? "Apply Filters ✨" : "Filtreleri Uygula ✨"} onPress={handleApply} />
+              <Pressable onPress={handleClear} style={styles.clearLink} hitSlop={8}>
+                <Text style={styles.clearLinkText}>{language === "en" ? "Clear All Filters" : "Filtreleri Temizle"}</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -252,7 +254,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.card,
     borderTopRightRadius: radius.card,
     padding: spacing.xl,
+    paddingBottom: spacing.lg,
+    maxHeight: "85%",
+    gap: spacing.md,
+  },
+  scrollContent: {
     gap: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  ageDashText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 16,
+    color: colors.textSecondary,
   },
   dragHandle: {
     alignSelf: "center",
