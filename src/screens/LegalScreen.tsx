@@ -41,10 +41,10 @@ Son güncelleme: bu metin, FindYourBuddy'nin fiilen işlediği veri kategorileri
 1. Veri Sorumlusu
 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca kişisel verileriniz, veri sorumlusu sıfatıyla FindYourBuddy tarafından aşağıda açıklanan kapsamda işlenmektedir.
 
-2. İşlenen Kişisel Veri Kategorileri ve Biyometrik Veri Açık Rızası
+2. İşlenen Kişisel Veri Kategorileri ve Biyometrik Veri Açık Rızası (KVKK m.6)
 • Kimlik ve iletişim bilgileri: ad, e-posta, doğum tarihi, meslek
 • Profil bilgileri: fotoğraflar, ilgi alanları, biyografi, ses tanıtım kaydı
-• Biyometrik veri (Açık Rıza Bağlamında): Profil doğrulama (Mavi Tık) işlemi sırasında yüklediğiniz anlık özçekim (selfie) fotoğrafı ve yüz karşılaştırma verisi, yalnızca profilinizin gerçek bir bireye ait olduğunu doğrulamak amacıyla açık rızanıza istinaden işlenir ve doğrulama sonrasında saklanmaz/işlenmez.
+• Biyometrik Veri İşleme (Açık Rıza Bağlamında - KVKK m.6): Profil doğrulama (Mavi Tık 🔵) işlemi sırasında yüklediğiniz anlık özçekim (selfie) fotoğrafı ve yüz karşılaştırma verisi, yalnızca profilinizin gerçek bir bireye ait olduğunu doğrulamak amacıyla açık rızanıza istinaden Novita AI (Qwen Vision LLM) yapay zeka servisi aracılığıyla işlenir ve doğrulama tamamlandıktan hemen sonra saklanmaz veya işlenmez.
 • Konum verisi: etkinlik eşleştirmesi için yaklaşık/anlık konum
 • Kullanım verisi: kaydırma (swipe) geçmişi, eşleşmeler, etkinlik katılım bildirimleri
 • İletişim içeriği: eşleşilen kullanıcılarla yapılan sohbet mesajları
@@ -54,8 +54,8 @@ Son güncelleme: bu metin, FindYourBuddy'nin fiilen işlediği veri kategorileri
 3. İşleme Amaçları
 Kişisel verileriniz; hesabınızı oluşturmak ve doğrulamak, size uygun etkinlik ve kişi önerileri sunmak, eşleşme ve mesajlaşma hizmetini sağlamak, premium ödeme işlemlerini gerçekleştirmek, bildirim göndermek, güvenliği sağlamak (engelleme/şikayet mekanizmaları), yasal yükümlülükleri yerine getirmek amacıyla işlenir.
 
-4. Üçüncü Taraflarla Paylaşım
-Verileriniz; ödeme işlemleri için İyzico, gerçek zamanlı mesajlaşma altyapısı için Firebase/Firestore, konum arama için OpenStreetMap/Nominatim, push bildirimleri için Expo/FCM/APNs ve e-posta gönderimi için SMTP sağlayıcımız ile, yalnızca hizmetin sunulması için gerekli ölçüde paylaşılır. Verileriniz pazarlama amacıyla üçüncü taraflara satılmaz.
+4. Üçüncü Taraflarla Paylaşım ve Yurt Dışı Veri Aktarımı (KVKK m.9)
+Verileriniz; ödeme işlemleri için İyzico, gerçek zamanlı mesajlaşma altyapısı için Firebase/Firestore, konum arama için OpenStreetMap/Nominatim, yapay zeka yüz doğrulaması ve içerik moderasyonu için Novita AI (Qwen Vision LLM) altyapısı (KVKK m.9 uyarınca güvenli yurt dışı sunucuları aracılığıyla), push bildirimleri için Expo/FCM/APNs ve e-posta gönderimi için SMTP sağlayıcımız ile, yalnızca hizmetin sunulması için gerekli ölçüde paylaşılır. Verileriniz pazarlama amacıyla üçüncü taraflara kesinlikle satılmaz.
 
 5. Elektronik Ticari İleti İzni
 Size kampanya, duyuru veya tanıtım amaçlı elektronik ileti (e-posta/push bildirim) gönderilmesi, ancak açık rızanızın alınması halinde mümkündür. Bu rızayı Ayarlar > Bildirimler bölümünden dilediğiniz zaman geri çekebilirsiniz. Hesap işlemlerine ilişkin bildirimler (şifre sıfırlama, eşleşme bildirimi vb.) bu kapsamda değildir ve hizmetin ifası için zorunludur.
