@@ -145,7 +145,25 @@ export function SwipeFiltersModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <Pressable style={styles.backdrop} onPress={onDismiss}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={typeScale.h1}>{language === "en" ? "Advanced Filters 🎛️" : "Gelişmiş Filtreler 🎛️"}</Text>
+          <View style={styles.dragHandle} />
+
+          <View style={styles.headerRow}>
+            <View style={styles.headerTitleRow}>
+              <View style={styles.headerIconBadge}>
+                <Feather name="sliders" size={16} color={colors.primary} />
+              </View>
+              <Text style={typeScale.h1}>{language === "en" ? "Advanced Filters" : "Gelişmiş Filtreler"}</Text>
+            </View>
+            <Pressable
+              onPress={onDismiss}
+              style={styles.closeIconBtn}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={t("close")}
+            >
+              <Feather name="x" size={18} color={colors.textSecondary} />
+            </Pressable>
+          </View>
 
           {/* Gender Preference Chips */}
           <View style={styles.field}>
@@ -168,47 +186,54 @@ export function SwipeFiltersModal({
             </View>
           </View>
 
-          <View style={styles.row}>
-            <View style={styles.field}>
-              <Text style={styles.label}>{language === "en" ? "Min Age" : "Min Yaş"}</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="number-pad"
-                value={minAge}
-                onChangeText={setMinAge}
-                placeholder="18"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.label}>{language === "en" ? "Max Age" : "Maks Yaş"}</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="number-pad"
-                value={maxAge}
-                onChangeText={setMaxAge}
-                placeholder="99"
-                placeholderTextColor={colors.textSecondary}
-              />
+          <View style={styles.field}>
+            <Text style={styles.label}>{language === "en" ? "Age Range" : "Yaş Aralığı"}</Text>
+            <View style={styles.ageRow}>
+              <View style={styles.ageInputWrap}>
+                <TextInput
+                  style={styles.ageInput}
+                  keyboardType="number-pad"
+                  value={minAge}
+                  onChangeText={setMinAge}
+                  placeholder="18"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
+              <View style={styles.ageDash} />
+              <View style={styles.ageInputWrap}>
+                <TextInput
+                  style={styles.ageInput}
+                  keyboardType="number-pad"
+                  value={maxAge}
+                  onChangeText={setMaxAge}
+                  placeholder="99"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
             </View>
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>{language === "en" ? "Max Distance (km)" : "Maksimum Mesafe (km)"}</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="number-pad"
-              value={maxDistanceKm}
-              onChangeText={setMaxDistanceKm}
-              placeholder="50"
-              placeholderTextColor={colors.textSecondary}
-            />
+            <Text style={styles.label}>{language === "en" ? "Max Distance" : "Maksimum Mesafe"}</Text>
+            <View style={styles.distanceInputWrap}>
+              <Feather name="navigation" size={16} color={colors.textSecondary} />
+              <TextInput
+                style={styles.distanceInput}
+                keyboardType="number-pad"
+                value={maxDistanceKm}
+                onChangeText={setMaxDistanceKm}
+                placeholder="50"
+                placeholderTextColor={colors.textSecondary}
+              />
+              <Text style={styles.unitText}>km</Text>
+            </View>
           </View>
 
           <View style={styles.actions}>
             <PrimaryButton label={language === "en" ? "Apply" : "Uygula"} onPress={handleApply} />
-            <PrimaryButton label={language === "en" ? "Clear Filters" : "Filtreleri Temizle"} variant="outline" onPress={handleClear} />
-            <PrimaryButton label={t("close")} variant="outline" onPress={onDismiss} />
+            <Pressable onPress={handleClear} style={styles.clearLink} hitSlop={8}>
+              <Text style={styles.clearLinkText}>{language === "en" ? "Clear Filters" : "Filtreleri Temizle"}</Text>
+            </Pressable>
           </View>
         </Pressable>
       </Pressable>
