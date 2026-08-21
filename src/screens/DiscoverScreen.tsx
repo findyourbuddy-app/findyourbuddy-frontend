@@ -184,7 +184,12 @@ export function DiscoverScreen() {
   }, []);
 
   function handlePressLocationPill(): void {
+    setIsCityPickerVisible(true);
+  }
+
+  async function handleCitySelect(result: GeocodingResult): Promise<void> {
     if (!isPremium) {
+      setIsCityPickerVisible(false);
       Alert.alert(
         language === "en" ? "✈️ Travel Passport (Custom Location)" : "✈️ Pasaport (Sanal Konum Seçimi)",
         language === "en"
@@ -209,10 +214,7 @@ export function DiscoverScreen() {
       );
       return;
     }
-    setIsCityPickerVisible(true);
-  }
 
-  async function handleCitySelect(result: GeocodingResult): Promise<void> {
     const lat = result.latitude;
     const lon = result.longitude;
     setUserCoords({ latitude: lat, longitude: lon });

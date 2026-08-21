@@ -33,7 +33,9 @@ export function LikesReceivedScreen() {
   const [isUpgrading, setIsUpgrading] = useState(false);
 
   const loadLikers = useCallback(async () => {
-    setIsLoading(true);
+    if (likers.length === 0) {
+      setIsLoading(true);
+    }
     try {
       const results = await getIncomingLikes();
       const seen = new Map<number, LikerResponse>();
@@ -50,7 +52,7 @@ export function LikesReceivedScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [likers.length]);
 
   useFocusEffect(
     useCallback(() => {
