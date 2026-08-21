@@ -26,14 +26,6 @@ import type { Message, ReportReason } from "../types";
 
 type Props = NativeStackScreenProps<MainStackParamList, "Chat">;
 
-const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
-  { reason: "harassment", label: "Taciz / Rahatsız Edici Davranış" },
-  { reason: "spam", label: "Spam" },
-  { reason: "fake_profile", label: "Sahte Profil" },
-  { reason: "inappropriate_content", label: "Uygunsuz İçerik" },
-  { reason: "other", label: "Diğer" },
-];
-
 import { useAppTheme } from "../context/ThemeContext";
 
 export function ChatScreen({ route }: Props) {
@@ -49,6 +41,14 @@ export function ChatScreen({ route }: Props) {
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
+
+  const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
+    { reason: "harassment", label: language === "en" ? "Harassment / Inappropriate Behavior" : "Taciz / Rahatsız Edici Davranış" },
+    { reason: "spam", label: language === "en" ? "Spam" : "Spam" },
+    { reason: "fake_profile", label: language === "en" ? "Fake Profile" : "Sahte Profil" },
+    { reason: "inappropriate_content", label: language === "en" ? "Inappropriate Content" : "Uygunsuz İçerik" },
+    { reason: "other", label: language === "en" ? "Other" : "Diğer" },
+  ];
 
   const defaultIcebreakers = useMemo<IcebreakerItem[]>(
     () => [
@@ -157,7 +157,7 @@ export function ChatScreen({ route }: Props) {
     return () => unsubscribe();
   }, [matchId, user]);
 
-  async function initiateCall(type: "voice" | "video") {
+  const initiateCall = useCallback(async (type: "voice" | "video") => {
     if (!user) return;
     const docRef = doc(db, "matches", String(matchId), "call", "signal");
     try {
@@ -177,7 +177,7 @@ export function ChatScreen({ route }: Props) {
       isCaller: true,
       callType: type,
     });
-  }
+  }, [user, matchId, otherUserName, navigation]);
 
   async function handleAcceptCall() {
     if (!incomingCall) return;
@@ -209,19 +209,24 @@ export function ChatScreen({ route }: Props) {
 
   function confirmUnmatch(): void {
     Alert.alert(
-      "Eşleşmeyi Kaldır",
-      `${otherUserName} ile olan eşleşmeni kaldırmak istediğine emin misin? Bu sohbet geçmişini silecektir.`,
+      language === "en" ? "Unmatch" : "Eşleşmeyi Kaldır",
+      language === "en"
+        ? `Are you sure you want to unmatch with ${otherUserName}? This will delete your chat history.`
+        : `${otherUserName} ile olan eşleşmeni kaldırmak istediğine emin misin? Bu sohbet geçmişini silecektir.`,
       [
-        { text: "Vazgeç", style: "cancel" },
+        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
         {
-          text: "Eşleşmeyi Kaldır",
+          text: language === "en" ? "Unmatch" : "Eşleşmeyi Kaldır",
           style: "destructive",
           onPress: async () => {
             try {
               await apiClient.delete(`/matches/${matchId}`);
               navigation.goBack();
             } catch {
-              Alert.alert("Hata", "Eşleşme kaldırılırken bir sorun oluştu.");
+              Alert.alert(
+                language === "en" ? "Error" : "Hata",
+                language === "en" ? "A problem occurred while removing the match." : "Eşleşme kaldırılırken bir sorun oluştu."
+              );
             }
           },
         },
@@ -238,19 +243,24 @@ export function ChatScreen({ route }: Props) {
 
   function confirmBlock(): void {
     Alert.alert(
-      "Kullanıcıyı Engelle",
-      `${otherUserName} adlı kullanıcıyı engellemek istediğine emin misin? Bir daha eşleşemezsiniz ve mesajlaşamazsınız.`,
+      language === "en" ? "Block User" : "Kullanıcıyı Engelle",
+      language === "en"
+        ? `Are you sure you want to block ${otherUserName}? You will no longer be able to match or message each other.`
+        : `${otherUserName} adlı kullanıcıyı engellemek istediğine emin misin? Bir daha eşleşemezsiniz ve mesajlaşamazsınız.`,
       [
-        { text: "Vazgeç", style: "cancel" },
+        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
         {
-          text: "Engelle",
+          text: language === "en" ? "Block" : "Engelle",
           style: "destructive",
           onPress: async () => {
             try {
               await blockUser(otherUserId);
               navigation.goBack();
             } catch {
-              Alert.alert("Bir sorun oluştu", "Kullanıcı engellenemedi. Lütfen tekrar dene.");
+              Alert.alert(
+                language === "en" ? "Error" : "Bir sorun oluştu",
+                language === "en" ? "Could not block user. Please try again." : "Kullanıcı engellenemedi. Lütfen tekrar dene."
+              );
             }
           },
         },
@@ -260,34 +270,40 @@ export function ChatScreen({ route }: Props) {
 
   function submitReport(reason: ReportReason): void {
     reportUser({ reported_user_id: otherUserId, reason }).then(
-      () => Alert.alert("Teşekkürler", "Şikayetin alındı, incelenecek."),
-      () => Alert.alert("Bir sorun oluştu", "Şikayet gönderilemedi. Lütfen tekrar dene.")
+      () => Alert.alert(
+        language === "en" ? "Thank You" : "Teşekkürler",
+        language === "en" ? "Your report has been received and will be reviewed." : "Şikayetin alındı, incelenecek."
+      ),
+      () => Alert.alert(
+        language === "en" ? "Error" : "Bir sorun oluştu",
+        language === "en" ? "Report could not be sent. Please try again." : "Şikayet gönderilemedi. Lütfen tekrar dene."
+      )
     );
   }
 
   function openReportReasons(): void {
     Alert.alert(
-      "Şikayet Nedeni",
-      "Bu kullanıcıyı neden şikayet ediyorsun?",
+      language === "en" ? "Report Reason" : "Şikayet Nedeni",
+      language === "en" ? "Why are you reporting this user?" : "Bu kullanıcıyı neden şikayet ediyorsun?",
       [
         ...REPORT_REASONS.map(({ reason, label }) => ({
           text: label,
           onPress: () => submitReport(reason),
         })),
-        { text: "Vazgeç", style: "cancel" as const },
+        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" as const },
       ]
     );
   }
 
-  function openSafetyMenu(): void {
+  const openSafetyMenu = useCallback(() => {
     Alert.alert(otherUserName, undefined, [
-      { text: "Buluştun mu?", onPress: () => setShowFeedbackBanner(true) },
-      { text: "Eşleşmeyi Kaldır", style: "destructive", onPress: confirmUnmatch },
-      { text: "Şikayet Et", onPress: openReportReasons },
-      { text: "Engelle", style: "destructive", onPress: confirmBlock },
-      { text: "Vazgeç", style: "cancel" },
+      { text: language === "en" ? "Did you meet?" : "Buluştun mu?", onPress: () => setShowFeedbackBanner(true) },
+      { text: language === "en" ? "Unmatch" : "Eşleşmeyi Kaldır", style: "destructive", onPress: confirmUnmatch },
+      { text: language === "en" ? "Report" : "Şikayet Et", onPress: openReportReasons },
+      { text: language === "en" ? "Block" : "Engelle", style: "destructive", onPress: confirmBlock },
+      { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
     ]);
-  }
+  }, [user, otherUserId, otherUserName, language]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -326,8 +342,7 @@ export function ChatScreen({ route }: Props) {
         </View>
       ),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otherUserId, otherUserName, otherUserPhoto, accentColor]);
+  }, [otherUserId, otherUserName, otherUserPhoto, accentColor, initiateCall, openSafetyMenu]);
 
   // Firestore only carries messages sent after the real-time chat migration --
   // older conversation history lives in Postgres and needs a one-time fetch so
@@ -400,7 +415,7 @@ export function ChatScreen({ route }: Props) {
 
   function scrollToBottom(animated = true) {
     setTimeout(() => {
-      messageListRef.current?.scrollToEnd({ animated });
+      messageListRef.current?.scrollToOffset({ offset: 0, animated });
     }, 100);
   }
 
@@ -474,6 +489,7 @@ export function ChatScreen({ route }: Props) {
   }
 
   async function handleSendGif(gifUrl: string) {
+    if (isSending) return;
     setGifModalVisible(false);
     setIsSending(true);
     try {
@@ -678,7 +694,7 @@ export function ChatScreen({ route }: Props) {
             <Text style={typeScale.h2}>{language === "en" ? "Send GIF 🎬" : "GIF Gönder 🎬"}</Text>
             <ScrollView style={{ maxHeight: 340 }} contentContainerStyle={styles.gifGrid} showsVerticalScrollIndicator={true}>
               {POPULAR_GIFS.map((gif) => (
-                <Pressable key={gif.key} style={styles.gifTile} onPress={() => handleSendGif(gif.url)}>
+                <Pressable key={gif.key} style={styles.gifTile} onPress={() => handleSendGif(gif.url)} disabled={isSending}>
                   <Image source={{ uri: gif.url }} style={styles.gifImage} contentFit="cover" />
                   <Text style={styles.gifLabel}>{gif.label}</Text>
                 </Pressable>

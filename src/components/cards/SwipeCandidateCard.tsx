@@ -22,12 +22,17 @@ const DRAG_THRESHOLD_X = 100;
 const DRAG_THRESHOLD_Y = 120;
 const TAP_MOVE_THRESHOLD = 6;
 
+import { resolvePhotoUrl } from "../ui/Avatar";
+
 function candidatePhotoUrls(candidate: User): string[] {
-  const urls = [
+  const rawUrls = [
     candidate.photo_url,
     ...candidate.photos.map((photo) => photo.photo_url),
   ].filter((url): url is string => Boolean(url));
-  return Array.from(new Set(urls));
+  const resolved = rawUrls
+    .map((u) => resolvePhotoUrl(u))
+    .filter((u): u is string => Boolean(u));
+  return Array.from(new Set(resolved));
 }
 
 import { useAppTheme } from "../../context/ThemeContext";

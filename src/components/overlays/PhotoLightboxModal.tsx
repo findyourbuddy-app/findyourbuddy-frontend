@@ -2,6 +2,7 @@ import { Modal, Pressable, StatusBar, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { resolvePhotoUrl } from "../ui/Avatar";
 import { colors } from "../../theme";
 
 interface PhotoLightboxModalProps {
@@ -15,12 +16,15 @@ export function PhotoLightboxModal({ visible, photoUrl, onClose }: PhotoLightbox
 
   if (!photoUrl) return null;
 
+  const resolved = resolvePhotoUrl(photoUrl);
+  if (!resolved) return null;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <StatusBar hidden />
       <View style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <Image source={{ uri: photoUrl }} style={styles.image} contentFit="contain" />
+        <Image source={{ uri: resolved }} style={styles.image} contentFit="contain" />
         <Pressable
           style={[styles.closeButton, { top: insets.top + 12 }]}
           onPress={onClose}

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { Avatar } from "../components/ui/Avatar";
+import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import {
@@ -190,10 +190,17 @@ export function MyPhotosScreen() {
               const isUploadingThis = uploadingSlot === index;
 
               if (photo) {
+                const resolvedUri = resolvePhotoUrl(photo.photo_url);
                 return (
                   <View key={photo.id} style={styles.photoBox}>
                     <Pressable onPress={() => setLightboxPhoto(photo.photo_url)}>
-                      <Image source={{ uri: photo.photo_url }} style={styles.photoImage} />
+                      {resolvedUri ? (
+                        <Image source={{ uri: resolvedUri }} style={styles.photoImage} />
+                      ) : (
+                        <View style={styles.emptyBox}>
+                          <Feather name="image" size={24} color={colors.textSecondary} />
+                        </View>
+                      )}
                     </Pressable>
                     <Pressable
                       style={styles.deleteBtn}

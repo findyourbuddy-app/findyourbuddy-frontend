@@ -4,14 +4,14 @@ import { deleteToken, getToken, setToken } from "../utils/tokenStorage";
 
 export const apiClient = axios.create({
   baseURL: getApiBaseUrl(),
+  timeout: 15000,
 });
 
 declare const __DEV__: boolean;
 
 apiClient.interceptors.request.use((config) => {
-  const baseUrl = getApiBaseUrl();
-  config.baseURL = baseUrl;
   if (typeof __DEV__ !== "undefined" && __DEV__) {
+    const baseUrl = config.baseURL || getApiBaseUrl();
     console.log(`[API Request] ${config.method?.toUpperCase()} ${baseUrl}${config.url}`);
   }
   return config;

@@ -41,19 +41,15 @@ export function ForgotPasswordScreen() {
       setError(language === "en" ? "Please enter your email address." : "Lütfen e-posta adresinizi girin.");
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setError(language === "en" ? "Please enter a valid email address." : "Geçerli bir e-posta adresi girin.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const res = await requestPasswordReset(cleanEmail);
-      if (res && res.reset_code) {
-        setToken(res.reset_code);
-        Alert.alert(
-          language === "en" ? "Reset Code Created 🔑" : "Sıfırlama Kodu Oluşturuldu 🔑",
-          language === "en"
-            ? `Your reset code is: ${res.reset_code}\n\nIt has been automatically filled below.`
-            : `Sıfırlama kodunuz: ${res.reset_code}\n\nKutucuğa otomatik dolduruldu.`
-        );
-      }
+      await requestPasswordReset(cleanEmail);
       setStep("confirm");
     } catch (err) {
       setError(formatApiError(err, language));

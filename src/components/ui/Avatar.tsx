@@ -38,13 +38,19 @@ export function resolvePhotoUrl(url?: string | null): string | null {
   if (trimmed.startsWith("file://") || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
     return trimmed;
   }
+  const base = API_BASE_URL.replace(/\/+$/, "");
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    if (trimmed.includes("localhost:8000") || trimmed.includes("127.0.0.1:8000")) {
-      return trimmed.replace(/http:\/\/(localhost|127\.0\.0\.1):8000/, API_BASE_URL.replace(/\/+$/, ""));
+    if (trimmed.includes("localhost:") || trimmed.includes("127.0.0.1:") || trimmed.includes("192.168.")) {
+      return trimmed.replace(/http:\/\/[^/]+/, base);
+    }
+    if (trimmed.includes("r2.dev")) {
+      const filename = trimmed.split("/").pop();
+      if (filename) {
+        return `${base}/static/uploads/${filename}`;
+      }
     }
     return trimmed;
   }
-  const base = API_BASE_URL.replace(/\/+$/, "");
   const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return `${base}${path}`;
 }

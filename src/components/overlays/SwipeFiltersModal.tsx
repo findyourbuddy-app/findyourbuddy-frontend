@@ -35,6 +35,9 @@ const ZODIAC_LIST = [
   "Yay ♐", "Oğlak ♑", "Kova ♒", "Balık ♓"
 ];
 
+const MIN_AGE = 18;
+const MAX_AGE = 100;
+
 export function SwipeFiltersModal({
   visible,
   initialFilters,
@@ -85,9 +88,24 @@ export function SwipeFiltersModal({
   }, [visible, initialFilters]);
 
   function handleApply(): void {
+    const rawMin = toNumber(minAge);
+    const rawMax = toNumber(maxAge);
+
+    const clampedMin = rawMin !== undefined
+      ? Math.max(MIN_AGE, Math.min(rawMin, MAX_AGE))
+      : undefined;
+    const clampedMax = rawMax !== undefined
+      ? Math.min(MAX_AGE, Math.max(rawMax, MIN_AGE))
+      : undefined;
+
+    const validatedMin = clampedMin;
+    const validatedMax = clampedMin !== undefined && clampedMax !== undefined && clampedMin > clampedMax
+      ? clampedMin
+      : clampedMax;
+
     onApply({
-      minAge: toNumber(minAge),
-      maxAge: toNumber(maxAge),
+      minAge: validatedMin,
+      maxAge: validatedMax,
       maxDistanceKm: toNumber(maxDistanceKm),
       genderPreference: genderPreference !== "all" ? genderPreference : undefined,
       requirePhoto,

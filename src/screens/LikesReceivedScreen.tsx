@@ -47,12 +47,15 @@ export function LikesReceivedScreen() {
       setLikers(Array.from(seen.values()));
     } catch (error) {
       if (!axios.isAxiosError(error) || error.response?.status !== 403) {
-        Alert.alert("Bir sorun oluştu", "Beğenenler yüklenemedi. Lütfen tekrar dene.");
+        Alert.alert(
+          language === "en" ? "Error" : "Bir sorun oluştu",
+          language === "en" ? "Could not load. Please try again." : "Beğenenler yüklenemedi. Lütfen tekrar dene."
+        );
       }
     } finally {
       setIsLoading(false);
     }
-  }, [likers.length]);
+  }, [likers.length, language]);
 
   useFocusEffect(
     useCallback(() => {
@@ -90,7 +93,10 @@ export function LikesReceivedScreen() {
       }
     } catch (error) {
       setLikers(previousLikers);
-      Alert.alert("Bir sorun oluştu", "Beğeni kaydedilemedi. Lütfen tekrar dene.");
+      Alert.alert(
+        language === "en" ? "Error" : "Bir sorun oluştu",
+        language === "en" ? "Could not save like. Please try again." : "Beğeni kaydedilemedi. Lütfen tekrar dene."
+      );
     }
   };
 
@@ -106,10 +112,10 @@ export function LikesReceivedScreen() {
       );
       return;
     }
-    
+
     const previousLikers = [...likers];
     setLikers((prev) => prev.filter((l) => l.user.id !== item.user.id));
-    
+
     try {
       await createSwipe({
         target_id: item.user.id,
@@ -118,7 +124,10 @@ export function LikesReceivedScreen() {
       });
     } catch (error) {
       setLikers(previousLikers);
-      Alert.alert("Bir sorun oluştu", "İşlem kaydedilemedi. Lütfen tekrar dene.");
+      Alert.alert(
+        language === "en" ? "Error" : "Bir sorun oluştu",
+        language === "en" ? "Could not save action. Please try again." : "İşlem kaydedilemedi. Lütfen tekrar dene."
+      );
     }
   };
 
@@ -136,9 +145,26 @@ export function LikesReceivedScreen() {
     }
     navigation.navigate("CandidateProfile", {
       candidate: item.user,
-      onSwipeLeft: () => {},
-      onSwipeRight: () => {},
-      onSwipeUp: () => {},
+      onSwipeLeft: async () => {
+        try {
+          await createSwipe({ target_id: item.user.id, event_id: item.event_id, direction: "pass" });
+          loadLikers();
+        } catch (e) {
+          // silently ignore
+        }
+      },
+      onSwipeRight: async () => {
+        try {
+          await createSwipe({ target_id: item.user.id, event_id: item.event_id, direction: "like" });
+          loadLikers();
+        } catch (e) {}
+      },
+      onSwipeUp: async () => {
+        try {
+          await createSwipe({ target_id: item.user.id, event_id: item.event_id, direction: "super_like" });
+          loadLikers();
+        } catch (e) {}
+      },
     });
   };
 
@@ -242,7 +268,7 @@ export function LikesReceivedScreen() {
               </View>
             )}
           </View>
-          
+
           <View style={styles.rowActions}>
             <Pressable
               style={[styles.itemActionButton, styles.itemPassButton]}
