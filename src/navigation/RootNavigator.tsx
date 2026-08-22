@@ -5,7 +5,9 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
 import { AlertHost } from "../components/ui/AlertHost";
+import { AppSplashScreen } from "../components/ui/AppSplashScreen";
 import { FloatingTabBar } from "../components/navigation/FloatingTabBar";
 import { colors, spacing } from "../theme";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
@@ -32,6 +34,7 @@ import { ViewProfileScreen } from "../screens/ViewProfileScreen";
 import { CommunityGuidelinesScreen } from "../screens/CommunityGuidelinesScreen";
 import { CallScreen } from "../screens/CallScreen";
 import { AIRecommendationsScreen } from "../screens/AIRecommendationsScreen";
+import { MyPhotosScreen } from "../screens/MyPhotosScreen";
 import { OnboardingScreen } from "../screens/OnboardingScreen";
 import { PhoneVerificationScreen } from "../screens/PhoneVerificationScreen";
 import type { User } from "../types";
@@ -52,8 +55,6 @@ export type MainTabParamList = {
   Swipe: SwipeParams;
   Messages: undefined;
 };
-
-import { MyPhotosScreen } from "../screens/MyPhotosScreen";
 
 export type MainStackParamList = {
   Onboarding: undefined;
@@ -141,8 +142,6 @@ function MainTabNavigator() {
     </MainTabs.Navigator>
   );
 }
-
-import { useAppTheme } from "../context/ThemeContext";
 
 function MainNavigator() {
   const { user, justRegistered } = useAuth();
@@ -261,8 +260,6 @@ function MainNavigator() {
     </MainStack.Navigator>
   );
 }
-
-import { AppSplashScreen } from "../components/ui/AppSplashScreen";
 
 export function RootNavigator() {
   const { user, isLoading } = useAuth();

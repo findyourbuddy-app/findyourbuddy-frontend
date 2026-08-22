@@ -10,6 +10,9 @@ import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
 import type { GeocodingResult } from "../api/geocoding";
 import { createEvent, createEventCreditsCheckoutSession, getEventCreationQuota } from "../api/events";
+import { getCurrentUser } from "../api/users";
+import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
 import type { EventCreationQuota } from "../types";
 import { CATEGORIES } from "../constants/categories";
 import * as Location from "expo-location";
@@ -46,10 +49,6 @@ function parseLocalDateTime(dateText: string, timeText: string): Date | null {
   );
   return Number.isNaN(date.getTime()) ? null : date;
 }
-
-import { getCurrentUser } from "../api/users";
-import { useAuth } from "../context/AuthContext";
-import { useAppTheme } from "../context/ThemeContext";
 
 export function CreateEventScreen() {
   const navigation = useNavigation<CreateEventNavigationProp>();

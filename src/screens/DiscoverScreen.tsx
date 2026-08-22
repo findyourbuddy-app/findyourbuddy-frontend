@@ -24,6 +24,7 @@ import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { attendEvent, listEvents, recordBulkEventImpressions } from "../api/events";
 import { formatEventDate } from "../utils/date";
 import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
 import { CATEGORIES, getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, spacing, typeScale, radius, shadows } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
@@ -74,8 +75,6 @@ function isSmartMatch(text: string, query: string): boolean {
   const queryTokens = normQuery.split(/\s+/).filter(Boolean);
   return queryTokens.every((token) => normText.includes(token));
 }
-
-import { useAppTheme } from "../context/ThemeContext";
 
 export function DiscoverScreen() {
   const navigation = useNavigation<DiscoverNavigationProp>();

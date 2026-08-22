@@ -15,6 +15,8 @@ import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { FieldKey } from "../utils/profileCompletion";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
+import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { LANGUAGES_LIST } from "../constants/languages";
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
@@ -25,10 +27,6 @@ import { activateBoost, getCurrentUser, uploadProfilePhoto } from "../api/users"
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
-
-import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
-
-import { useAppTheme } from "../context/ThemeContext";
 
 type ProfileNavigationProp = NativeStackNavigationProp<MainStackParamList, "Profile">;
 
