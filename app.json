@@ -14,7 +14,8 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Görüntülü arama yapabilmek için kameraya erişim izni gerekiyor.",
-        "NSMicrophoneUsageDescription": "Sesli ve görüntülü arama yapabilmek için mikrofona erişim izni gerekiyor."
+        "NSMicrophoneUsageDescription": "Sesli ve görüntülü arama yapabilmek için mikrofona erişim izni gerekiyor.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -36,7 +37,9 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ]
     },
     "web": {
