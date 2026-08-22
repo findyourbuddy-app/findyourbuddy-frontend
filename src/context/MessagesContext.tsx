@@ -19,12 +19,16 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
       setHasUnreadMessages(false);
       return;
     }
-    const matches = await listMyMatches();
-    setHasUnreadMessages(
-      matches.some(
-        (match) => match.last_message && !match.last_message.is_read && match.last_message.sender_id !== user.id
-      )
-    );
+    try {
+      const matches = await listMyMatches();
+      setHasUnreadMessages(
+        matches.some(
+          (match) => match.last_message && !match.last_message.is_read && match.last_message.sender_id !== user.id
+        )
+      );
+    } catch {
+      // Best-effort; do not crash the app on network errors
+    }
   }, [user]);
 
   useEffect(() => {

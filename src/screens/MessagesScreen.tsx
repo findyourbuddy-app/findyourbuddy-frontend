@@ -1,9 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
-  Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,7 +17,7 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ChatListItem } from "../components/cards/ChatListItem";
 import { MatchPreviewCard } from "../components/cards/MatchPreviewCard";
-import { SectionHeader } from "../components/ui/SectionHeader";
+import { Chip } from "../components/ui/Chip";
 import { listMyMatches } from "../api/matches";
 import { useAuth } from "../context/AuthContext";
 import { useMessagesContext } from "../context/MessagesContext";
@@ -33,8 +33,6 @@ type MessagesNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<MainStackParamList>
 >;
 
-const INITIAL_CHAT_LIMIT = 5;
-
 export function MessagesScreen() {
   const navigation = useNavigation<MessagesNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -44,9 +42,8 @@ export function MessagesScreen() {
 
   const [matches, setMatches] = useState<Match[]>([]);
   const [query, setQuery] = useState("");
-  const [modalQuery, setModalQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [allMatchesModalVisible, setAllMatchesModalVisible] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "matches" | "groups">("all");
 
   const loadMatches = useCallback(
     async (showSpinner: boolean) => {
@@ -79,7 +76,6 @@ export function MessagesScreen() {
   );
 
   function openChat(match: Match): void {
-    setAllMatchesModalVisible(false);
     navigation.navigate("Chat", {
       matchId: match.id,
       otherUserId: match.other_user.id,
@@ -91,31 +87,47 @@ export function MessagesScreen() {
     });
   }
 
-  const filtered = matches.filter((match) =>
-    match.other_user.display_name.toLowerCase().includes(query.trim().toLowerCase())
+  const displayMatches = useMemo(() => {
+    let list = matches.filter((match) =>
+      match.other_user.display_name.toLowerCase().includes(query.trim().toLowerCase())
+    );
+
+    if (activeFilter === "unread") {
+      list = list.filter(
+        (m) => m.last_message && m.last_message.sender_id !== user?.id && !m.last_message.is_read
+      );
+    } else if (activeFilter === "matches") {
+      list = list.filter((m) => !m.event_is_group);
+    } else if (activeFilter === "groups") {
+      list = list.filter((m) => m.event_is_group);
+    }
+
+    return list;
+  }, [matches, query, activeFilter, user]);
+
+  const newMatches = matches.filter((match) => isToday(match.created_at));
+
+  const unreadCount = useMemo(
+    () =>
+      matches.filter(
+        (m) => m.last_message && m.last_message.sender_id !== user?.id && !m.last_message.is_read
+      ).length,
+    [matches, user]
   );
 
-  const modalFiltered = matches.filter((match) =>
-    match.other_user.display_name.toLowerCase().includes(modalQuery.trim().toLowerCase())
-  );
-
-  const groupChats = filtered.filter((match) => match.event_is_group);
-  const buddyChats = filtered.filter((match) => !match.event_is_group);
-
-  const newMatches = filtered.filter((match) => isToday(match.created_at));
-  const mainConversations = buddyChats.slice(0, INITIAL_CHAT_LIMIT);
-  const totalCount = buddyChats.length;
-
-  if (!user) {
-    return null;
-  }
+  const filterTabs = [
+    { id: "all", label: language === "en" ? "💬 All" : "💬 Tümü", count: matches.length },
+    { id: "unread", label: language === "en" ? "🔴 Unread" : "🔴 Okunmamış", count: unreadCount },
+    { id: "matches", label: language === "en" ? "🤝 Matches" : "🤝 Eşleşmeler", count: matches.filter((m) => !m.event_is_group).length },
+    { id: "groups", label: language === "en" ? "👥 Groups" : "👥 Gruplar", count: matches.filter((m) => m.event_is_group).length },
+  ];
 
   return (
     <View style={styles.container}>
       <FlatList
         style={[styles.background, { backgroundColor: bgGradient[0] }]}
         contentContainerStyle={styles.list}
-        data={mainConversations}
+        data={displayMatches}
         keyExtractor={(match) => String(match.id)}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadMatches(true)} />}
         ListHeaderComponent={
@@ -143,9 +155,33 @@ export function MessagesScreen() {
               />
             </View>
 
-            {newMatches.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabContainer}>
+              {filterTabs.map((tab) => {
+                const isActive = activeFilter === tab.id;
+                return (
+                  <Pressable
+                    key={tab.id}
+                    style={[styles.filterTab, isActive && styles.filterTabActive]}
+                    onPress={() => setActiveFilter(tab.id as any)}
+                  >
+                    <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
+                      {tab.label}
+                    </Text>
+                    {tab.count > 0 ? (
+                      <View style={[styles.filterBadge, isActive && styles.filterBadgeActive]}>
+                        <Text style={[styles.filterBadgeText, isActive && styles.filterBadgeTextActive]}>
+                          {tab.count}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {newMatches.length > 0 && activeFilter === "all" ? (
               <View style={styles.section}>
-                <SectionHeader title={t("newMatchesTitle")} actionLabel={t("today")} />
+                <Text style={styles.sectionSubTitle}>{t("newMatchesTitle")}</Text>
                 {newMatches.map((match) => (
                   <View key={match.id} style={styles.matchCardWrapper}>
                     <MatchPreviewCard match={match} onPressMessage={() => openChat(match)} />
@@ -153,28 +189,6 @@ export function MessagesScreen() {
                 ))}
               </View>
             ) : null}
-
-            {groupChats.length > 0 ? (
-              <View style={styles.section}>
-                <SectionHeader title={language === "en" ? "👥 Group Chats" : "👥 Grup Sohbetleri"} />
-                {groupChats.map((match) => (
-                  <View key={match.id} style={styles.chatItemWrapper}>
-                    <ChatListItem
-                      match={match}
-                      currentUserId={user.id}
-                      onPress={() => openChat(match)}
-                      onBlocked={() => loadMatches(true)}
-                    />
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            <SectionHeader
-              title={language === "en" ? "💬 Birebir Sohbetler" : "💬 Birebir Sohbetler"}
-              actionLabel={totalCount > INITIAL_CHAT_LIMIT ? `${t("seeAll")} (${totalCount})` : t("seeAll")}
-              onActionPress={() => setAllMatchesModalVisible(true)}
-            />
           </View>
         }
         ListEmptyComponent={
@@ -184,71 +198,13 @@ export function MessagesScreen() {
           <View style={styles.chatItemWrapper}>
             <ChatListItem
               match={item}
-              currentUserId={user.id}
+              currentUserId={user ? user.id : 0}
               onPress={() => openChat(item)}
               onBlocked={() => loadMatches(true)}
             />
           </View>
         )}
       />
-
-      {/* See All Conversations Popup Modal */}
-      <Modal
-        visible={allMatchesModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setAllMatchesModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => setAllMatchesModalVisible(false)}
-        >
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeaderRow}>
-              <Text style={typeScale.h2}>
-                {language === "en" ? `All Conversations (${modalFiltered.length})` : `Tüm Sohbetler (${modalFiltered.length})`}
-              </Text>
-              <Pressable
-                style={styles.modalCloseBtn}
-                onPress={() => setAllMatchesModalVisible(false)}
-              >
-                <Feather name="x" size={20} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-
-            <View style={styles.modalSearchBar}>
-              <Feather name="search" size={16} color={colors.textSecondary} />
-              <TextInput
-                placeholder={t("searchPlaceholder")}
-                placeholderTextColor={colors.textSecondary}
-                value={modalQuery}
-                onChangeText={setModalQuery}
-                style={styles.searchInput}
-              />
-            </View>
-
-            <FlatList
-              style={styles.modalList}
-              data={modalFiltered}
-              keyExtractor={(item) => String(item.id)}
-              showsVerticalScrollIndicator={true}
-              ListEmptyComponent={
-                <Text style={styles.emptyText}>{t("noMatchesYetFindEvents")}</Text>
-              }
-              renderItem={({ item }) => (
-                <View style={styles.chatItemWrapper}>
-                  <ChatListItem
-                    match={item}
-                    currentUserId={user.id}
-                    onPress={() => openChat(item)}
-                    onBlocked={() => loadMatches(true)}
-                  />
-                </View>
-              )}
-            />
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -352,5 +308,57 @@ const styles = StyleSheet.create({
   },
   modalList: {
     marginTop: spacing.xs,
+  },
+  filterTabContainer: {
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  filterTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.soft,
+  },
+  filterTabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterTabText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  filterTabTextActive: {
+    color: colors.surface,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  filterBadge: {
+    backgroundColor: colors.background,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  filterBadgeActive: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+  },
+  filterBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  filterBadgeTextActive: {
+    color: colors.surface,
+  },
+  sectionSubTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
 });

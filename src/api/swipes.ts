@@ -6,6 +6,9 @@ export interface SwipeCandidateFilters {
   maxAge?: number;
   maxDistanceKm?: number;
   genderPreference?: string;
+  requirePhoto?: boolean;
+  onlyOnline?: boolean;
+  zodiacSign?: string;
 }
 
 export function getSwipeCandidates(

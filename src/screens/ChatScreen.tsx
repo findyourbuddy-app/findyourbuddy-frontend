@@ -7,7 +7,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
 import axios from "axios";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, type IcebreakerItem } from "../api/messages";
 import { IcebreakerStrip } from "../components/chat/IcebreakerStrip";
@@ -26,14 +26,6 @@ import type { Message, ReportReason } from "../types";
 
 type Props = NativeStackScreenProps<MainStackParamList, "Chat">;
 
-const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
-  { reason: "harassment", label: "Taciz / Rahatsız Edici Davranış" },
-  { reason: "spam", label: "Spam" },
-  { reason: "fake_profile", label: "Sahte Profil" },
-  { reason: "inappropriate_content", label: "Uygunsuz İçerik" },
-  { reason: "other", label: "Diğer" },
-];
-
 import { useAppTheme } from "../context/ThemeContext";
 
 export function ChatScreen({ route }: Props) {
@@ -45,29 +37,47 @@ export function ChatScreen({ route }: Props) {
   const [historicalMessages, setHistoricalMessages] = useState<Message[]>([]);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
-  const [selectedImage, setSelectedImage] = useState<{ uri: string; base64?: string | null } | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{ uri: string } | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
 
-  const [aiIcebreakers, setAiIcebreakers] = useState<IcebreakerItem[]>([]);
+  const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
+    { reason: "harassment", label: language === "en" ? "Harassment / Inappropriate Behavior" : "Taciz / Rahatsız Edici Davranış" },
+    { reason: "spam", label: language === "en" ? "Spam" : "Spam" },
+    { reason: "fake_profile", label: language === "en" ? "Fake Profile" : "Sahte Profil" },
+    { reason: "inappropriate_content", label: language === "en" ? "Inappropriate Content" : "Uygunsuz İçerik" },
+    { reason: "other", label: language === "en" ? "Other" : "Diğer" },
+  ];
+
+  const defaultIcebreakers = useMemo<IcebreakerItem[]>(
+    () => [
+      { text: language === "en" ? `Hi ${otherUserName}! So excited for our event ☕` : `Selam ${otherUserName}! Katılacağımız etkinlik için heyecanlıyım ☕`, type: "text" },
+      { text: language === "en" ? "10-second voice note challenge: say your favorite movie line! 🎙️" : "10 saniyelik ses kaydıyla en sevdiğin film repliğini söyle! 🎙️", type: "voice" },
+      { text: language === "en" ? "Checked your profile, let's connect! 🎨" : "Profilindeki hobilerine baktım, ne zaman buluşuyoruz? 🎨", type: "text" },
+    ],
+    [otherUserName, language]
+  );
+
+  const [aiIcebreakers, setAiIcebreakers] = useState<IcebreakerItem[]>(defaultIcebreakers);
   const [isLoadingIcebreakers, setIsLoadingIcebreakers] = useState(false);
 
   const fetchAiIcebreakers = useCallback(async () => {
-    setIsLoadingIcebreakers(true);
+    // Background fetch: update icebreakers seamlessly without blocking UI spinner
     try {
       const items = await getIcebreakers(matchId);
-      setAiIcebreakers(items);
+      if (items && items.length > 0) {
+        setAiIcebreakers(items);
+      }
     } catch {
-      // Fallback if network or server fails
-    } finally {
-      setIsLoadingIcebreakers(false);
+      // Best-effort; default/cached icebreakers stay in place.
     }
   }, [matchId]);
 
   useEffect(() => {
     fetchAiIcebreakers();
   }, [fetchAiIcebreakers]);
+
 
 
   const POPULAR_GIFS = useMemo(
@@ -115,6 +125,8 @@ export function ChatScreen({ route }: Props) {
   }
 
   const [gifModalVisible, setGifModalVisible] = useState(false);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [incomingCall, setIncomingCall] = useState<{
     callerName: string;
@@ -147,7 +159,43 @@ export function ChatScreen({ route }: Props) {
     return () => unsubscribe();
   }, [matchId, user]);
 
-  async function initiateCall(type: "voice" | "video") {
+  // Listen for other user's typing status
+  useEffect(() => {
+    if (!user) return;
+    const typingRef = doc(db, "matches", String(matchId), "typing", String(otherUserId));
+    const unsubscribe = onSnapshot(typingRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setOtherUserTyping(false);
+        return;
+      }
+      const data = snapshot.data();
+      const updatedAt: Date | null = data.updated_at?.toDate?.() ?? null;
+      const isRecent = updatedAt ? Date.now() - updatedAt.getTime() < 5000 : false;
+      setOtherUserTyping(Boolean(data.is_typing) && isRecent);
+    }, () => {
+      setOtherUserTyping(false);
+    });
+    return () => unsubscribe();
+  }, [matchId, otherUserId, user]);
+
+  const reportTyping = useCallback(async (isTyping: boolean) => {
+    if (!user) return;
+    const typingRef = doc(db, "matches", String(matchId), "typing", String(user.id));
+    try {
+      await setDoc(typingRef, { is_typing: isTyping, updated_at: serverTimestamp() });
+    } catch {}
+  }, [matchId, user]);
+
+  const handleDraftChange = useCallback((text: string) => {
+    setDraft(text);
+    reportTyping(text.length > 0);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (text.length > 0) {
+      typingTimeoutRef.current = setTimeout(() => reportTyping(false), 4000);
+    }
+  }, [reportTyping]);
+
+  const initiateCall = useCallback(async (type: "voice" | "video") => {
     if (!user) return;
     const docRef = doc(db, "matches", String(matchId), "call", "signal");
     try {
@@ -167,7 +215,7 @@ export function ChatScreen({ route }: Props) {
       isCaller: true,
       callType: type,
     });
-  }
+  }, [user, matchId, otherUserName, navigation]);
 
   async function handleAcceptCall() {
     if (!incomingCall) return;
@@ -199,19 +247,24 @@ export function ChatScreen({ route }: Props) {
 
   function confirmUnmatch(): void {
     Alert.alert(
-      "Eşleşmeyi Kaldır",
-      `${otherUserName} ile olan eşleşmeni kaldırmak istediğine emin misin? Bu sohbet geçmişini silecektir.`,
+      language === "en" ? "Unmatch" : "Eşleşmeyi Kaldır",
+      language === "en"
+        ? `Are you sure you want to unmatch with ${otherUserName}? This will delete your chat history.`
+        : `${otherUserName} ile olan eşleşmeni kaldırmak istediğine emin misin? Bu sohbet geçmişini silecektir.`,
       [
-        { text: "Vazgeç", style: "cancel" },
+        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
         {
-          text: "Eşleşmeyi Kaldır",
+          text: language === "en" ? "Unmatch" : "Eşleşmeyi Kaldır",
           style: "destructive",
           onPress: async () => {
             try {
               await apiClient.delete(`/matches/${matchId}`);
               navigation.goBack();
             } catch {
-              Alert.alert("Hata", "Eşleşme kaldırılırken bir sorun oluştu.");
+              Alert.alert(
+                language === "en" ? "Error" : "Hata",
+                language === "en" ? "A problem occurred while removing the match." : "Eşleşme kaldırılırken bir sorun oluştu."
+              );
             }
           },
         },
@@ -228,19 +281,24 @@ export function ChatScreen({ route }: Props) {
 
   function confirmBlock(): void {
     Alert.alert(
-      "Kullanıcıyı Engelle",
-      `${otherUserName} adlı kullanıcıyı engellemek istediğine emin misin? Bir daha eşleşemezsiniz ve mesajlaşamazsınız.`,
+      language === "en" ? "Block User" : "Kullanıcıyı Engelle",
+      language === "en"
+        ? `Are you sure you want to block ${otherUserName}? You will no longer be able to match or message each other.`
+        : `${otherUserName} adlı kullanıcıyı engellemek istediğine emin misin? Bir daha eşleşemezsiniz ve mesajlaşamazsınız.`,
       [
-        { text: "Vazgeç", style: "cancel" },
+        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
         {
-          text: "Engelle",
+          text: language === "en" ? "Block" : "Engelle",
           style: "destructive",
           onPress: async () => {
             try {
               await blockUser(otherUserId);
               navigation.goBack();
             } catch {
-              Alert.alert("Bir sorun oluştu", "Kullanıcı engellenemedi. Lütfen tekrar dene.");
+              Alert.alert(
+                language === "en" ? "Error" : "Bir sorun oluştu",
+                language === "en" ? "Could not block user. Please try again." : "Kullanıcı engellenemedi. Lütfen tekrar dene."
+              );
             }
           },
         },
@@ -250,34 +308,40 @@ export function ChatScreen({ route }: Props) {
 
   function submitReport(reason: ReportReason): void {
     reportUser({ reported_user_id: otherUserId, reason }).then(
-      () => Alert.alert("Teşekkürler", "Şikayetin alındı, incelenecek."),
-      () => Alert.alert("Bir sorun oluştu", "Şikayet gönderilemedi. Lütfen tekrar dene.")
+      () => Alert.alert(
+        language === "en" ? "Thank You" : "Teşekkürler",
+        language === "en" ? "Your report has been received and will be reviewed." : "Şikayetin alındı, incelenecek."
+      ),
+      () => Alert.alert(
+        language === "en" ? "Error" : "Bir sorun oluştu",
+        language === "en" ? "Report could not be sent. Please try again." : "Şikayet gönderilemedi. Lütfen tekrar dene."
+      )
     );
   }
 
   function openReportReasons(): void {
     Alert.alert(
-      "Şikayet Nedeni",
-      "Bu kullanıcıyı neden şikayet ediyorsun?",
+      language === "en" ? "Report Reason" : "Şikayet Nedeni",
+      language === "en" ? "Why are you reporting this user?" : "Bu kullanıcıyı neden şikayet ediyorsun?",
       [
         ...REPORT_REASONS.map(({ reason, label }) => ({
           text: label,
           onPress: () => submitReport(reason),
         })),
-        { text: "Vazgeç", style: "cancel" as const },
+        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" as const },
       ]
     );
   }
 
-  function openSafetyMenu(): void {
+  const openSafetyMenu = useCallback(() => {
     Alert.alert(otherUserName, undefined, [
-      { text: "Buluştun mu?", onPress: () => setShowFeedbackBanner(true) },
-      { text: "Eşleşmeyi Kaldır", style: "destructive", onPress: confirmUnmatch },
-      { text: "Şikayet Et", onPress: openReportReasons },
-      { text: "Engelle", style: "destructive", onPress: confirmBlock },
-      { text: "Vazgeç", style: "cancel" },
+      { text: language === "en" ? "Did you meet?" : "Buluştun mu?", onPress: () => setShowFeedbackBanner(true) },
+      { text: language === "en" ? "Unmatch" : "Eşleşmeyi Kaldır", style: "destructive", onPress: confirmUnmatch },
+      { text: language === "en" ? "Report" : "Şikayet Et", onPress: openReportReasons },
+      { text: language === "en" ? "Block" : "Engelle", style: "destructive", onPress: confirmBlock },
+      { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
     ]);
-  }
+  }, [user, otherUserId, otherUserName, language]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -316,8 +380,7 @@ export function ChatScreen({ route }: Props) {
         </View>
       ),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otherUserId, otherUserName, otherUserPhoto, accentColor]);
+  }, [otherUserId, otherUserName, otherUserPhoto, accentColor, initiateCall, openSafetyMenu]);
 
   // Firestore only carries messages sent after the real-time chat migration --
   // older conversation history lives in Postgres and needs a one-time fetch so
@@ -390,7 +453,7 @@ export function ChatScreen({ route }: Props) {
 
   function scrollToBottom(animated = true) {
     setTimeout(() => {
-      messageListRef.current?.scrollToEnd({ animated });
+      messageListRef.current?.scrollToOffset({ offset: 0, animated });
     }, 100);
   }
 
@@ -428,26 +491,25 @@ export function ChatScreen({ route }: Props) {
 
     setDraft("");
     setSelectedImage(null);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    reportTyping(false);
 
     try {
       if (activeImage) {
-        let imageUrl = activeImage.uri;
-        try {
-          const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
-          const uploaded = await uploadGalleryPhoto(activeImage.uri, fileName);
-          if (uploaded && uploaded.photo_url) {
-            imageUrl = uploaded.photo_url;
-          }
-        } catch {
-          if (activeImage.base64) {
-            imageUrl = `data:image/jpeg;base64,${activeImage.base64}`;
-          }
+        // Uploaded (server-compressed) URL only -- never fall back to the
+        // local file:// URI or an inline base64 data URI, both unreadable
+        // for the other participant, with base64 also bloating every future
+        // read of this chat thread.
+        const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
+        const uploaded = await uploadGalleryPhoto(activeImage.uri, fileName);
+        if (!uploaded?.photo_url) {
+          throw new Error("Image upload did not return a URL");
         }
 
         await sendMessage(matchId, {
           content: activeText || "[Fotoğraf]",
           message_type: "image",
-          media_url: imageUrl,
+          media_url: uploaded.photo_url,
         });
       } else {
         await sendMessage(matchId, { content: activeText, message_type: "text", media_url: undefined });
@@ -467,6 +529,7 @@ export function ChatScreen({ route }: Props) {
   }
 
   async function handleSendGif(gifUrl: string) {
+    if (isSending) return;
     setGifModalVisible(false);
     setIsSending(true);
     try {
@@ -494,19 +557,20 @@ export function ChatScreen({ route }: Props) {
       mediaTypes: ["images"],
       quality: 0.7,
       allowsEditing: false,
-      base64: true,
     });
     const asset = result.assets?.[0];
     if (result.canceled || !asset) {
       return;
     }
 
-    setSelectedImage({ uri: asset.uri, base64: asset.base64 });
+    setSelectedImage({ uri: asset.uri });
   }
 
   if (!user) {
     return null;
   }
+
+  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   return (
     <KeyboardAvoidingView
@@ -539,11 +603,10 @@ export function ChatScreen({ route }: Props) {
 
       <FlatList
         ref={messageListRef}
+        inverted
         contentContainerStyle={styles.messageList}
-        data={messages}
+        data={reversedMessages}
         keyExtractor={(message) => String(message.id)}
-        onContentSizeChange={() => scrollToBottom(true)}
-        onLayout={() => scrollToBottom(false)}
         renderItem={({ item }) => {
           const isOwn = item.sender_id === user.id;
           const timeText = formatMessageTime(item.created_at, language);
@@ -605,13 +668,29 @@ export function ChatScreen({ route }: Props) {
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
-      <IcebreakerStrip
-        icebreakers={aiIcebreakers}
-        isLoading={isLoadingIcebreakers}
-        onRefresh={fetchAiIcebreakers}
-        onSelect={(item) => setDraft(item.text)}
-        language={language}
-      />
+      {otherUserTyping ? (
+        <View style={styles.typingIndicator}>
+          <Text style={styles.typingText}>
+            {otherUserName} {t("typingIndicator")}
+          </Text>
+        </View>
+      ) : null}
+
+      {messages.length === 0 ? (
+        <IcebreakerStrip
+          icebreakers={aiIcebreakers}
+          isLoading={isLoadingIcebreakers}
+          onRefresh={() => {
+            Alert.alert(
+              language === "en" ? "AI Icebreakers ✨" : "Yapay Zeka ✨",
+              language === "en" ? "Refreshing conversation starters..." : "Yeni tanışma önerileri hazırlanıyor..."
+            );
+            fetchAiIcebreakers();
+          }}
+          onSelect={(item) => setDraft(item.text)}
+          language={language}
+        />
+      ) : null}
 
       {selectedImage ? (
 
@@ -643,7 +722,7 @@ export function ChatScreen({ route }: Props) {
           placeholder={language === "en" ? "Type a message..." : "Bir mesaj yaz..."}
           placeholderTextColor={colors.textSecondary}
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={handleDraftChange}
           multiline
         />
         <Pressable style={[styles.sendButton, { backgroundColor: accentColor }]} onPress={handleSend} disabled={isSending}>
@@ -663,7 +742,7 @@ export function ChatScreen({ route }: Props) {
             <Text style={typeScale.h2}>{language === "en" ? "Send GIF 🎬" : "GIF Gönder 🎬"}</Text>
             <ScrollView style={{ maxHeight: 340 }} contentContainerStyle={styles.gifGrid} showsVerticalScrollIndicator={true}>
               {POPULAR_GIFS.map((gif) => (
-                <Pressable key={gif.key} style={styles.gifTile} onPress={() => handleSendGif(gif.url)}>
+                <Pressable key={gif.key} style={styles.gifTile} onPress={() => handleSendGif(gif.url)} disabled={isSending}>
                   <Image source={{ uri: gif.url }} style={styles.gifImage} contentFit="cover" />
                   <Text style={styles.gifLabel}>{gif.label}</Text>
                 </Pressable>
@@ -1086,5 +1165,15 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 11,
     color: colors.textPrimary,
+  },
+  typingIndicator: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
+  },
+  typingText: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontStyle: "italic",
   },
 });

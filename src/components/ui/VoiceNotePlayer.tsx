@@ -43,22 +43,24 @@ export function VoiceNotePlayer({ audioUrl, onDelete }: VoiceNotePlayerProps) {
     }
   }, [audioUrl]);
 
-  // Native player state sync
+  // Native player state sync -- only polls while this note is actually
+  // playing, so idle voice-note bubbles (e.g. several stacked candidate
+  // profiles while swiping) don't each run a background timer forever.
   useEffect(() => {
-    if (Platform.OS !== "web" && player) {
-      const interval = setInterval(() => {
-        if (player.playing) {
-          setIsPlaying(true);
-          const secs = Math.floor(player.currentTime);
-          const mins = Math.floor(secs / 60);
-          const remSecs = secs % 60;
-          setPlaybackDisplay(`${mins}:${remSecs < 10 ? "0" : ""}${remSecs}`);
-        } else if (isPlaying && !player.playing) {
-          setIsPlaying(false);
-        }
-      }, 250);
-      return () => clearInterval(interval);
+    if (Platform.OS === "web" || !player || !isPlaying) {
+      return;
     }
+    const interval = setInterval(() => {
+      if (player.playing) {
+        const secs = Math.floor(player.currentTime);
+        const mins = Math.floor(secs / 60);
+        const remSecs = secs % 60;
+        setPlaybackDisplay(`${mins}:${remSecs < 10 ? "0" : ""}${remSecs}`);
+      } else {
+        setIsPlaying(false);
+      }
+    }, 250);
+    return () => clearInterval(interval);
   }, [player, isPlaying]);
 
   // Waveform pulsation animation

@@ -40,11 +40,11 @@ export function IcebreakerStrip({ icebreakers, isLoading, onSelect, onRefresh, l
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {icebreakers.map((item, idx) => {
+        {icebreakers.map((item) => {
           const isVoice = item.type === "voice";
           return (
             <Pressable
-              key={idx}
+              key={item.text.slice(0, 30)}
               style={[styles.chip, isVoice && styles.voiceChip]}
               onPress={() => onSelect(item)}
             >

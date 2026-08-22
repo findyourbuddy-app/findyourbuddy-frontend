@@ -44,6 +44,8 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
       <View style={styles.banner}>
         {event.image_url ? (
           <Image source={{ uri: event.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : event.creator?.photo_url ? (
+          <Image source={{ uri: event.creator.photo_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
           <LinearGradient colors={category.gradient} style={StyleSheet.absoluteFill}>
             <View style={styles.bannerIcon}>
@@ -51,12 +53,14 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
             </View>
           </LinearGradient>
         )}
-        {isToday(event.starts_at) || event.creator_id ? (
-          <View style={styles.badgeSlot}>
-            {isToday(event.starts_at) ? <Badge label={language === "en" ? "Tonight" : "Bu akşam"} variant="yellow" icon="⚡" /> : null}
-            {event.creator_id ? <Badge label={language === "en" ? "User Event" : "Kullanıcı Etkinliği"} variant="primary" /> : null}
-          </View>
-        ) : null}
+        <View style={styles.badgeSlot}>
+          {isToday(event.starts_at) ? <Badge label={language === "en" ? "Tonight" : "Bu akşam"} variant="yellow" icon="⚡" /> : null}
+          {event.creator_id ? (
+            <Badge label={language === "en" ? "User Event" : "Kullanıcı Etkinliği"} variant="primary" />
+          ) : (
+            <Badge label={language === "en" ? "Official Event" : "Resmi Etkinlik"} variant="blue" icon="✓" />
+          )}
+        </View>
         <Pressable style={styles.bookmark} onPress={onToggleBookmark}>
           <Animated.View style={{ transform: [{ scale: bookmarkScale }] }}>
             <Feather

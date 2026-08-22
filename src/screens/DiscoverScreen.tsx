@@ -20,7 +20,7 @@ import { LocationPickerModal } from "../components/overlays/LocationPickerModal"
 import { createBookmark, deleteBookmark, listMyBookmarks } from "../api/bookmarks";
 import { reverseGeocode } from "../api/geocoding";
 import type { GeocodingResult } from "../api/geocoding";
-import { hasValidCoordinates } from "../utils/location";
+import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { attendEvent, listEvents, recordBulkEventImpressions } from "../api/events";
 import { formatEventDate } from "../utils/date";
 import { useAuth } from "../context/AuthContext";
@@ -36,7 +36,8 @@ type DiscoverNavigationProp = CompositeNavigationProp<
 
 const LIMIT = 15;
 
-function shortenPlaceLabel(displayName: string): string {
+function shortenPlaceLabel(displayName?: string | null): string {
+  if (!displayName) return "Konum Seç";
   return displayName.split(",").slice(0, 2).join(",").trim();
 }
 
@@ -146,22 +147,35 @@ export function DiscoverScreen() {
 
 
   // Ask for location up front so the app opens showing where the user
-  // actually is (old behavior hardcoded "İstanbul" for everyone). Also
-  // powers the map view's default center.
+  // actually is. Also powers the map view's default center.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted" || cancelled) return;
-        const position = await Location.getCurrentPositionAsync({});
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
         if (cancelled) return;
         setUserCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+
+        // 1. Try local city/district resolver first
+        const districtCity = await resolveCityDistrict(position.coords.latitude, position.coords.longitude);
+        if (cancelled) return;
+        if (districtCity) {
+          setCityLabel(districtCity);
+          return;
+        }
+
+        // 2. Fallback to reverseGeocode API
         const result = await reverseGeocode(position.coords.latitude, position.coords.longitude);
         if (cancelled) return;
-        setCityLabel(shortenPlaceLabel(result.display_name));
+        if (result && result.display_name) {
+          setCityLabel(shortenPlaceLabel(result.display_name));
+        }
       } catch {
-        // Best-effort; the pill stays tappable and defaults stay in place.
+        // Best-effort; defaults stay in place.
       }
     })();
     return () => {
@@ -170,7 +184,12 @@ export function DiscoverScreen() {
   }, []);
 
   function handlePressLocationPill(): void {
+    setIsCityPickerVisible(true);
+  }
+
+  async function handleCitySelect(result: GeocodingResult): Promise<void> {
     if (!isPremium) {
+      setIsCityPickerVisible(false);
       Alert.alert(
         language === "en" ? "✈️ Travel Passport (Custom Location)" : "✈️ Pasaport (Sanal Konum Seçimi)",
         language === "en"
@@ -195,14 +214,23 @@ export function DiscoverScreen() {
       );
       return;
     }
-    setIsCityPickerVisible(true);
-  }
 
-  function handleCitySelect(result: GeocodingResult): void {
-    setCityLabel(shortenPlaceLabel(result.display_name));
-    setUserCoords({ latitude: result.latitude, longitude: result.longitude });
+    const lat = result.latitude;
+    const lon = result.longitude;
+    setUserCoords({ latitude: lat, longitude: lon });
     setSortBy("distance");
     setIsCityPickerVisible(false);
+
+    if (result.display_name) {
+      setCityLabel(shortenPlaceLabel(result.display_name));
+    } else {
+      const label = await resolveCityDistrict(lat, lon);
+      if (label) {
+        setCityLabel(label);
+      } else {
+        setCityLabel(`${lat.toFixed(2)}, ${lon.toFixed(2)}`);
+      }
+    }
   }
 
   const getDistanceInKm = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {

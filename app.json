@@ -10,7 +10,13 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.findyourbuddy.app"
+      "bundleIdentifier": "com.findyourbuddy.app",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Görüntülü arama yapabilmek için kameraya erişim izni gerekiyor.",
+        "NSMicrophoneUsageDescription": "Sesli ve görüntülü arama yapabilmek için mikrofona erişim izni gerekiyor.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.findyourbuddy.app",
@@ -25,12 +31,15 @@
         }
       },
       "permissions": [
+        "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ]
     },
     "web": {
@@ -67,7 +76,8 @@
           "calendarPermission": "Etkinlikleri takvimine ekleyebilmek için takvimine erişim izni gerekiyor."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {

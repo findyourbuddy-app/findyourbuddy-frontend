@@ -18,6 +18,7 @@ import { confirmPasswordReset, requestPasswordReset } from "../api/auth";
 import { useAppTheme } from "../context/ThemeContext";
 import { formatApiError } from "../utils/error";
 import { colors, fontFamily, radius, shadows, spacing } from "../theme";
+import { Alert } from "../utils/alert";
 import type { AuthStackParamList } from "../navigation/RootNavigator";
 
 type Step = "request" | "confirm" | "done";
@@ -38,6 +39,11 @@ export function ForgotPasswordScreen() {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
       setError(language === "en" ? "Please enter your email address." : "Lütfen e-posta adresinizi girin.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setError(language === "en" ? "Please enter a valid email address." : "Geçerli bir e-posta adresi girin.");
       return;
     }
 
@@ -176,6 +182,9 @@ export function ForgotPasswordScreen() {
                 <Pressable
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword((prev) => !prev)}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
                 >
                   <Feather
                     name={showPassword ? "eye-off" : "eye"}

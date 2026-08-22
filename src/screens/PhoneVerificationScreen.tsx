@@ -36,7 +36,7 @@ type ScreenRouteProp = RouteProp<AuthStackParamList, "PhoneVerification">;
 export function PhoneVerificationScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ScreenRouteProp>();
-  const { fromGoogleSignIn } = route.params;
+  const { fromSocialSignIn } = route.params;
   const { signInWithFirebase } = useAuth();
   const { language } = useAppTheme();
 
@@ -86,12 +86,12 @@ export function PhoneVerificationScreen() {
     try {
       const credential = PhoneAuthProvider.credential(verificationId, code.trim());
 
-      // A Google sign-in already left us with a signed-in Firebase user
+      // A Google/Apple sign-in already left us with a signed-in Firebase user
       // (just missing phone verification) -- linking keeps the same
       // firebase_uid so the backend updates that same account instead of
       // provisioning a second, duplicate one for the phone credential.
       const firebaseResult =
-        fromGoogleSignIn && firebaseAuth.currentUser
+        fromSocialSignIn && firebaseAuth.currentUser
           ? await linkWithCredential(firebaseAuth.currentUser, credential)
           : await signInWithCredential(firebaseAuth, credential);
 

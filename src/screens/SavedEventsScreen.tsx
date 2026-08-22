@@ -20,13 +20,16 @@ export function SavedEventsScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadBookmarks = useCallback(async () => {
+    if (bookmarks.length === 0) {
+      setIsLoading(true);
+    }
     try {
       const data = await listMyBookmarks();
       setBookmarks(data);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [bookmarks.length]);
 
   useFocusEffect(
     useCallback(() => {

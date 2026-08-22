@@ -270,6 +270,15 @@ export function CreateEventScreen() {
         </View>
       ) : null}
 
+      <View style={styles.photoTipCard}>
+        <Feather name="camera" size={16} color={accentColor} />
+        <Text style={styles.photoTipText}>
+          {language === "en"
+            ? "Your profile photo will be highlighted as the cover image of this event to boost visibility!"
+            : "Profil fotoğrafın bu etkinliğin kapak görseli olarak öne çıkarılır ve görünürlüğünü artırır! 📸"}
+        </Text>
+      </View>
+
       <View style={styles.field}>
         <Text style={typeScale.eyebrow}>{t("eventTitleLabel")}</Text>
         <TextInput
@@ -870,5 +879,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     marginTop: spacing.sm,
+  },
+  photoTipCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: `${colors.primary}15`,
+    padding: spacing.md,
+    borderRadius: radius.sm,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: `${colors.primary}30`,
+  },
+  photoTipText: {
+    flex: 1,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.textPrimary,
   },
 });

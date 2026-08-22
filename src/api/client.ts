@@ -4,14 +4,14 @@ import { deleteToken, getToken, setToken } from "../utils/tokenStorage";
 
 export const apiClient = axios.create({
   baseURL: getApiBaseUrl(),
+  timeout: 15000,
 });
 
 declare const __DEV__: boolean;
 
 apiClient.interceptors.request.use((config) => {
-  const baseUrl = getApiBaseUrl();
-  config.baseURL = baseUrl;
   if (typeof __DEV__ !== "undefined" && __DEV__) {
+    const baseUrl = config.baseURL || getApiBaseUrl();
     console.log(`[API Request] ${config.method?.toUpperCase()} ${baseUrl}${config.url}`);
   }
   return config;
@@ -62,6 +62,20 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
+const _MAX_RETRIES = 3;
+
+function _isRetryable(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  // Network error (no response) or 5xx server error — exclude 501 Not Implemented
+  if (!error.response) return true;
+  const status = error.response.status;
+  return status >= 500 && status !== 501;
+}
+
+async function _wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -90,6 +104,13 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       }
       onAuthFailure?.();
+    }
+
+    // Retry transient network errors and 5xx responses with exponential backoff
+    if (original && _isRetryable(error) && (original._retryCount ?? 0) < _MAX_RETRIES) {
+      original._retryCount = (original._retryCount ?? 0) + 1;
+      await _wait(200 * 2 ** (original._retryCount - 1));
+      return apiClient(original);
     }
 
     return Promise.reject(error);

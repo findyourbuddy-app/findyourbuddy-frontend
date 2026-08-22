@@ -55,7 +55,7 @@ function getZodiacLabel(key: string, language: string): string {
 
 export function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
-  const { user, signOut, isPremium, updateUser } = useAuth();
+  const { user, signOut, isPremium, updateUser, refreshSubscription } = useAuth();
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [attendingEvents, setAttendingEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
@@ -79,14 +79,16 @@ export function ProfileScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.8,
-      allowsEditing: false,
+      quality: 0.9,
+      allowsEditing: true,
+      aspect: [1, 1],
     });
 
     const asset = result.assets?.[0];
     if (result.canceled || !asset) return;
 
     setIsUploadingPhoto(true);
+    const originalUser = user ? { ...user } : null;
     if (user) {
       updateUser({ ...user, photo_url: asset.uri });
     }
@@ -102,9 +104,12 @@ export function ProfileScreen() {
         language === "en" ? "Profile photo updated successfully!" : "Profil fotoğrafın başarıyla güncellendi!"
       );
     } catch {
+      if (originalUser) {
+        updateUser(originalUser);
+      }
       Alert.alert(
-        language === "en" ? "Success" : "Başarılı 📸",
-        language === "en" ? "Profile photo updated!" : "Profil fotoğrafın güncellendi!"
+        language === "en" ? "Upload Failed" : "Yükleme Başarısız",
+        language === "en" ? "Failed to update profile photo. Please try again." : "Profil fotoğrafı güncellenemedi. Lütfen tekrar dene."
       );
     } finally {
       setIsUploadingPhoto(false);
@@ -122,6 +127,7 @@ export function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      refreshSubscription().catch(() => {});
       getCurrentUser()
         .then((u) => {
           updateUser(u);
@@ -130,6 +136,7 @@ export function ProfileScreen() {
           }
         })
         .catch(() => {});
+
 
       if (user && hasValidCoordinates(user.latitude, user.longitude)) {
         resolveCityDistrict(user.latitude, user.longitude).then(setLocationName);

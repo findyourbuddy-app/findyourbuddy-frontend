@@ -42,7 +42,7 @@ export type AuthStackParamList = {
   Register: undefined;
   ForgotPassword: undefined;
   Legal: { kind: "terms" | "privacy" };
-  PhoneVerification: { fromGoogleSignIn: boolean };
+  PhoneVerification: { fromSocialSignIn: boolean };
 };
 
 export type SwipeParams = { eventId: number; eventTitle: string } | undefined;

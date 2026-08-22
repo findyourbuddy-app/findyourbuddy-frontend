@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { AppState } from "react-native";
 import { setAuthToken, setOnAuthFailure } from "../api/client";
 import { login as loginRequest, loginWithFirebase as loginWithFirebaseRequest, register as registerRequest } from "../api/auth";
 import { getCurrentUser } from "../api/users";
@@ -8,6 +9,7 @@ import { getMySubscription } from "../api/subscriptions";
 import { AUTH_TOKEN_STORAGE_KEY, REFRESH_TOKEN_STORAGE_KEY } from "../constants/config";
 import { deleteToken, getToken, setToken } from "../utils/tokenStorage";
 import { getExpoPushToken } from "../utils/pushNotifications";
+import { Alert } from "../utils/alert";
 import type { LoginPayload, RegisterPayload, SubscriptionStatus, User } from "../types";
 
 async function fetchSubscription(): Promise<SubscriptionStatus> {
@@ -55,16 +57,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     expires_at: null,
   });
 
+  // Ref so AppState handler always sees current user without becoming a stale closure
+  const userRef = useRef<User | null>(null);
+  userRef.current = user;
+
+  // Ref to track pending setTimeout ids for cleanup
+  const bgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const signOut = useCallback(async (): Promise<void> => {
+    try {
+      const token = await getExpoPushToken();
+      if (token) {
+        await unregisterDeviceToken(token);
+      }
+    } catch {
+      // Best-effort cleanup; sign-out must proceed regardless.
+    }
+    await Promise.all([
+      deleteToken(AUTH_TOKEN_STORAGE_KEY),
+      deleteToken(REFRESH_TOKEN_STORAGE_KEY),
+    ]);
+    setAuthToken(null);
+    setUser(null);
+    setJustRegistered(false);
+    setSubscription({ is_premium: false, expires_at: null });
+  }, []);
+
   useEffect(() => {
     restoreSession();
-    // Wired so client.ts can force a sign-out when a 401 survives a refresh
-    // attempt (refresh token itself expired/invalid), instead of leaving
-    // the app stuck with a dead session.
+
+    const appStateSub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active" && userRef.current !== null) {
+        fetchSubscription()
+          .then((sub) => {
+            setSubscription((prev) => {
+              if (!prev.is_premium && sub.is_premium) {
+                Alert.alert(
+                  "⭐ Premium Aktif Edildi!",
+                  "Ödemen başarıyla onaylandı. Tüm premium ayrıcalıklar hesabına tanımlandı!"
+                );
+              }
+              return sub;
+            });
+          })
+          .catch(() => {});
+      }
+    });
+
     setOnAuthFailure(() => {
       signOut();
     });
-    return () => setOnAuthFailure(null);
-  }, []);
+
+    return () => {
+      appStateSub.remove();
+      setOnAuthFailure(null);
+      if (bgTimerRef.current !== null) {
+        clearTimeout(bgTimerRef.current);
+      }
+    };
+  }, [signOut]);
+
 
   async function restoreSession(): Promise<void> {
     const token = await getToken(AUTH_TOKEN_STORAGE_KEY);
@@ -73,12 +125,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
-        setTimeout(() => {
+        bgTimerRef.current = setTimeout(() => {
           syncPushToken().catch(() => {});
           fetchSubscription().then((sub) => setSubscription(sub)).catch(() => {});
         }, 50);
       } catch {
-        await deleteToken(AUTH_TOKEN_STORAGE_KEY);
+        await Promise.all([
+          deleteToken(AUTH_TOKEN_STORAGE_KEY),
+          deleteToken(REFRESH_TOKEN_STORAGE_KEY),
+        ]);
         setAuthToken(null);
       }
     }
@@ -88,14 +143,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signIn(payload: LoginPayload): Promise<void> {
     const token = await loginRequest(payload);
     setAuthToken(token.access_token);
-    setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token).catch(() => {});
-    setToken(REFRESH_TOKEN_STORAGE_KEY, token.refresh_token).catch(() => {});
+    await Promise.all([
+      setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token),
+      setToken(REFRESH_TOKEN_STORAGE_KEY, token.refresh_token),
+    ]);
 
     const currentUser = await getCurrentUser();
     setUser(currentUser);
 
-    // Non-blocking background syncs so screen transition is instant
-    setTimeout(() => {
+    bgTimerRef.current = setTimeout(() => {
       syncPushToken().catch(() => {});
       fetchSubscription().then((sub) => setSubscription(sub)).catch(() => {});
     }, 50);
@@ -104,13 +160,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signInWithFirebase(idToken: string): Promise<void> {
     const token = await loginWithFirebaseRequest(idToken);
     setAuthToken(token.access_token);
-    setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token).catch(() => {});
-    setToken(REFRESH_TOKEN_STORAGE_KEY, token.refresh_token).catch(() => {});
+    await Promise.all([
+      setToken(AUTH_TOKEN_STORAGE_KEY, token.access_token),
+      setToken(REFRESH_TOKEN_STORAGE_KEY, token.refresh_token),
+    ]);
 
     const currentUser = await getCurrentUser();
     setUser(currentUser);
 
-    setTimeout(() => {
+    bgTimerRef.current = setTimeout(() => {
       syncPushToken().catch(() => {});
       fetchSubscription().then((sub) => setSubscription(sub)).catch(() => {});
     }, 50);
@@ -124,23 +182,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await registerRequest(payload);
     await signIn({ email: payload.email, password: payload.password });
     setJustRegistered(true);
-  }
-
-  async function signOut(): Promise<void> {
-    try {
-      const token = await getExpoPushToken();
-      if (token) {
-        await unregisterDeviceToken(token);
-      }
-    } catch {
-      // Best-effort cleanup; sign-out must proceed regardless.
-    }
-    await deleteToken(AUTH_TOKEN_STORAGE_KEY);
-    await deleteToken(REFRESH_TOKEN_STORAGE_KEY);
-    setAuthToken(null);
-    setUser(null);
-    setJustRegistered(false);
-    setSubscription({ is_premium: false, expires_at: null });
   }
 
   function updateUser(nextUser: User): void {
@@ -166,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateUser,
       clearJustRegistered,
     }),
-    [user, isLoading, justRegistered, subscription]
+    [user, isLoading, justRegistered, subscription, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
