@@ -7,7 +7,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
 import axios from "axios";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, type IcebreakerItem } from "../api/messages";
 import { IcebreakerStrip } from "../components/chat/IcebreakerStrip";
@@ -125,6 +125,8 @@ export function ChatScreen({ route }: Props) {
   }
 
   const [gifModalVisible, setGifModalVisible] = useState(false);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [incomingCall, setIncomingCall] = useState<{
     callerName: string;
@@ -156,6 +158,42 @@ export function ChatScreen({ route }: Props) {
     });
     return () => unsubscribe();
   }, [matchId, user]);
+
+  // Listen for other user's typing status
+  useEffect(() => {
+    if (!user) return;
+    const typingRef = doc(db, "matches", String(matchId), "typing", String(otherUserId));
+    const unsubscribe = onSnapshot(typingRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setOtherUserTyping(false);
+        return;
+      }
+      const data = snapshot.data();
+      const updatedAt: Date | null = data.updated_at?.toDate?.() ?? null;
+      const isRecent = updatedAt ? Date.now() - updatedAt.getTime() < 5000 : false;
+      setOtherUserTyping(Boolean(data.is_typing) && isRecent);
+    }, () => {
+      setOtherUserTyping(false);
+    });
+    return () => unsubscribe();
+  }, [matchId, otherUserId, user]);
+
+  const reportTyping = useCallback(async (isTyping: boolean) => {
+    if (!user) return;
+    const typingRef = doc(db, "matches", String(matchId), "typing", String(user.id));
+    try {
+      await setDoc(typingRef, { is_typing: isTyping, updated_at: serverTimestamp() });
+    } catch {}
+  }, [matchId, user]);
+
+  const handleDraftChange = useCallback((text: string) => {
+    setDraft(text);
+    reportTyping(text.length > 0);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (text.length > 0) {
+      typingTimeoutRef.current = setTimeout(() => reportTyping(false), 4000);
+    }
+  }, [reportTyping]);
 
   const initiateCall = useCallback(async (type: "voice" | "video") => {
     if (!user) return;
@@ -453,6 +491,8 @@ export function ChatScreen({ route }: Props) {
 
     setDraft("");
     setSelectedImage(null);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    reportTyping(false);
 
     try {
       if (activeImage) {
@@ -628,6 +668,14 @@ export function ChatScreen({ route }: Props) {
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
+      {otherUserTyping ? (
+        <View style={styles.typingIndicator}>
+          <Text style={styles.typingText}>
+            {otherUserName} {t("typingIndicator")}
+          </Text>
+        </View>
+      ) : null}
+
       {messages.length === 0 ? (
         <IcebreakerStrip
           icebreakers={aiIcebreakers}
@@ -674,7 +722,7 @@ export function ChatScreen({ route }: Props) {
           placeholder={language === "en" ? "Type a message..." : "Bir mesaj yaz..."}
           placeholderTextColor={colors.textSecondary}
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={handleDraftChange}
           multiline
         />
         <Pressable style={[styles.sendButton, { backgroundColor: accentColor }]} onPress={handleSend} disabled={isSending}>
@@ -1117,5 +1165,15 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 11,
     color: colors.textPrimary,
+  },
+  typingIndicator: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
+  },
+  typingText: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontStyle: "italic",
   },
 });

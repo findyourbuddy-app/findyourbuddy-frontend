@@ -86,7 +86,7 @@ export const translations = {
     specificAgeRangeLabel: "Spesifik Yaş Aralığı Seçimi (Örn: 20 - 28 yaş)",
     distanceLimitLabel: "Mesafe Sınırı (km) (Örn: Sadece 10 km yakınındakiler)",
     unlimitedSwipesAndLikes: "Sınırsız Kaydırma & Beğeni Hakkı",
-    getPremiumNowBtn: "Hemen Premium'a Geç 🚀 (49 TL)",
+    getPremiumNowBtn: "Hemen Premium'a Geç 🚀 (99 TL)",
     close: "Kapat",
 
     // Messages Screen
@@ -187,6 +187,7 @@ export const translations = {
     cancel: "İptal",
     ok: "Tamam",
     save: "Kaydet",
+    typingIndicator: "yazıyor...",
   },
   en: {
     // Bottom Navigation Tabs
@@ -275,7 +276,7 @@ export const translations = {
     specificAgeRangeLabel: "Specific Age Range (e.g. 20 - 28 yo)",
     distanceLimitLabel: "Distance Limit (km) (e.g. Within 10 km)",
     unlimitedSwipesAndLikes: "Unlimited Swipes & Likes",
-    getPremiumNowBtn: "Get Premium Now 🚀 ($4.99)",
+    getPremiumNowBtn: "Get Premium Now 🚀 (₺99)",
     close: "Close",
 
     // Messages Screen
@@ -376,6 +377,7 @@ export const translations = {
     cancel: "Cancel",
     ok: "OK",
     save: "Save Changes",
+    typingIndicator: "is typing...",
   },
 };
 

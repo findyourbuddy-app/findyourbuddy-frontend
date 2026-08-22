@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -7,13 +7,15 @@ import {
   Text,
   View,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as Crypto from "expo-crypto";
+import { GoogleAuthProvider, OAuthProvider, signInWithCredential } from "firebase/auth";
 import { BuddyLogo } from "../components/ui/BuddyLogo";
 import { GoogleIcon } from "../components/ui/GoogleIcon";
 import { useAuth } from "../context/AuthContext";
@@ -34,12 +36,19 @@ export function WelcomeScreen() {
 
   const [error, setError] = useState<string | null>(null);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [isAppleSubmitting, setIsAppleSubmitting] = useState(false);
+  const [isAppleAvailable, setIsAppleAvailable] = useState(false);
 
   const [googleRequest, , promptGoogleSignIn] = Google.useAuthRequest({
     webClientId: googleAuthConfig.webClientId,
     iosClientId: googleAuthConfig.iosClientId,
     androidClientId: googleAuthConfig.androidClientId,
   });
+
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    AppleAuthentication.isAvailableAsync().then(setIsAppleAvailable);
+  }, []);
 
   async function handleGoogleSignIn(): Promise<void> {
     setError(null);
@@ -65,7 +74,7 @@ export function WelcomeScreen() {
       // (rather than asking the backend) keeps us inside AuthStack until
       // phone verification is actually done.
       if (!firebaseResult.user.phoneNumber) {
-        navigation.navigate("PhoneVerification", { fromGoogleSignIn: true });
+        navigation.navigate("PhoneVerification", { fromSocialSignIn: true });
         return;
       }
 
@@ -75,6 +84,50 @@ export function WelcomeScreen() {
       setError(formatApiError(err, language));
     } finally {
       setIsGoogleSubmitting(false);
+    }
+  }
+
+  async function handleAppleSignIn(): Promise<void> {
+    if (isAppleSubmitting) return;
+    setError(null);
+    setIsAppleSubmitting(true);
+    try {
+      const rawNonce = Math.random().toString(36).slice(2);
+      const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+
+      const appleCredential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce: hashedNonce,
+      });
+
+      if (!appleCredential.identityToken) {
+        setError(language === "en" ? "Apple sign-in did not return a token." : "Apple girişi bir belirteç döndürmedi.");
+        return;
+      }
+
+      const credential = new OAuthProvider("apple.com").credential({
+        idToken: appleCredential.identityToken,
+        rawNonce,
+      });
+      const firebaseResult = await signInWithCredential(firebaseAuth, credential);
+
+      // Same reasoning as the Google flow above -- route to phone
+      // verification before signInWithFirebase tears down this stack.
+      if (!firebaseResult.user.phoneNumber) {
+        navigation.navigate("PhoneVerification", { fromSocialSignIn: true });
+        return;
+      }
+
+      const backendIdToken = await firebaseResult.user.getIdToken();
+      await signInWithFirebase(backendIdToken);
+    } catch (err: unknown) {
+      if ((err as { code?: string })?.code === "ERR_REQUEST_CANCELED") return;
+      setError(formatApiError(err, language));
+    } finally {
+      setIsAppleSubmitting(false);
     }
   }
 
@@ -120,6 +173,28 @@ export function WelcomeScreen() {
         {/* Card Form */}
         <View style={styles.card}>
           <View style={styles.formBox}>
+            {isAppleAvailable ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.appleButton,
+                  pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+                  isAppleSubmitting && { opacity: 0.7 },
+                ]}
+                onPress={handleAppleSignIn}
+                disabled={isAppleSubmitting}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={language === "en" ? "Continue with Apple" : "Apple ile Devam Et"}
+              >
+                <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+                <Text style={styles.appleButtonText}>
+                  {isAppleSubmitting
+                    ? (language === "en" ? "Signing in..." : "Giriş yapılıyor...")
+                    : (language === "en" ? "Continue with Apple" : "Apple ile Devam Et")}
+                </Text>
+              </Pressable>
+            ) : null}
+
             <Pressable
               style={({ pressed }) => [
                 styles.googleButton,
@@ -268,6 +343,21 @@ const styles = StyleSheet.create({
   },
   formBox: {
     gap: spacing.md,
+  },
+  appleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    height: 56,
+    borderRadius: radius.pill,
+    backgroundColor: "#000000",
+    ...shadows.soft,
+  },
+  appleButtonText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 15,
+    color: "#FFFFFF",
   },
   googleButton: {
     flexDirection: "row",
