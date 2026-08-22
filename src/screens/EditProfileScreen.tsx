@@ -33,6 +33,7 @@ import {
   uploadProfilePhoto,
 } from "../api/users";
 import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
 import { apiClient } from "../api/client";
 import { LANGUAGES_LIST } from "../constants/languages";
 import { BIO_SUGGESTIONS, PROMPT_SUGGESTIONS } from "../constants/prompts";
@@ -51,8 +52,6 @@ import type { User, UserPhoto } from "../types";
 const MAX_GALLERY_PHOTOS = 6;
 
 type EditProfileNavigationProp = NativeStackNavigationProp<MainStackParamList, "EditProfile">;
-
-import { useAppTheme } from "../context/ThemeContext";
 
 export function EditProfileScreen() {
   const navigation = useNavigation<EditProfileNavigationProp>();

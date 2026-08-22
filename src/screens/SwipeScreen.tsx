@@ -19,6 +19,7 @@ import { createSwipe, getSwipeCandidates, getSwipeQuota } from "../api/swipes";
 import { activateBoost, createPurchaseCheckoutSession } from "../api/users";
 import type { SwipeCandidateFilters, SwipeQuota } from "../api/swipes";
 import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event, User, UserPublic } from "../types";
@@ -44,8 +45,6 @@ type SwipeNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, "Swipe">,
   NativeStackNavigationProp<MainStackParamList>
 >;
-
-import { useAppTheme } from "../context/ThemeContext";
 
 export function SwipeScreen() {
   const navigation = useNavigation<SwipeNavigationProp>();

@@ -115,7 +115,7 @@ export function MessagesScreen() {
     [matches, user]
   );
 
-  const filterTabs = [
+  const filterTabs: { id: typeof activeFilter; label: string; count: number }[] = [
     { id: "all", label: language === "en" ? "💬 All" : "💬 Tümü", count: matches.length },
     { id: "unread", label: language === "en" ? "🔴 Unread" : "🔴 Okunmamış", count: unreadCount },
     { id: "matches", label: language === "en" ? "🤝 Matches" : "🤝 Eşleşmeler", count: matches.filter((m) => !m.event_is_group).length },
@@ -162,7 +162,7 @@ export function MessagesScreen() {
                   <Pressable
                     key={tab.id}
                     style={[styles.filterTab, isActive && styles.filterTabActive]}
-                    onPress={() => setActiveFilter(tab.id as any)}
+                    onPress={() => setActiveFilter(tab.id)}
                   >
                     <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
                       {tab.label}

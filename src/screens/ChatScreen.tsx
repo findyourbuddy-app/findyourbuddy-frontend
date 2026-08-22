@@ -16,6 +16,7 @@ import { submitMatchFeedback } from "../api/matches";
 import { blockUser, reportUser } from "../api/safety";
 import { useAuth } from "../context/AuthContext";
 import { useMessagesContext } from "../context/MessagesContext";
+import { useAppTheme } from "../context/ThemeContext";
 import { apiClient } from "../api/client";
 import { colors, fontFamily, radius, spacing, typeScale, shadows } from "../theme";
 import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
@@ -23,10 +24,7 @@ import { formatMessageTime, formatRelativeTimestamp } from "../utils/date";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Message, ReportReason } from "../types";
 
-
 type Props = NativeStackScreenProps<MainStackParamList, "Chat">;
-
-import { useAppTheme } from "../context/ThemeContext";
 
 export function ChatScreen({ route }: Props) {
   const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent } = route.params;
