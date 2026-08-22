@@ -8,6 +8,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
   query,
   updateDoc,
@@ -22,11 +23,12 @@ import {
   mediaDevices,
 } from "react-native-webrtc";
 import { db } from "../config/firebase";
+import { fetchIceServers, type IceServer } from "../api/calls";
 import { Avatar } from "../components/ui/Avatar";
 import { colors, fontFamily, radius, shadows, spacing } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 
-const ICE_SERVERS = [
+const FALLBACK_ICE_SERVERS: IceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
 ];
@@ -61,6 +63,14 @@ export function CallScreen() {
     pcRef.current?.getSenders().forEach((s) => s.track?.stop());
     pcRef.current?.close();
     pcRef.current = null;
+    Promise.all([getDocs(callerIceCol), getDocs(calleeIceCol)])
+      .then(([callerSnap, calleeSnap]) =>
+        Promise.all([
+          ...callerSnap.docs.map((d) => deleteDoc(d.ref)),
+          ...calleeSnap.docs.map((d) => deleteDoc(d.ref)),
+        ])
+      )
+      .catch(() => {});
   }, []);
 
   const handleCallEndedLocally = useCallback(() => {
@@ -111,7 +121,8 @@ export function CallScreen() {
         allowsRecordingIOS: true,
       }).catch(() => {});
 
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      const iceServers = await fetchIceServers().catch(() => FALLBACK_ICE_SERVERS);
+      const pc = new RTCPeerConnection({ iceServers });
       pcRef.current = pc;
 
       const stream = (await mediaDevices.getUserMedia({
