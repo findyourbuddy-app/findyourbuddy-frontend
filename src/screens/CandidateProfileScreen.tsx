@@ -28,8 +28,8 @@ export function CandidateProfileScreen({ route }: Props) {
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<EventPublicSummary[]>([]);
 
-  function act(action: () => void): void {
-    action();
+  function act(action?: () => void): void {
+    if (action) action();
     navigation.goBack();
   }
 

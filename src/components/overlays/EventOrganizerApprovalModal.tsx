@@ -6,6 +6,9 @@ import { approveAllEventJoinRequests, getEventJoinRequests, handleEventJoinReque
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { resolvePhotoUrl } from "../ui/Avatar";
 import { useAppTheme } from "../../context/ThemeContext";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { MainStackParamList } from "../../navigation/RootNavigator";
 import { colors, fontFamily, radius, spacing, typeScale } from "../../theme";
 import type { User } from "../../types";
 
@@ -24,6 +27,7 @@ export function EventOrganizerApprovalModal({
   onDismiss,
   onUpdated,
 }: EventOrganizerApprovalModalProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { language } = useAppTheme();
   const [requests, setRequests] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,21 +131,29 @@ export function EventOrganizerApprovalModal({
 
                   return (
                     <View key={user.id} style={styles.userRow}>
-                      <Image
-                        source={avatarUrl ? { uri: avatarUrl } : require("../../../assets/icon.png")}
-                        style={styles.avatar}
-                      />
+                      <Pressable
+                        style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: spacing.sm }}
+                        onPress={() => {
+                          onDismiss();
+                          navigation.navigate("CandidateProfile", { candidate: user, eventTitle });
+                        }}
+                      >
+                        <Image
+                          source={avatarUrl ? { uri: avatarUrl } : require("../../../assets/icon.png")}
+                          style={styles.avatar}
+                        />
 
-                      <View style={styles.userInfo}>
-                        <View style={styles.nameRow}>
-                          <Text style={styles.userName}>{user.display_name}</Text>
-                          {user.is_verified && <Feather name="check-circle" size={14} color="#3498DB" />}
+                        <View style={styles.userInfo}>
+                          <View style={styles.nameRow}>
+                            <Text style={styles.userName}>{user.display_name}</Text>
+                            {user.is_verified && <Feather name="check-circle" size={14} color="#3498DB" />}
+                          </View>
+                          <Text style={styles.userDetails}>
+                            {user.gender === "female" ? "Kadın" : user.gender === "male" ? "Erkek" : ""} 
+                            {user.trust_score ? ` • 🛡️ ${user.trust_score} Puan` : ""}
+                          </Text>
                         </View>
-                        <Text style={styles.userDetails}>
-                          {user.gender === "female" ? "Kadın" : user.gender === "male" ? "Erkek" : ""} 
-                          {user.trust_score ? ` • 🛡️ ${user.trust_score} Puan` : ""}
-                        </Text>
-                      </View>
+                      </Pressable>
 
                       {/* Approve / Reject Buttons */}
                       <View style={styles.actionButtons}>

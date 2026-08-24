@@ -442,10 +442,15 @@ export function EventDetailScreen({ route }: Props) {
             ) : (
               joinRequests.map((requester) => (
                 <View key={requester.id} style={styles.joinRequestRow}>
-                  <Avatar name={requester.display_name} photoUrl={requester.photo_url} size={40} />
-                  <Text style={styles.joinRequestName} numberOfLines={1}>
-                    {requester.display_name}
-                  </Text>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: spacing.sm }}
+                    onPress={() => navigation.navigate("CandidateProfile", { candidate: requester, eventTitle: event.title })}
+                  >
+                    <Avatar name={requester.display_name} photoUrl={requester.photo_url} size={40} />
+                    <Text style={styles.joinRequestName} numberOfLines={1}>
+                      {requester.display_name}
+                    </Text>
+                  </Pressable>
                   <Pressable
                     style={styles.joinRequestApprove}
                     onPress={() => handleJoinRequestResponse(requester.id, true)}

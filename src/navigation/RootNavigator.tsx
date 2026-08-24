@@ -94,9 +94,9 @@ export type MainStackParamList = {
     candidate: User;
     eventTitle?: string;
     onExitGroupSwipe?: () => void;
-    onSwipeLeft: () => void;
-    onSwipeRight: () => void;
-    onSwipeUp: () => void;
+    onSwipeLeft?: () => void;
+    onSwipeRight?: () => void;
+    onSwipeUp?: () => void;
   };
 };
 
