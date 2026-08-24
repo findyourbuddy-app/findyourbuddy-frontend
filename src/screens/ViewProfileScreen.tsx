@@ -32,7 +32,7 @@ export function ViewProfileScreen() {
 
   function openTrustInfo() {
     Alert.alert(
-      language === "en" ? "🛡️ What is Trust Score?" : "🛡️ Güven Skoru Nedir?",
+      language === "en" ? "What is Trust Score?" : "Güven Skoru Nedir?",
       language === "en"
         ? "• Default Score: 50 points\n• Event Check-in: +5 points for every confirmed GPS event check-in.\n• Blue Badge: +10 points for verifying your profile photo.\n• No-Show: -10 points if you join an event and don't show up.\n\nNote: Keeping a low score for long durations flags the account as a troll account."
         : "• Başlangıç Skorunuz: 50 Puan\n• Etkinlik Check-In: Katıldığınız her etkinlikte GPS konum doğrulaması ile +5 puan kazanırsınız.\n• Mavi Tık Doğrulaması: Profilinizi doğruladığınızda +10 puan eklenir.\n• Katılmama (No-Show): Katılacağım dediğiniz etkinliğe gitmezseniz -10 puan düşer.\n\nDüşük Skor Uyarısı: Skoru sürekli düşük kalan hesaplar kısıtlanır."
@@ -128,7 +128,7 @@ export function ViewProfileScreen() {
           <View style={styles.badgeRow}>
             <Pressable style={styles.trustBadge} onPress={openTrustInfo}>
               <Feather name="shield" size={12} color={colors.surface} />
-              <Text style={styles.trustText}>{profile.trust_score || 50} Güven Skoru ℹ️</Text>
+              <Text style={styles.trustText}>{profile.trust_score || 50} Güven Skoru</Text>
             </Pressable>
             {profile.zodiac_sign && !profile.hidden_fields?.includes("zodiac_sign") ? (
               <View style={styles.trustBadge}>

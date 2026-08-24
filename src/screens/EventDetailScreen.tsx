@@ -465,7 +465,7 @@ export function EventDetailScreen({ route }: Props) {
         {isOwnerOfGroupEvent ? (
           <View style={{ gap: spacing.md }}>
             <PrimaryButton
-              label={language === "en" ? "💬 Start / Open Group Chat" : "💬 Grup Sohbetini Başlat / Aç"}
+              label={language === "en" ? "Start / Open Group Chat" : "Grup Sohbetini Başlat / Aç"}
               onPress={handleStartGroupChat}
             />
             <View style={styles.joinRequestsSection}>

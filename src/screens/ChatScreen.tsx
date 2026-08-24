@@ -429,7 +429,7 @@ export function ChatScreen({ route }: Props) {
                   {eventTitle || (language === "en" ? "Group Event Chat" : "Grup Etkinlik Sohbeti")}
                 </Text>
                 <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.primary }}>
-                  {isOrganizer ? (language === "en" ? "👥 Members (Organizer Only)" : "👥 Katılımcılar (Organizatör ℹ️)") : (language === "en" ? "Group Chat Channel" : "Grup Sohbet Kanalı")}
+                  {isOrganizer ? (language === "en" ? "Katılımcılar (Organizatör)" : "Katılımcılar (Organizatör)") : (language === "en" ? "Group Chat Channel" : "Grup Sohbet Kanalı")}
                 </Text>
               </View>
             </Pressable>
@@ -1031,7 +1031,7 @@ export function ChatScreen({ route }: Props) {
           <Pressable style={[styles.callCard, { width: "90%", maxHeight: "70%" }]} onPress={(e) => e.stopPropagation()}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.md, paddingBottom: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary }}>
-                👥 Katılımcı Listesi (Organizatör Özel)
+                Katılımcı Listesi (Organizatör Özel)
               </Text>
               <Pressable onPress={() => setShowMembersModal(false)}>
                 <Feather name="x" size={20} color={colors.textPrimary} />

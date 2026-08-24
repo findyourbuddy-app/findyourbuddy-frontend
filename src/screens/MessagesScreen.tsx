@@ -3,6 +3,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -90,7 +91,7 @@ export function MessagesScreen() {
     });
   }
 
-  const [chatTypeFilter, setChatTypeFilter] = useState<"all" | "direct" | "group">("all");
+  const [chatTypeFilter, setChatTypeFilter] = useState<"all" | "matches" | "direct" | "group">("all");
 
   const displayMatches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -115,6 +116,8 @@ export function MessagesScreen() {
       list = list.filter((m) => !m.event_is_group);
     } else if (chatTypeFilter === "group") {
       list = list.filter((m) => m.event_is_group);
+    } else if (chatTypeFilter === "matches") {
+      list = list.filter((m) => !m.last_message);
     }
 
     list.sort((a, b) => {
@@ -245,23 +248,28 @@ export function MessagesScreen() {
             </View>
 
             {/* Chat Type Filter Chips */}
-            <View style={{ flexDirection: "row", gap: spacing.xs, marginVertical: spacing.xs }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: spacing.xs, marginVertical: spacing.xs }}>
               <Chip
                 label={language === "en" ? "All" : "Hepsi"}
                 active={chatTypeFilter === "all"}
                 onPress={() => setChatTypeFilter("all")}
               />
               <Chip
-                label={language === "en" ? "💬 Direct DMs" : "💬 Özel DM'ler"}
+                label={language === "en" ? "New Matches" : "Yeni Eşleşmeler"}
+                active={chatTypeFilter === "matches"}
+                onPress={() => setChatTypeFilter("matches")}
+              />
+              <Chip
+                label={language === "en" ? "Direct DMs" : "Özel Mesajlar"}
                 active={chatTypeFilter === "direct"}
                 onPress={() => setChatTypeFilter("direct")}
               />
               <Chip
-                label={language === "en" ? "👥 Group Channels" : "👥 Grup Kanalları"}
+                label={language === "en" ? "Group Channels" : "Grup Sohbetleri"}
                 active={chatTypeFilter === "group"}
                 onPress={() => setChatTypeFilter("group")}
               />
-            </View>
+            </ScrollView>
 
             {unreadCount > 0 ? (
               <Pressable
