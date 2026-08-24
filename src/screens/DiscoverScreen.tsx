@@ -713,6 +713,22 @@ export function DiscoverScreen() {
                 </Pressable>
               </ScrollView>
 
+              {/* Category Chips Scroller */}
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={CATEGORIES}
+                keyExtractor={(category) => category.slug}
+                renderItem={({ item }) => (
+                  <Chip
+                    label={language === "en" ? item.labelEn : item.label}
+                    active={selectedCategory === item.slug}
+                    onPress={() => handleSelectCategory(item.slug)}
+                  />
+                )}
+                style={styles.chipList}
+              />
+
               <Pressable
                 style={styles.aiMatchingBanner}
                 onPress={() => navigation.navigate("AIRecommendations")}
