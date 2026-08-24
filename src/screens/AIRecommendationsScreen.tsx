@@ -9,8 +9,9 @@ import { Image } from "expo-image";
 import { apiClient } from "../api/client";
 import { createCheckoutSession } from "../api/subscriptions";
 import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
+import { resolvePhotoUrl } from "../components/ui/Avatar";
 import { useAuth } from "../context/AuthContext";
-import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
+import { colors, fontFamily, radius, shadows, spacing } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { User } from "../types";
 
@@ -89,7 +90,7 @@ export function AIRecommendationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureItemTitle}>
-                {language === "en" ? "99% Hobbies & Activity Synergy 🎯" : "%99 Hobiler & Aktivite Uyum Analizi 🎯"}
+                {language === "en" ? "99% Hobbies & Activity Synergy" : "%99 Hobiler & Aktivite Uyum Analizi"}
               </Text>
               <Text style={styles.featureItemDesc}>
                 {language === "en"
@@ -105,7 +106,7 @@ export function AIRecommendationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureItemTitle}>
-                {language === "en" ? "Astrological Element Synergy 🔮" : "Astrolojik Element Sinerjisi 🔮"}
+                {language === "en" ? "Astrological Element Synergy" : "Astrolojik Element Sinerjisi"}
               </Text>
               <Text style={styles.featureItemDesc}>
                 {language === "en"
@@ -121,7 +122,7 @@ export function AIRecommendationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureItemTitle}>
-                {language === "en" ? "School, Occupation & Lifestyle Alignment 🎓" : "Okul, Meslek & Yaşam Tarzı Hizalaması 🎓"}
+                {language === "en" ? "School, Occupation & Lifestyle Alignment" : "Okul, Meslek & Yaşam Tarzı Hizalaması"}
               </Text>
               <Text style={styles.featureItemDesc}>
                 {language === "en"
@@ -137,7 +138,7 @@ export function AIRecommendationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureItemTitle}>
-                {language === "en" ? "Profile Voice Intros 🎙️" : "Profil Ses Kayıtları 🎙️"}
+                {language === "en" ? "Profile Voice Intros" : "Profil Ses Kayıtları"}
               </Text>
               <Text style={styles.featureItemDesc}>
                 {language === "en"
@@ -153,7 +154,7 @@ export function AIRecommendationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureItemTitle}>
-                {language === "en" ? "Advanced Gender, Age & Distance Filters 🎛️" : "Gelişmiş Cinsiyet, Yaş & Konum Filtreleri 🎛️"}
+                {language === "en" ? "Advanced Gender, Age & Distance Filters" : "Gelişmiş Cinsiyet, Yaş & Konum Filtreleri"}
               </Text>
               <Text style={styles.featureItemDesc}>
                 {language === "en"
@@ -181,7 +182,7 @@ export function AIRecommendationsScreen() {
               <>
                 <Feather name="award" size={20} color={colors.surface} />
                 <Text style={styles.upgradeBtnText}>
-                  {language === "en" ? "Become Premium Buddy (💎 $4.99)" : "Premium Buddy Ol (💎 49 TL)"}
+                  {language === "en" ? "Become Premium Buddy ($4.99)" : "Premium Buddy Ol (49 TL)"}
                 </Text>
               </>
             )}
@@ -193,10 +194,6 @@ export function AIRecommendationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bgGradient[0] }]}>
-      <Text style={[typeScale.h1, styles.headerTitle]}>
-        {language === "en" ? "🌟 AI Match Recommendations" : "🌟 Yapay Zeka Uyum Önerileri"}
-      </Text>
-      
       {loading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -255,7 +252,7 @@ export function AIRecommendationsScreen() {
 
               {user.voice_note_url && (
                 <View style={styles.voicePlayerWrapper}>
-                  <VoiceNotePlayer audioUrl={user.voice_note_url} />
+                  <VoiceNotePlayer audioUrl={resolvePhotoUrl(user.voice_note_url)} />
                 </View>
               )}
 
@@ -287,10 +284,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingTop: spacing.lg,
-  },
-  headerTitle: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
   },
   loaderContainer: {
     flex: 1,

@@ -28,7 +28,11 @@ export function getApiBaseUrl(): string {
   }
 
   // Dev: native mobile — auto-detect developer machine's LAN IP from Expo hostUri
-  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    (Constants as any).manifest?.debuggerHost ||
+    (Constants as any).manifest2?.extra?.expoGo?.developer?.tool;
+
   if (hostUri) {
     const host = hostUri.split(":")[0];
     if (
@@ -44,7 +48,17 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  return "http://127.0.0.1:8001";
+  if (Constants.linkingUri && Constants.linkingUri.includes("://")) {
+    const match = Constants.linkingUri.match(/:\/\/(.*?)(:|\/|$)/);
+    if (match && match[1] && match[1] !== "localhost" && match[1] !== "127.0.0.1") {
+      return `http://${match[1]}:8001`;
+    }
+  }
+
+  if (Platform.OS === "android") {
+    return "http://192.168.0.27:8001";
+  }
+  return "http://192.168.0.27:8001";
 }
 
 export const API_BASE_URL = getApiBaseUrl();

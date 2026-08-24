@@ -1,3 +1,6 @@
+// DEV: react-native-maps Expo Go'da desteklenmiyor (development build gerektiriyor).
+// Orijinal kod geri almak icin asagidaki blok yorumu kaldirin ve placeholder'i silin.
+/*
 import { StyleSheet, View } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
 import { colors, radius } from "../../theme";
@@ -59,7 +62,7 @@ export function EventsMapView({
               coordinate={{ latitude: event.latitude, longitude: event.longitude }}
               pinColor={pinColor}
               title={event.title}
-              description={isUserCreated ? "👤 Kullanıcı Etkinliği" : "🏛️ Sistem Etkinliği"}
+              description={isUserCreated ? "Kullanıcı Etkinliği" : "Sistem Etkinliği"}
               onPress={(e) => {
                 e.stopPropagation();
                 onSelectEvent(event);
@@ -76,5 +79,47 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: radius.card,
     overflow: "hidden",
+  },
+});
+*/
+
+import { StyleSheet, Text, View } from "react-native";
+import { colors, fontFamily, radius } from "../../theme";
+import type { Event } from "../../types";
+
+interface EventsMapViewProps {
+  events: Event[];
+  centerLatitude: number;
+  centerLongitude: number;
+  onSelectEvent: (event: Event) => void;
+  onDeselectEvent?: () => void;
+  selectedEventId?: number | null;
+  height?: number;
+}
+
+export function EventsMapView({ events, height = 320 }: EventsMapViewProps) {
+  return (
+    <View style={[styles.container, { height }]}>
+      <Text style={styles.text}>
+        Harita development build gerektiriyor (Expo Go'da desteklenmiyor). {events.length} etkinlik mevcut.
+      </Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    borderRadius: radius.card,
+    overflow: "hidden",
+    backgroundColor: colors.primaryMuted,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  text: {
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textPrimary,
+    textAlign: "center",
   },
 });

@@ -8,7 +8,10 @@ export interface SwipeCandidateFilters {
   genderPreference?: string;
   requirePhoto?: boolean;
   onlyOnline?: boolean;
+  university?: string;
   zodiacSign?: string;
+  isVerifiedOnly?: boolean;
+  hasVoiceNote?: boolean;
 }
 
 export function getSwipeCandidates(
@@ -23,6 +26,10 @@ export function getSwipeCandidates(
         max_age: filters?.maxAge,
         max_distance_km: filters?.maxDistanceKm,
         gender_preference: filters?.genderPreference,
+        university: filters?.university,
+        zodiac_sign: filters?.zodiacSign,
+        is_verified_only: filters?.isVerifiedOnly,
+        has_voice_note: filters?.hasVoiceNote,
       },
     })
     .then((res) => res.data);

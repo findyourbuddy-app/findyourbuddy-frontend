@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Modal } from "react-native";
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Modal } from "react-native";
 import { Alert } from "../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -10,6 +10,7 @@ import axios from "axios";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, type IcebreakerItem } from "../api/messages";
+import { fetchTrendingGifs, searchGifs, type GifResult } from "../api/giphy";
 import { IcebreakerStrip } from "../components/chat/IcebreakerStrip";
 import { uploadGalleryPhoto } from "../api/users";
 import { submitMatchFeedback } from "../api/matches";
@@ -21,6 +22,7 @@ import { apiClient } from "../api/client";
 import { colors, fontFamily, radius, spacing, typeScale, shadows } from "../theme";
 import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { formatMessageTime, formatRelativeTimestamp } from "../utils/date";
+import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Message, ReportReason } from "../types";
 
@@ -36,7 +38,9 @@ export function ChatScreen({ route }: Props) {
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [selectedImage, setSelectedImage] = useState<{ uri: string } | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const sendLockRef = useRef<boolean>(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
 
@@ -50,9 +54,9 @@ export function ChatScreen({ route }: Props) {
 
   const defaultIcebreakers = useMemo<IcebreakerItem[]>(
     () => [
-      { text: language === "en" ? `Hi ${otherUserName}! So excited for our event ☕` : `Selam ${otherUserName}! Katılacağımız etkinlik için heyecanlıyım ☕`, type: "text" },
-      { text: language === "en" ? "10-second voice note challenge: say your favorite movie line! 🎙️" : "10 saniyelik ses kaydıyla en sevdiğin film repliğini söyle! 🎙️", type: "voice" },
-      { text: language === "en" ? "Checked your profile, let's connect! 🎨" : "Profilindeki hobilerine baktım, ne zaman buluşuyoruz? 🎨", type: "text" },
+      { text: language === "en" ? `Hi ${otherUserName}! So excited for our event` : `Selam ${otherUserName}! Katılacağımız etkinlik için heyecanlıyım`, type: "text" },
+      { text: language === "en" ? "10-second voice note challenge: say your favorite movie line!" : "10 saniyelik ses kaydıyla en sevdiğin film repliğini söyle!", type: "voice" },
+      { text: language === "en" ? "Checked your profile, let's connect!" : "Profilindeki hobilerine baktım, ne zaman buluşuyoruz?", type: "text" },
     ],
     [otherUserName, language]
   );
@@ -78,27 +82,37 @@ export function ChatScreen({ route }: Props) {
 
 
 
-  const POPULAR_GIFS = useMemo(
-    () => [
-      { key: "hello", label: language === "en" ? "Hello 👋" : "Merhaba 👋", url: "https://i.giphy.com/VdfD8e415yLte/giphy.gif" },
-      { key: "wink", label: language === "en" ? "Wink 😉" : "Göz Kırp 😉", url: "https://i.giphy.com/d1E2VyhFsxRxCLKw/giphy.gif" },
-      { key: "laugh", label: language === "en" ? "Laugh 😂" : "Kahkaha 😂", url: "https://i.giphy.com/ltvJF9EQ135t155j6V/giphy.gif" },
-      { key: "coffee", label: language === "en" ? "Coffee ☕" : "Kahve ☕", url: "https://i.giphy.com/3oriO0OEd9QIDdllqo/giphy.gif" },
-      { key: "celebrate", label: language === "en" ? "Celebration 🎉" : "Kutlama 🎉", url: "https://i.giphy.com/l0MYt5jPR6QX5pnq0/giphy.gif" },
-      { key: "applause", label: language === "en" ? "Applause 👏" : "Alkış 👏", url: "https://i.giphy.com/3Gm15eZf29HGVPKl53/giphy.gif" },
-      { key: "love", label: language === "en" ? "Love ❤️" : "Sevgi ❤️", url: "https://i.giphy.com/26hpK8sjGn5BLTOAU/giphy.gif" },
-      { key: "dance", label: language === "en" ? "Dance 💃" : "Dans 💃", url: "https://i.giphy.com/l3vRlT2k2L35Cvv5C/giphy.gif" },
-      { key: "hug", label: language === "en" ? "Hug 🤗" : "Sarıl 🤗", url: "https://i.giphy.com/3oEdv4hwWTzBhWvaU0/giphy.gif" },
-      { key: "thumbsup", label: language === "en" ? "Thumbs Up 👍" : "Süper 👍", url: "https://i.giphy.com/111ebonMs92shy/giphy.gif" },
-      { key: "party", label: language === "en" ? "Party 🥳" : "Parti 🥳", url: "https://i.giphy.com/artj92V8o75VPL7AeQ/giphy.gif" },
-      { key: "mindblown", label: language === "en" ? "Mind Blown 🤯" : "Şok 🤯", url: "https://i.giphy.com/26ufdipQqU2lhNA4g/giphy.gif" },
-      { key: "cool", label: language === "en" ? "Cool 😎" : "Harika 😎", url: "https://i.giphy.com/3o7TKMt1VVNkHV2PaE/giphy.gif" },
-      { key: "highfive", label: language === "en" ? "High Five 🙌" : "Çak 🙌", url: "https://i.giphy.com/3oEJHV0z8S7WM4MwnK/giphy.gif" },
-      { key: "shocked", label: language === "en" ? "OMG 😱" : "İnanılmaz 😱", url: "https://i.giphy.com/xT0xeJpnrWC4XWblEk/giphy.gif" },
-      { key: "cheers", label: language === "en" ? "Cheers 🍻" : "Şerefe 🍻", url: "https://i.giphy.com/g9582DNuQppxC/giphy.gif" }
-    ],
-    [language]
-  );
+  const [gifResults, setGifResults] = useState<GifResult[]>([]);
+  const [gifQuery, setGifQuery] = useState("");
+  const [isLoadingGifs, setIsLoadingGifs] = useState(false);
+
+  const loadTrendingGifs = useCallback(() => {
+    setIsLoadingGifs(true);
+    fetchTrendingGifs()
+      .then(setGifResults)
+      .catch(() => setGifResults([]))
+      .finally(() => setIsLoadingGifs(false));
+  }, []);
+
+  const gifDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleGifSearchText = useCallback((text: string) => {
+    setGifQuery(text);
+    if (gifDebounceRef.current) clearTimeout(gifDebounceRef.current);
+
+    if (!text.trim()) {
+      loadTrendingGifs();
+      return;
+    }
+
+    setIsLoadingGifs(true);
+    gifDebounceRef.current = setTimeout(() => {
+      searchGifs(text.trim())
+        .then(setGifResults)
+        .catch(() => setGifResults([]))
+        .finally(() => setIsLoadingGifs(false));
+    }, 250);
+  }, [loadTrendingGifs]);
 
   const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
   const [selectedMessageForReaction, setSelectedMessageForReaction] = useState<Message | null>(null);
@@ -123,6 +137,13 @@ export function ChatScreen({ route }: Props) {
   }
 
   const [gifModalVisible, setGifModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (!gifModalVisible) return;
+    setGifQuery("");
+    loadTrendingGifs();
+  }, [gifModalVisible, loadTrendingGifs]);
+
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -357,7 +378,11 @@ export function ChatScreen({ route }: Props) {
           </Pressable>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
             <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={36} />
-            <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary }}>
+            <Text
+              style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary, maxWidth: 140 }}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {otherUserName}
             </Text>
           </View>
@@ -380,14 +405,19 @@ export function ChatScreen({ route }: Props) {
     });
   }, [otherUserId, otherUserName, otherUserPhoto, accentColor, initiateCall, openSafetyMenu]);
 
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+
   // Firestore only carries messages sent after the real-time chat migration --
   // older conversation history lives in Postgres and needs a one-time fetch so
   // it doesn't appear to have "disappeared".
   useEffect(() => {
     listMessages(matchId)
-      .then(setHistoricalMessages)
+      .then((history) => {
+        setHistoricalMessages(history);
+        setIsInitialLoading(false);
+      })
       .catch(() => {
-        // Best-effort; the live Firestore feed still works without history.
+        setIsInitialLoading(false);
       });
   }, [matchId]);
 
@@ -424,9 +454,11 @@ export function ChatScreen({ route }: Props) {
           }
         });
         setLiveMessages(list);
+        setIsInitialLoading(false);
       },
       () => {
         setErrorText("Gerçek zamanlı sohbet bağlantı hatası.");
+        setIsInitialLoading(false);
       }
     );
 
@@ -478,9 +510,10 @@ export function ChatScreen({ route }: Props) {
 
   async function handleSend(): Promise<void> {
     const content = draft.trim();
-    if ((!content && !selectedImage) || !user) {
+    if ((!content && !selectedImage) || !user || sendLockRef.current) {
       return;
     }
+    sendLockRef.current = true;
     setErrorText(null);
     setIsSending(true);
 
@@ -492,12 +525,22 @@ export function ChatScreen({ route }: Props) {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     reportTyping(false);
 
+    // Optimistic local update (0ms UI latency)
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const tempMsg: Message = {
+      id: tempId,
+      match_id: matchId,
+      sender_id: user.id,
+      content: activeText || (activeImage ? "[Fotoğraf]" : ""),
+      message_type: activeImage ? "image" : "text",
+      media_url: activeImage ? activeImage.uri : null,
+      created_at: new Date().toISOString(),
+      is_read: false,
+    };
+    setLiveMessages((prev) => [...prev, tempMsg]);
+
     try {
       if (activeImage) {
-        // Uploaded (server-compressed) URL only -- never fall back to the
-        // local file:// URI or an inline base64 data URI, both unreadable
-        // for the other participant, with base64 also bloating every future
-        // read of this chat thread.
         const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
         const uploaded = await uploadGalleryPhoto(activeImage.uri, fileName);
         if (!uploaded?.photo_url) {
@@ -513,6 +556,8 @@ export function ChatScreen({ route }: Props) {
         await sendMessage(matchId, { content: activeText, message_type: "text", media_url: undefined });
       }
     } catch (error) {
+      // Revert optimistic message if network fails
+      setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
       if (activeText) setDraft(activeText);
       if (activeImage) setSelectedImage(activeImage);
       if (axios.isAxiosError(error) && error.response?.status === 422) {
@@ -522,14 +567,30 @@ export function ChatScreen({ route }: Props) {
       }
     } finally {
       setIsSending(false);
+      sendLockRef.current = false;
       scrollToBottom(true);
     }
   }
 
   async function handleSendGif(gifUrl: string) {
-    if (isSending) return;
+    if (isSending || sendLockRef.current || !user) return;
+    sendLockRef.current = true;
     setGifModalVisible(false);
     setIsSending(true);
+
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const tempGifMsg: Message = {
+      id: tempId,
+      match_id: matchId,
+      sender_id: user.id,
+      content: "[GIF]",
+      message_type: "gif",
+      media_url: gifUrl,
+      created_at: new Date().toISOString(),
+      is_read: false,
+    };
+    setLiveMessages((prev) => [...prev, tempGifMsg]);
+
     try {
       await sendMessage(matchId, {
         content: "[GIF]",
@@ -537,9 +598,11 @@ export function ChatScreen({ route }: Props) {
         media_url: gifUrl,
       });
     } catch {
+      setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
       Alert.alert("Hata", "GIF gönderilemedi.");
     } finally {
       setIsSending(false);
+      sendLockRef.current = false;
       scrollToBottom(true);
     }
   }
@@ -584,7 +647,7 @@ export function ChatScreen({ route }: Props) {
               style={[styles.feedbackButton, styles.feedbackButtonYes]}
               onPress={() => answerFeedback(true)}
             >
-              <Text style={styles.feedbackButtonText}>Evet 👍</Text>
+              <Text style={styles.feedbackButtonText}>Evet</Text>
             </Pressable>
             <Pressable
               style={[styles.feedbackButton, styles.feedbackButtonNo]}
@@ -605,12 +668,18 @@ export function ChatScreen({ route }: Props) {
         contentContainerStyle={styles.messageList}
         data={reversedMessages}
         keyExtractor={(message) => String(message.id)}
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        windowSize={5}
         renderItem={({ item }) => {
           const isOwn = item.sender_id === user.id;
           const timeText = formatMessageTime(item.created_at, language);
           const isTimeVisible = visibleTimestampId === item.id;
           const reactionsMap = item.reactions || {};
-          const reactionEntries = Object.values(reactionsMap);
+          const reactionEntries = Object.values(reactionsMap) as string[];
+          const isMedia = item.message_type === "image" || item.message_type === "gif" || (item.media_url && item.media_url.length > 0) || (item.content && item.content.startsWith("http"));
+          const rawUri = item.media_url || (item.content?.startsWith("http") ? item.content : null);
+          const photoUri = resolvePhotoUrl(rawUri);
 
           return (
             <View style={{ marginBottom: spacing.xs }}>
@@ -620,10 +689,21 @@ export function ChatScreen({ route }: Props) {
                   onPress={() => setVisibleTimestampId((prev) => (prev === item.id ? null : item.id))}
                   onLongPress={() => setSelectedMessageForReaction(item)}
                 >
-                  {item.message_type === "image" || item.message_type === "gif" ? (
+                  {isMedia && photoUri ? (
                     <View>
-                      <Image source={{ uri: resolvePhotoUrl(item.media_url) || undefined }} style={styles.bubbleImage} contentFit="cover" />
-                      {item.content && item.content !== "[Fotoğraf]" && item.content !== "[GIF]" ? (
+                      <Pressable
+                        onPress={() => setLightboxPhoto(photoUri)}
+                        accessibilityRole="imagebutton"
+                        accessibilityLabel="Resmi Büyüt"
+                      >
+                        <Image
+                          source={{ uri: photoUri }}
+                          style={styles.bubbleImage}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                        />
+                      </Pressable>
+                      {item.content && item.content !== "[Fotoğraf]" && item.content !== "[GIF]" && !item.content.startsWith("http") ? (
                         <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn, { marginTop: spacing.xs }]}>
                           {item.content}
                         </Text>
@@ -674,13 +754,17 @@ export function ChatScreen({ route }: Props) {
         </View>
       ) : null}
 
-      {messages.length === 0 ? (
+      {isInitialLoading ? (
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color={accentColor} />
+        </View>
+      ) : messages.length === 0 ? (
         <IcebreakerStrip
           icebreakers={aiIcebreakers}
           isLoading={isLoadingIcebreakers}
           onRefresh={() => {
             Alert.alert(
-              language === "en" ? "AI Icebreakers ✨" : "Yapay Zeka ✨",
+              language === "en" ? "AI Icebreakers" : "Yapay Zeka",
               language === "en" ? "Refreshing conversation starters..." : "Yeni tanışma önerileri hazırlanıyor..."
             );
             fetchAiIcebreakers();
@@ -696,7 +780,7 @@ export function ChatScreen({ route }: Props) {
           <Image source={{ uri: selectedImage.uri }} style={styles.attachedImageThumbnail} contentFit="cover" />
           <View style={styles.attachedImageInfo}>
             <Text style={styles.attachedImageTitle}>
-              {language === "en" ? "Photo attached 📷" : "Fotoğraf eklendi 📷"}
+              {language === "en" ? "Photo attached" : "Fotoğraf eklendi"}
             </Text>
             <Text style={styles.attachedImageSubtitle}>
               {language === "en" ? "Add a message or tap Send" : "Aşağıya mesajını yazıp Gönder'e basabilirsin"}
@@ -736,20 +820,64 @@ export function ChatScreen({ route }: Props) {
         onRequestClose={() => setGifModalVisible(false)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setGifModalVisible(false)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={typeScale.h2}>{language === "en" ? "Send GIF 🎬" : "GIF Gönder 🎬"}</Text>
-            <ScrollView style={{ maxHeight: 340 }} contentContainerStyle={styles.gifGrid} showsVerticalScrollIndicator={true}>
-              {POPULAR_GIFS.map((gif) => (
-                <Pressable key={gif.key} style={styles.gifTile} onPress={() => handleSendGif(gif.url)} disabled={isSending}>
-                  <Image source={{ uri: gif.url }} style={styles.gifImage} contentFit="cover" />
-                  <Text style={styles.gifLabel}>{gif.label}</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ width: "100%", justifyContent: "flex-end" }}
+          >
+            <Pressable style={styles.gifModalCard} onPress={(e) => e.stopPropagation()}>
+              <Pressable style={styles.dragHandleTouch} onPress={() => setGifModalVisible(false)}>
+                <View style={styles.dragHandle} />
+              </Pressable>
+
+              <View style={styles.gifModalHeader}>
+                <Text style={typeScale.h2}>{language === "en" ? "Send GIF" : "GIF Gönder"}</Text>
+                <Pressable
+                  onPress={() => setGifModalVisible(false)}
+                  style={styles.closeIconBtn}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("close")}
+                >
+                  <Feather name="x" size={20} color={colors.textSecondary} />
                 </Pressable>
-              ))}
-            </ScrollView>
-            <Pressable style={styles.cancelButton} onPress={() => setGifModalVisible(false)}>
-              <Text style={styles.cancelText}>{t("cancel")}</Text>
+              </View>
+
+              <View style={styles.gifSearchBar}>
+                <Feather name="search" size={16} color={colors.textSecondary} />
+                <TextInput
+                  style={styles.gifSearchInput}
+                  placeholder={language === "en" ? "Search GIFs..." : "GIF ara..."}
+                  placeholderTextColor={colors.textSecondary}
+                  value={gifQuery}
+                  onChangeText={handleGifSearchText}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.gifGrid} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {isLoadingGifs ? (
+                  <ActivityIndicator color={colors.primary} style={{ width: "100%", marginVertical: spacing.lg }} />
+                ) : gifResults.length === 0 ? (
+                  <Text style={styles.gifEmptyText}>
+                    {language === "en" ? "No GIFs found." : "GIF bulunamadı."}
+                  </Text>
+                ) : (
+                  gifResults.map((gif) => (
+                    <Pressable key={gif.id} style={styles.gifTile} onPress={() => handleSendGif(gif.url)} disabled={isSending}>
+                      <Image
+                        source={{ uri: gif.previewUrl }}
+                        style={styles.gifImage}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        recyclingKey={gif.id}
+                      />
+                    </Pressable>
+                  ))
+                )}
+              </ScrollView>
             </Pressable>
-          </Pressable>
+          </KeyboardAvoidingView>
         </Pressable>
       </Modal>
 
@@ -795,7 +923,7 @@ export function ChatScreen({ route }: Props) {
           <View style={styles.callCard}>
             <View style={styles.callHeader}>
               <Avatar name={incomingCall?.callerName ?? ""} photoUrl={incomingCall?.callerPhoto} size={64} />
-              <View style={{ gap: 2 }}>
+              <View style={styles.callHeaderTextColumn}>
                 <Text style={styles.callerNameText}>{incomingCall?.callerName}</Text>
                 <Text style={styles.callTypeText}>
                   {language === "en"
@@ -817,6 +945,12 @@ export function ChatScreen({ route }: Props) {
           </View>
         </View>
       </Modal>
+
+      <PhotoLightboxModal
+        visible={lightboxPhoto !== null}
+        photoUrl={lightboxPhoto}
+        onClose={() => setLightboxPhoto(null)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -1027,6 +1161,41 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
   },
+  gifModalCard: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.card * 1.5,
+    borderTopRightRadius: radius.card * 1.5,
+    padding: spacing.xl,
+    paddingTop: spacing.xs,
+    height: "75%",
+    maxHeight: "85%",
+    gap: spacing.md,
+    ...shadows.card,
+  },
+  dragHandleTouch: {
+    paddingVertical: 6,
+    alignItems: "center",
+    width: "100%",
+  },
+  dragHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.border,
+  },
+  closeIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gifModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   gifGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1038,18 +1207,33 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderRadius: radius.sm,
     overflow: "hidden",
-    alignItems: "center",
-    paddingBottom: spacing.xs,
   },
   gifImage: {
     width: "100%",
-    height: 90,
+    height: 110,
   },
-  gifLabel: {
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 11,
+  gifSearchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  gifSearchInput: {
+    flex: 1,
+    fontFamily: fontFamily.body,
+    fontSize: 14,
     color: colors.textPrimary,
-    marginTop: 4,
+  },
+  gifEmptyText: {
+    width: "100%",
+    textAlign: "center",
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginVertical: spacing.lg,
   },
   cancelButton: {
     alignItems: "center",
@@ -1089,6 +1273,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     width: "100%",
+  },
+  callHeaderTextColumn: {
+    flex: 1,
+    gap: 2,
   },
   callerNameText: {
     fontFamily: fontFamily.bodySemiBold,

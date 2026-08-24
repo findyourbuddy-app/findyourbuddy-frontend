@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Alert } from "../utils/alert";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
@@ -178,6 +178,7 @@ export function CreateEventScreen() {
   }
 
   async function handleSave(): Promise<void> {
+    if (isSaving) return;
     setError(null);
 
     if (!title.trim()) {
@@ -256,7 +257,13 @@ export function CreateEventScreen() {
   }
 
   return (
-    <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+      <ScrollView
+        style={[styles.background, { backgroundColor: bgGradient[0] }]}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
       {quota && !quota.is_premium && quota.weekly_limit !== null ? (
         <View style={styles.topQuotaRow}>
           <Pressable style={styles.topQuotaPill} onPress={() => setQuotaModalVisible(true)}>
@@ -274,7 +281,7 @@ export function CreateEventScreen() {
         <Text style={styles.photoTipText}>
           {language === "en"
             ? "Your profile photo will be highlighted as the cover image of this event to boost visibility!"
-            : "Profil fotoğrafın bu etkinliğin kapak görseli olarak öne çıkarılır ve görünürlüğünü artırır! 📸"}
+            : "Profil fotoğrafın bu etkinliğin kapak görseli olarak öne çıkarılır ve görünürlüğünü artırır!"}
         </Text>
       </View>
 
@@ -393,7 +400,7 @@ export function CreateEventScreen() {
       <View style={styles.field}>
         <Text style={typeScale.eyebrow}>{t("mapLocationHeader")}</Text>
         <PrimaryButton
-          label={coordinates ? (language === "en" ? "Location Selected ✓" : "Konum Seçildi ✓") : t("selectLocationMap")}
+          label={coordinates ? (language === "en" ? "Location Selected" : "Konum Seçildi") : t("selectLocationMap")}
           onPress={() => setIsLocationPickerVisible(true)}
           variant="outline"
         />
@@ -579,7 +586,7 @@ export function CreateEventScreen() {
           <Pressable style={styles.quotaModalCard} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <Text style={styles.quotaModalTitle}>
-                {language === "en" ? "Weekly Event Creation Quota ⚡" : "Haftalık Etkinlik Limitiniz ⚡"}
+                {language === "en" ? "Weekly Event Creation Quota" : "Haftalık Etkinlik Limitiniz"}
               </Text>
               <Pressable onPress={() => setQuotaModalVisible(false)}>
                 <Feather name="x" size={20} color={colors.textSecondary} />
@@ -614,7 +621,7 @@ export function CreateEventScreen() {
                 loading={isBuyingCredits}
               />
               <PrimaryButton
-                label={language === "en" ? "⭐ Upgrade to Premium (Unlimited)" : "⭐ Premium'a Geç (Sınırsız Limit)"}
+                label={language === "en" ? "Upgrade to Premium (Unlimited)" : "Premium'a Geç (Sınırsız Limit)"}
                 onPress={async () => {
                   setQuotaModalVisible(false);
                   try {
@@ -632,6 +639,7 @@ export function CreateEventScreen() {
         </Pressable>
       </Modal>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

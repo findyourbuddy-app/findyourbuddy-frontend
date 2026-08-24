@@ -126,7 +126,7 @@ export function RegisterScreen() {
           <View style={styles.headerBox}>
             <BuddyLogo size={80} showText={true} />
             <Text style={styles.headerTitle}>
-              {language === "en" ? "Join FindYourBuddy ✨" : "Aramıza Katıl! ✨"}
+              {language === "en" ? "Join FindYourBuddy" : "Aramıza Katıl!"}
             </Text>
             <Text style={styles.headerSub}>
               {language === "en"
@@ -354,9 +354,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
     paddingHorizontal: spacing.lg,
-    paddingTop: Platform.OS === "ios" ? 100 : 80,
+    paddingTop: Platform.OS === "ios" ? 90 : 70,
     paddingBottom: spacing.xxl,
   },
   headerBox: {

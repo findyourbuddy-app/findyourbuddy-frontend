@@ -111,7 +111,7 @@ export function LoginScreen() {
           <View style={styles.headerBox}>
             <BuddyLogo size={85} showText={true} />
             <Text style={styles.headerTitle}>
-              {language === "en" ? "Welcome Back! 👋" : "Tekrar Hoş Geldin! 👋"}
+              {language === "en" ? "Welcome Back!" : "Tekrar Hoş Geldin!"}
             </Text>
             <Text style={styles.headerSubtitle}>
               {language === "en"
@@ -314,9 +314,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
     paddingHorizontal: spacing.lg,
-    paddingTop: Platform.OS === "ios" ? 100 : 80,
+    paddingTop: Platform.OS === "ios" ? 90 : 70,
     paddingBottom: spacing.xxl,
   },
   headerBox: {

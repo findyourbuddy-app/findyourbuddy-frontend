@@ -11,6 +11,7 @@ import type { User } from "../../types";
 
 interface SwipeCandidateCardProps {
   candidate: User;
+  activeEventTitle?: string;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
   onSwipeUp: () => void;
@@ -39,6 +40,7 @@ import { useAppTheme } from "../../context/ThemeContext";
 
 export function SwipeCandidateCard({
   candidate,
+  activeEventTitle,
   onSwipeLeft,
   onSwipeRight,
   onSwipeUp,
@@ -90,9 +92,13 @@ export function SwipeCandidateCard({
           Math.abs(gesture.dx) > TAP_MOVE_THRESHOLD || Math.abs(gesture.dy) > TAP_MOVE_THRESHOLD;
         if (!movedEnough) {
           const tapX = evt.nativeEvent.locationX;
-          if (photoUrls.length > 1 && cardWidth > 0 && tapX < cardWidth * 0.3) {
+          const tapY = evt.nativeEvent.locationY;
+          // Tapping anywhere on the lower 50% or center of card opens candidate profile account
+          if ((cardHeight > 0 && tapY > cardHeight * 0.45) || (tapX >= cardWidth * 0.25 && tapX <= cardWidth * 0.75)) {
+            onPressProfile();
+          } else if (photoUrls.length > 1 && cardWidth > 0 && tapX < cardWidth * 0.25) {
             goToPhoto(-1);
-          } else if (photoUrls.length > 1 && cardWidth > 0 && tapX > cardWidth * 0.7) {
+          } else if (photoUrls.length > 1 && cardWidth > 0 && tapX > cardWidth * 0.75) {
             goToPhoto(1);
           } else {
             onPressProfile();
@@ -151,10 +157,10 @@ export function SwipeCandidateCard({
       onLayout={handleLayout}
       {...panResponder.panHandlers}
     >
-      {photoUrls.length > 0 && cardWidth > 0 && cardHeight > 0 ? (
+      {photoUrls.length > 0 ? (
         <Image
           source={{ uri: photoUrls[activeIndex] }}
-          style={[styles.photo, { width: cardWidth, height: cardHeight }]}
+          style={StyleSheet.absoluteFill}
           contentFit="cover"
         />
       ) : (
@@ -208,6 +214,9 @@ export function SwipeCandidateCard({
               <Text style={styles.trustBadgeText}>Güvenilir Buddy</Text>
             </View>
           )}
+          <View style={styles.infoBadgeBtn}>
+            <Feather name="info" size={14} color="#FFF" />
+          </View>
         </View>
 
 
@@ -215,6 +224,20 @@ export function SwipeCandidateCard({
           <View style={styles.locationRow}>
             <Feather name="map-pin" size={12} color="rgba(255,255,255,0.9)" />
             <Text style={styles.locationText}>{locationName}</Text>
+          </View>
+        ) : null}
+
+        {candidate.looking_for ? (
+          <View style={styles.lookingForRow}>
+            <Feather name="compass" size={12} color="rgba(255,255,255,0.9)" />
+            <Text style={styles.lookingForText} numberOfLines={1}>{candidate.looking_for}</Text>
+          </View>
+        ) : null}
+
+        {candidate.event_title ? (
+          <View style={styles.eventPill}>
+            <Feather name="calendar" size={11} color={colors.surface} />
+            <Text style={styles.eventPillText} numberOfLines={1}>{candidate.event_title}</Text>
           </View>
         ) : null}
 
@@ -342,6 +365,15 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#FFF",
   },
+  infoBadgeBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: "auto",
+  },
   locationRow: {
 
     flexDirection: "row",
@@ -354,6 +386,35 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 13,
     color: "rgba(255, 255, 255, 0.95)",
+  },
+  lookingForRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 2,
+  },
+  lookingForText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.95)",
+    flexShrink: 1,
+  },
+  eventPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    marginBottom: 2,
+  },
+  eventPillText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.surface,
+    flexShrink: 1,
   },
   bioBox: {
     backgroundColor: "rgba(0, 0, 0, 0.35)",

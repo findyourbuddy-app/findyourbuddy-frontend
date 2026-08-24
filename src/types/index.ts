@@ -14,6 +14,7 @@ export interface User {
   date_of_birth: string | null;
   occupation: string | null;
   university: string | null;
+  class_year: string | null;
   zodiac_sign: string | null;
   gender: string | null;
   height: number | null;
@@ -42,6 +43,7 @@ export interface User {
   phone_number?: string | null;
   phone_verified: boolean;
   is_verified?: boolean;
+  event_title?: string | null;
 }
 
 export interface UserUpdate {
@@ -49,6 +51,7 @@ export interface UserUpdate {
   date_of_birth?: string;
   occupation?: string;
   university?: string | null;
+  class_year?: string | null;
   zodiac_sign?: string | null;
   gender?: string | null;
   height?: number | null;
@@ -107,6 +110,7 @@ export interface Event {
   created_at: string;
   attendee_count: number;
   is_attending: boolean;
+  is_pending: boolean;
   is_checked_in: boolean;
   is_ticket_verified: boolean;
 }
@@ -214,6 +218,7 @@ export interface Notification {
   title: string;
   body: string;
   is_read: boolean;
+  data?: Record<string, any> | null;
   created_at: string;
 }
 

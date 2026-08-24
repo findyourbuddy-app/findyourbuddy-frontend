@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -27,16 +27,23 @@ export function NotificationsScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const notificationsRef = useRef(notifications);
+  notificationsRef.current = notifications;
+
   const loadNotifications = useCallback(async () => {
-    setIsLoading(true);
+    if (notificationsRef.current.length === 0) {
+      setIsLoading(true);
+    }
     try {
       setNotifications(await listMyNotifications());
       await markMyNotificationsRead();
     } catch {
-      Alert.alert(
-        language === "en" ? "Error" : "Bir sorun oluştu",
-        language === "en" ? "Notifications could not be loaded. Please try again." : "Bildirimler yüklenemedi. Lütfen tekrar dene."
-      );
+      if (notificationsRef.current.length === 0) {
+        Alert.alert(
+          language === "en" ? "Error" : "Bir sorun oluştu",
+          language === "en" ? "Notifications could not be loaded. Please try again." : "Bildirimler yüklenemedi. Lütfen tekrar dene."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -90,50 +97,50 @@ export function NotificationsScreen() {
     if (language === "en") {
       if (lowercaseTitle.includes("beğeni") || lowercaseBody.includes("beğendi") || lowercaseTitle.includes("like")) {
         return {
-          title: "New Like! ❤️",
+          title: "New Like!",
           body: "Someone liked you as a buddy!",
         };
       }
       if (lowercaseTitle.includes("match") || lowercaseTitle.includes("eşleşme") || lowercaseBody.includes("eşleşti")) {
         return {
-          title: "New Match! 🎉",
+          title: "New Match!",
           body: "You have a new match on FindYourBuddy!",
         };
       }
       if (lowercaseTitle.includes("mesaj") || lowercaseTitle.includes("message")) {
         return {
-          title: "New Message 💬",
+          title: "New Message",
           body: "You received a new message.",
         };
       }
       if (lowercaseTitle.includes("etkinlik") || lowercaseBody.includes("nasıldı") || lowercaseBody.includes("buluştun")) {
         return {
-          title: "How was the event? ⭐",
+          title: "How was the event?",
           body: "Did you meet your buddy? Quickly rate your experience.",
         };
       }
     } else {
       if (lowercaseTitle.includes("like") || lowercaseTitle.includes("beğeni")) {
         return {
-          title: "Yeni Beğeni! ❤️",
+          title: "Yeni Beğeni!",
           body: "Biri seni kanka olarak beğendi.",
         };
       }
       if (lowercaseTitle.includes("match") || lowercaseTitle.includes("eşleşme")) {
         return {
-          title: "Yeni Eşleşme! 🎉",
+          title: "Yeni Eşleşme!",
           body: "FindYourBuddy'de yeni bir kanka eşleşmen var!",
         };
       }
       if (lowercaseTitle.includes("message") || lowercaseTitle.includes("mesaj")) {
         return {
-          title: "Yeni Mesaj 💬",
+          title: "Yeni Mesaj",
           body: "Sana yeni bir mesaj geldi.",
         };
       }
       if (lowercaseTitle.includes("etkinlik") || lowercaseBody.includes("nasıldı") || lowercaseBody.includes("buluştun")) {
         return {
-          title: "Etkinlik nasıldı? ⭐",
+          title: "Etkinlik nasıldı?",
           body: "Kankanla buluştun mu? Sohbet ekranından hızlıca belirtebilirsin.",
         };
       }
@@ -144,6 +151,22 @@ export function NotificationsScreen() {
 
   function handlePressNotification(item: Notification) {
     const meta = getNotificationMeta(item.title, item.body);
+
+    if (item.data && typeof item.data === "object") {
+      const data = item.data as Record<string, any>;
+      if (data.match_id) {
+        navigation.navigate("Chat", {
+          matchId: Number(data.match_id),
+          otherUserId: Number(data.other_user_id || 0),
+          otherUserName: String(data.other_user_name || "Kanka"),
+        });
+        return;
+      }
+      if (data.event_id) {
+        navigation.navigate("EventDetail", { eventId: Number(data.event_id) });
+        return;
+      }
+    }
 
     if (meta.type === "like") {
       navigation.navigate("LikesReceived");

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { Alert } from "../../utils/alert";
 import { Feather } from "@expo/vector-icons";
 import { PrimaryButton } from "../ui/PrimaryButton";
@@ -9,6 +9,7 @@ import type { SwipeCandidateFilters } from "../../api/swipes";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTheme } from "../../context/ThemeContext";
+import { UniversityAutocomplete } from "../ui/UniversityAutocomplete";
 
 interface SwipeFiltersModalProps {
   visible: boolean;
@@ -53,12 +54,15 @@ export function SwipeFiltersModal({
   const [genderPreference, setGenderPreference] = useState(initialFilters.genderPreference || "all");
   const [requirePhoto, setRequirePhoto] = useState(Boolean(initialFilters.requirePhoto));
   const [onlyOnline, setOnlyOnline] = useState(Boolean(initialFilters.onlyOnline));
+  const [university, setUniversity] = useState(initialFilters.university || "");
   const [zodiacSign, setZodiacSign] = useState(initialFilters.zodiacSign || "Tümü");
+  const [isVerifiedOnly, setIsVerifiedOnly] = useState(Boolean(initialFilters.isVerifiedOnly));
+  const [hasVoiceNote, setHasVoiceNote] = useState(Boolean(initialFilters.hasVoiceNote));
 
   const GENDER_PREFERENCES = [
-    { id: "all", label: language === "en" ? "Everyone 👥" : "Herkes 👥" },
-    { id: "female", label: language === "en" ? "Female 👩" : "Kadın 👩" },
-    { id: "male", label: language === "en" ? "Male 👨" : "Erkek 👨" },
+    { id: "all", label: language === "en" ? "Everyone" : "Herkes" },
+    { id: "female", label: language === "en" ? "Female" : "Kadın" },
+    { id: "male", label: language === "en" ? "Male" : "Erkek" },
   ];
 
   const AGE_PRESETS = [
@@ -83,7 +87,10 @@ export function SwipeFiltersModal({
       setGenderPreference(initialFilters.genderPreference || "all");
       setRequirePhoto(Boolean(initialFilters.requirePhoto));
       setOnlyOnline(Boolean(initialFilters.onlyOnline));
+      setUniversity(initialFilters.university || "");
       setZodiacSign(initialFilters.zodiacSign || "Tümü");
+      setIsVerifiedOnly(Boolean(initialFilters.isVerifiedOnly));
+      setHasVoiceNote(Boolean(initialFilters.hasVoiceNote));
     }
   }, [visible, initialFilters]);
 
@@ -110,7 +117,10 @@ export function SwipeFiltersModal({
       genderPreference: genderPreference !== "all" ? genderPreference : undefined,
       requirePhoto,
       onlyOnline,
+      university: university.trim() ? university.trim() : undefined,
       zodiacSign: zodiacSign !== "Tümü" ? zodiacSign : undefined,
+      isVerifiedOnly,
+      hasVoiceNote,
     });
   }
 
@@ -121,7 +131,10 @@ export function SwipeFiltersModal({
     setGenderPreference("all");
     setRequirePhoto(false);
     setOnlyOnline(false);
+    setUniversity("");
     setZodiacSign("Tümü");
+    setIsVerifiedOnly(false);
+    setHasVoiceNote(false);
     onApply({});
   }
 
@@ -153,7 +166,7 @@ export function SwipeFiltersModal({
           <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
             <View style={{ alignItems: "center", gap: spacing.xs, marginVertical: spacing.xs }}>
               <Feather name="sliders" size={36} color={colors.primary} />
-              <Text style={typeScale.h1}>{language === "en" ? "Advanced Buddy Filters 🎛️" : "Gelişmiş Kanka Filtreleri 🎛️"}</Text>
+              <Text style={typeScale.h1}>{language === "en" ? "Advanced Buddy Filters" : "Gelişmiş Kanka Filtreleri"}</Text>
               <Text style={[styles.upsellText, { textAlign: "center", lineHeight: 20 }]}>
                 {t("premiumFilterNotice")}
               </Text>
@@ -196,31 +209,37 @@ export function SwipeFiltersModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <Pressable style={styles.backdrop} onPress={onDismiss}>
-        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <View style={styles.dragHandle} />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ width: "100%", justifyContent: "flex-end" }}
+        >
+          <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.dragHandle} />
 
-          <View style={styles.headerRow}>
-            <View style={styles.headerTitleRow}>
-              <View style={styles.headerIconBadge}>
-                <Feather name="sliders" size={16} color={colors.primary} />
+            <View style={styles.headerRow}>
+              <View style={styles.headerTitleRow}>
+                <View style={styles.headerIconBadge}>
+                  <Feather name="sliders" size={16} color={colors.primary} />
+                </View>
+                <Text style={[typeScale.h1, styles.headerTitleText]} numberOfLines={1}>
+                  {language === "en" ? "Advanced Buddy Filters" : "Gelişmiş Kanka Filtreleri"}
+                </Text>
               </View>
-              <Text style={typeScale.h1}>{language === "en" ? "Advanced Buddy Filters 🎛️" : "Gelişmiş Kanka Filtreleri 🎛️"}</Text>
+              <Pressable
+                onPress={onDismiss}
+                style={styles.closeIconBtn}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={t("close")}
+              >
+                <Feather name="x" size={18} color={colors.textSecondary} />
+              </Pressable>
             </View>
-            <Pressable
-              onPress={onDismiss}
-              style={styles.closeIconBtn}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel={t("close")}
-            >
-              <Feather name="x" size={18} color={colors.textSecondary} />
-            </Pressable>
-          </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Gender Preference Chips */}
             <View style={styles.field}>
-              <Text style={styles.label}>{language === "en" ? "Gender Preference 👤" : "Cinsiyet Tercihi 👤"}</Text>
+              <Text style={styles.label}>{language === "en" ? "Gender Preference" : "Cinsiyet Tercihi"}</Text>
               <View style={styles.genderRow}>
                 {GENDER_PREFERENCES.map((g) => {
                   const isSelected = genderPreference === g.id;
@@ -242,7 +261,7 @@ export function SwipeFiltersModal({
             {/* Age Range Section with Presets */}
             <View style={styles.field}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>{language === "en" ? "Age Range 🎂" : "Yaş Aralığı 🎂"}</Text>
+                <Text style={styles.label}>{language === "en" ? "Age Range" : "Yaş Aralığı"}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
                   {AGE_PRESETS.map((p) => (
                     <Pressable
@@ -288,7 +307,7 @@ export function SwipeFiltersModal({
             {/* Distance Radius Section with Presets */}
             <View style={styles.field}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>{language === "en" ? "Max Distance 📍" : "Maksimum Mesafe Yarıçapı 📍"}</Text>
+                <Text style={styles.label}>{language === "en" ? "Max Distance" : "Maksimum Mesafe Yarıçapı"}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
                   {DISTANCE_PRESETS.map((p) => (
                     <Pressable
@@ -317,11 +336,22 @@ export function SwipeFiltersModal({
               </View>
             </View>
 
+            {/* University / School Filter */}
+            <View style={[styles.field, { zIndex: 20 }]}>
+              <Text style={styles.label}>{language === "en" ? "University / School" : "Üniversite / Okul Filtresi"}</Text>
+              <UniversityAutocomplete
+                value={university}
+                onChangeText={setUniversity}
+                language={language}
+                placeholder={language === "en" ? "Filter by university..." : "Üniversiteye göre filtrele..."}
+              />
+            </View>
+
             {/* Toggle Switches */}
             <View style={styles.toggleCard}>
               <View style={styles.toggleRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.toggleTitle}>{language === "en" ? "Profile Photo Only 📸" : "Sadece Fotoğraflı Profiller 📸"}</Text>
+                  <Text style={styles.toggleTitle}>{language === "en" ? "Profile Photo Only" : "Sadece Fotoğraflı Profiller"}</Text>
                   <Text style={styles.toggleSubtitle}>
                     {language === "en" ? "Only show profiles with verified photos" : "Profilinde fotoğrafı olan kişileri göster"}
                   </Text>
@@ -331,7 +361,27 @@ export function SwipeFiltersModal({
               <View style={styles.toggleDivider} />
               <View style={styles.toggleRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.toggleTitle}>{language === "en" ? "Recently Active Only ⚡" : "Son 24 Saatte Aktif Olanlar ⚡"}</Text>
+                  <Text style={styles.toggleTitle}>{language === "en" ? "Blue Checkmark Only" : "Sadece Mavi Tik Onaylı Profiller"}</Text>
+                  <Text style={styles.toggleSubtitle}>
+                    {language === "en" ? "Show only identity-verified users" : "Yalnızca canlı selfie ile doğrulanmış mavi tikli üyeler"}
+                  </Text>
+                </View>
+                <Switch value={isVerifiedOnly} onValueChange={setIsVerifiedOnly} trackColor={{ false: colors.border, true: colors.primary }} />
+              </View>
+              <View style={styles.toggleDivider} />
+              <View style={styles.toggleRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.toggleTitle}>{language === "en" ? "Voice Intro Only" : "Sadece Ses Tanıtımı Olanlar"}</Text>
+                  <Text style={styles.toggleSubtitle}>
+                    {language === "en" ? "Show users who recorded a voice intro" : "Ses profil kaydı bulunan kişileri filtrele"}
+                  </Text>
+                </View>
+                <Switch value={hasVoiceNote} onValueChange={setHasVoiceNote} trackColor={{ false: colors.border, true: colors.primary }} />
+              </View>
+              <View style={styles.toggleDivider} />
+              <View style={styles.toggleRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.toggleTitle}>{language === "en" ? "Recently Active Only" : "Son 24 Saatte Aktif Olanlar"}</Text>
                   <Text style={styles.toggleSubtitle}>
                     {language === "en" ? "Show recently online users" : "Çevrimiçi ve aktif kankaları öne çıkar"}
                   </Text>
@@ -342,7 +392,7 @@ export function SwipeFiltersModal({
 
             {/* Zodiac Sign Selection */}
             <View style={styles.field}>
-              <Text style={styles.label}>{language === "en" ? "Zodiac Sign Synergy ♉" : "Burç Uyum Tercihi ♉"}</Text>
+              <Text style={styles.label}>{language === "en" ? "Zodiac Sign Synergy" : "Burç Uyum Tercihi"}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
                 {ZODIAC_LIST.map((z) => {
                   const isSelected = zodiacSign === z;
@@ -364,12 +414,13 @@ export function SwipeFiltersModal({
 
           {/* Sticky Bottom Actions */}
           <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 20) + spacing.md }]}>
-            <PrimaryButton label={language === "en" ? "Apply Filters ✨" : "Filtreleri Uygula ✨"} onPress={handleApply} />
+            <PrimaryButton label={language === "en" ? "Apply Filters" : "Filtreleri Uygula"} onPress={handleApply} />
             <Pressable onPress={handleClear} style={styles.clearLink} hitSlop={8}>
               <Text style={styles.clearLinkText}>{language === "en" ? "Clear All Filters" : "Filtreleri Sıfırla"}</Text>
             </Pressable>
           </View>
         </Pressable>
+        </KeyboardAvoidingView>
       </Pressable>
     </Modal>
   );
@@ -386,13 +437,15 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.card * 1.5,
     borderTopRightRadius: radius.card * 1.5,
     padding: spacing.lg,
-    paddingBottom: spacing.md,
-    height: "92%",
+    paddingBottom: spacing.sm,
+    height: "82%",
+    maxHeight: "88%",
     gap: spacing.md,
+    ...shadows.card,
   },
   scrollContent: {
     gap: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
   labelRow: {
     gap: spacing.xs,
@@ -471,9 +524,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   headerTitleRow: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
+    marginRight: spacing.sm,
+  },
+  headerTitleText: {
+    flexShrink: 1,
+    fontSize: 18,
+    lineHeight: 23,
   },
   headerIconBadge: {
     width: 32,

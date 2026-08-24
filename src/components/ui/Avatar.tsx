@@ -35,24 +35,52 @@ function initialsForName(name: string): string {
 export function resolvePhotoUrl(url?: string | null): string | null {
   if (!url || !url.trim()) return null;
   const trimmed = url.trim();
-  if (trimmed.startsWith("file://") || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+
+  // Local mobile device URIs (iOS ph://, Android content://, file://, data:, blob:)
+  if (
+    trimmed.startsWith("file:") ||
+    trimmed.startsWith("content:") ||
+    trimmed.startsWith("ph:") ||
+    trimmed.startsWith("assets-library:") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("blob:")
+  ) {
     return trimmed;
   }
+
   const base = API_BASE_URL.replace(/\/+$/, "");
+
+  // Absolute HTTP/HTTPS URLs (external services like Giphy, Google, etc.)
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    if (trimmed.includes("localhost:") || trimmed.includes("127.0.0.1:") || trimmed.includes("192.168.")) {
-      return trimmed.replace(/http:\/\/[^/]+/, base);
+    if (trimmed.includes("giphy.com") || trimmed.includes("giphy.org") || trimmed.includes("googleusercontent.com")) {
+      return trimmed;
     }
     if (trimmed.includes("r2.dev")) {
-      const filename = trimmed.split("/").pop();
-      if (filename) {
-        return `${base}/static/uploads/${filename}`;
-      }
+      const fileName = trimmed.split("/").pop() || "";
+      return `${base}/media/${fileName}`;
+    }
+    if (
+      trimmed.includes("localhost") ||
+      trimmed.includes("127.0.0.1") ||
+      trimmed.includes("10.0.2.2") ||
+      /192\.168\.\d+\.\d+/.test(trimmed)
+    ) {
+      return trimmed.replace(/^https?:\/\/[^/]+/, base);
     }
     return trimmed;
   }
-  const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-  return `${base}${path}`;
+
+  // If it contains /media/ or /uploads/ path
+  if (trimmed.includes("/media/") || trimmed.includes("/uploads/")) {
+    const mediaPath = trimmed.includes("/media/")
+      ? trimmed.substring(trimmed.indexOf("/media/"))
+      : trimmed.substring(trimmed.indexOf("/uploads/"));
+    return `${base}${mediaPath}`;
+  }
+
+  // Relative path fallback
+  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return `${base}${cleanPath}`;
 }
 
 export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: AvatarProps) {
@@ -61,7 +89,7 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
 
   useEffect(() => {
     setImageError(false);
-  }, [photoUrl]);
+  }, [resolvedUrl]);
 
   const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
   const badgeSize = Math.max(14, Math.round(size * 0.32));

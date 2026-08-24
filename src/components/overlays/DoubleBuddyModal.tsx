@@ -83,7 +83,7 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr" }: Props) {
             <View style={styles.titleRow}>
               <Feather name="users" size={22} color={colors.primary} />
               <Text style={typeScale.h2}>
-                {language === "en" ? "Double Buddy (Pair Mode) 👥" : "Double Buddy (Çiftli Mod) 👥"}
+                {language === "en" ? "Double Buddy (Pair Mode)" : "Double Buddy (Çiftli Mod)"}
               </Text>
             </View>
             <Pressable onPress={onClose} style={styles.closeBtn}>
@@ -96,7 +96,7 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr" }: Props) {
           ) : pair ? (
             <View style={styles.activePairBox}>
               <Text style={styles.activePairTitle}>
-                {language === "en" ? "Active Double Buddy Pair 🔥" : "Aktif Çiftli Kanka Ekibi 🔥"}
+                {language === "en" ? "Active Double Buddy Pair" : "Aktif Çiftli Kanka Ekibi"}
               </Text>
               <View style={styles.partnerRow}>
                 <Avatar name={pair.partner_name} photoUrl={pair.partner_photo} size={48} />

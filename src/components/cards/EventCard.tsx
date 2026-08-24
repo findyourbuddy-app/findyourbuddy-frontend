@@ -98,8 +98,15 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
           </View>
         ) : null}
         <PrimaryButton
-          label={event.is_attending ? t("seeBuddiesBtn") : t("imGoingToThisEvent")}
+          label={
+            event.is_attending
+              ? t("seeBuddiesBtn")
+              : event.is_pending
+              ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
+              : t("imGoingToThisEvent")
+          }
           onPress={onPressJoin}
+          disabled={event.is_pending}
         />
       </View>
     </Pressable>

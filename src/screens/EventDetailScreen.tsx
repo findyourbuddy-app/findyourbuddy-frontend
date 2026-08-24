@@ -37,13 +37,13 @@ import { useAppTheme } from "../context/ThemeContext";
 type Props = NativeStackScreenProps<MainStackParamList, "EventDetail">;
 
 export function EventDetailScreen({ route }: Props) {
-  const { eventId } = route.params;
+  const { eventId, initialEvent } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user, isPremium } = useAuth();
   const { t, accentColor, bgGradient, language } = useAppTheme();
-  const [event, setEvent] = useState<Event | null>(null);
+  const [event, setEvent] = useState<Event | null>(initialEvent ? (initialEvent as Event) : null);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialEvent);
   const [isJoining, setIsJoining] = useState(false);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [joinRequests, setJoinRequests] = useState<User[]>([]);
@@ -83,7 +83,9 @@ export function EventDetailScreen({ route }: Props) {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      setIsLoading(true);
+      if (!event || event.id !== eventId) {
+        setIsLoading(true);
+      }
       Promise.all([getEvent(eventId), listMyBookmarks()])
         .then(([loadedEvent, bookmarks]) => {
           if (cancelled) return;
@@ -94,7 +96,7 @@ export function EventDetailScreen({ route }: Props) {
           }
         })
         .catch(() => {
-          if (!cancelled) {
+          if (!cancelled && (!event || event.id !== eventId)) {
             Alert.alert(
               language === "en" ? "Error" : "Bir sorun oluştu",
               language === "en" ? "Event could not be loaded. Please try again." : "Etkinlik yüklenemedi. Lütfen tekrar dene."
@@ -107,7 +109,7 @@ export function EventDetailScreen({ route }: Props) {
       return () => {
         cancelled = true;
       };
-    }, [eventId, user, refreshJoinRequests])
+    }, [eventId, user, refreshJoinRequests, event])
   );
 
   const bookmarkScale = useRef(new Animated.Value(1)).current;
@@ -174,10 +176,19 @@ export function EventDetailScreen({ route }: Props) {
       await goToSwipe();
       return;
     }
+    if (event.is_pending) return;
     setIsJoining(true);
     try {
       const updated = await attendEvent(event.id);
       setEvent(updated);
+      if (updated.is_pending) {
+        Alert.alert(
+          language === "en" ? "Request Sent" : "İstek Gönderildi",
+          language === "en"
+            ? "Your request was sent to the organizer. You'll be notified once it's approved."
+            : "İsteğin organizatöre gönderildi. Onaylanınca bilgilendirileceksin."
+        );
+      }
     } catch {
       Alert.alert(
         language === "en" ? "Error" : "Bir sorun oluştu",
@@ -203,7 +214,7 @@ export function EventDetailScreen({ route }: Props) {
         longitude: position.coords.longitude,
       });
       setEvent(updated);
-      Alert.alert("Katılımın Onaylandı! ✓", "Bu etkinlikte olduğun doğrulandı.");
+      Alert.alert("Katılımın Onaylandı!", "Bu etkinlikte olduğun doğrulandı.");
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
         const detail = err.response.data?.detail as string | undefined;
@@ -376,7 +387,7 @@ export function EventDetailScreen({ route }: Props) {
                   onPress={() => navigation.navigate("AIRecommendations")}
                 >
                   <Feather name="award" size={12} color={colors.surface} style={{ marginRight: 2 }} />
-                  <Text style={styles.lockedBadgeText}>Premium ile Gör 🔓</Text>
+                  <Text style={styles.lockedBadgeText}>Premium ile Gör</Text>
                 </Pressable>
               </View>
             )}
@@ -425,19 +436,22 @@ export function EventDetailScreen({ route }: Props) {
               label={
                 event.is_attending
                   ? (!event.is_group_event
-                      ? (language === "en" ? "👤 View Buddy & Connect" : "👤 Kankayı Gör & İletişime Geç")
+                      ? (language === "en" ? "View Buddy & Connect" : "Kankayı Gör & İletişime Geç")
                       : (language === "en" ? "See Buddies" : "Kankaları Gör"))
+                  : event.is_pending
+                  ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
                   : (language === "en" ? "I'm Going to This Event" : "Bu Etkinliğe Gidiyorum")
               }
               onPress={handleAttendAndSwipe}
               loading={isJoining}
+              disabled={event.is_pending}
             />
             {!event.is_attending ? (
               <Pressable
                 style={styles.trustInfoRow}
                 onPress={() =>
                   Alert.alert(
-                    language === "en" ? "How does the trust score work? 🛡️" : "Güven skoru nasıl işliyor? 🛡️",
+                    language === "en" ? "How does the trust score work?" : "Güven skoru nasıl işliyor?",
                     language === "en"
                       ? "When you say you're going, we check your location at the event. Show up and check in: your trust score goes up. Don't show up: it goes down. If your score stays too low for a while, your account gets flagged as a troll account and may be restricted."
                       : "Katılıyorum dediğinde etkinlikte GPS ile konumunu kontrol ediyoruz. Gidip check-in yaparsan güven skorun artar; gitmezsen düşer. Skorun bir süre çok düşük kalırsa hesabın troll hesap olarak değerlendirilip kısıtlanabilir."
@@ -474,7 +488,7 @@ export function EventDetailScreen({ route }: Props) {
           event.is_checked_in ? (
             <View style={styles.checkedInBadge}>
               <Feather name="check-circle" size={16} color="#2ECC71" />
-              <Text style={styles.checkedInText}>Etkinlikte olduğun doğrulandı ✓</Text>
+              <Text style={styles.checkedInText}>Etkinlikte olduğun doğrulandı</Text>
             </View>
           ) : (
             <PrimaryButton

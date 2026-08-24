@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Alert } from "../utils/alert";
 import * as Location from "expo-location";
 import { Feather } from "@expo/vector-icons";
@@ -83,7 +83,7 @@ export function DiscoverScreen() {
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [originFilter, setOriginFilter] = useState<"all" | "system" | "user">("all");
+  const [originFilter, setOriginFilter] = useState<"system" | "user">("system");
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -115,7 +115,7 @@ export function DiscoverScreen() {
     if (!isMapView) return;
     let cancelled = false;
     setIsLoadingMapEvents(true);
-    listEvents(selectedCategory ?? undefined, true, 0, 200, originFilter === "all" ? undefined : originFilter)
+    listEvents(selectedCategory ?? undefined, true, 0, 200, originFilter)
       .then((result) => {
         if (!cancelled) setMapEvents(result);
       })
@@ -131,7 +131,13 @@ export function DiscoverScreen() {
   }, [isMapView, selectedCategory, originFilter]);
 
   const filteredMapEvents = useMemo(() => {
-    const list = mapEvents.filter((event) => hasValidCoordinates(event.latitude, event.longitude));
+    // Only events the user has actually joined show up as selectable pins --
+    // showing every nearby system event regardless of attendance made the
+    // map misleading (looked like the user could act on events they never
+    // signed up for).
+    const list = mapEvents.filter(
+      (event) => event.is_attending && hasValidCoordinates(event.latitude, event.longitude)
+    );
 
     if (mapDateFilter === "all") return list;
     const now = new Date();
@@ -190,10 +196,10 @@ export function DiscoverScreen() {
     if (!isPremium) {
       setIsCityPickerVisible(false);
       Alert.alert(
-        language === "en" ? "✈️ Travel Passport (Custom Location)" : "✈️ Pasaport (Sanal Konum Seçimi)",
+        language === "en" ? "Travel Passport (Custom Location)" : "Pasaport (Sanal Konum Seçimi)",
         language === "en"
-          ? "Teleporting to custom cities and picking manual locations is exclusive to ⭐ Premium members!"
-          : "Farklı şehirlerdeki etkinlikleri keşfetmek ve özel sanal konum seçmek ⭐ Premium üyelere özeldir!",
+          ? "Teleporting to custom cities and picking manual locations is exclusive to Premium members!"
+          : "Farklı şehirlerdeki etkinlikleri keşfetmek ve özel sanal konum seçmek Premium üyelere özeldir!",
         [
           { text: t("cancel"), style: "cancel" },
           {
@@ -364,7 +370,7 @@ export function DiscoverScreen() {
     setIsLoadingMore(true);
     try {
       const currentLength = events.length;
-      const result = await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT, originFilter === "all" ? undefined : originFilter);
+      const result = await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT, originFilter);
       setEvents((prev) => {
         const existingIds = new Set(prev.map((event) => event.id));
         const deduped = result.filter((event) => !existingIds.has(event.id));
@@ -391,7 +397,7 @@ export function DiscoverScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadEvents(selectedCategory, originFilter === "all" ? null : originFilter);
+      loadEvents(selectedCategory, originFilter);
       loadBookmarks();
       // selectedCategory/originFilter intentionally omitted: chip taps already trigger their own reload
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -401,12 +407,12 @@ export function DiscoverScreen() {
   function handleSelectCategory(slug: string): void {
     const next = selectedCategory === slug ? null : slug;
     setSelectedCategory(next);
-    loadEvents(next, originFilter === "all" ? null : originFilter);
+    loadEvents(next, originFilter);
   }
 
-  function handleSelectOrigin(next: "all" | "system" | "user"): void {
+  function handleSelectOrigin(next: "system" | "user"): void {
     setOriginFilter(next);
-    loadEvents(selectedCategory, next === "all" ? null : next);
+    loadEvents(selectedCategory, next);
   }
 
   async function toggleBookmark(eventId: number): Promise<void> {
@@ -453,19 +459,28 @@ export function DiscoverScreen() {
       goToSwipe(event);
       return;
     }
+    if (event.is_pending) return;
     try {
       const updated = await attendEvent(event.id);
       // Stay put so the button visibly flips to "Kankaları Gör" instead of
       // yanking the user straight into Swipe before they've even confirmed
       // they're going -- same fix as EventDetailScreen's attend flow.
       setEvents((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      if (updated.is_pending) {
+        Alert.alert(
+          language === "en" ? "Request Sent" : "İstek Gönderildi",
+          language === "en"
+            ? "Your request was sent to the organizer. You'll be notified once it's approved."
+            : "İsteğin organizatöre gönderildi. Onaylanınca bilgilendirileceksin."
+        );
+      }
     } catch {
       Alert.alert("Bir sorun oluştu", "Etkinliğe katılamadın. Lütfen tekrar dene.");
     }
   }
 
   function goToDetail(event: Event): void {
-    navigation.navigate("EventDetail", { eventId: event.id });
+    navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any });
   }
 
   const filteredEvents = useMemo(() => {
@@ -519,7 +534,7 @@ export function DiscoverScreen() {
       data={isMapView ? [] : rest}
       keyExtractor={(event) => String(event.id)}
       refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={() => loadEvents(selectedCategory, originFilter === "all" ? null : originFilter)} />
+        <RefreshControl refreshing={isRefreshing} onRefresh={() => loadEvents(selectedCategory, originFilter)} />
       }
       onEndReached={isMapView ? undefined : loadMoreEvents}
       onEndReachedThreshold={0.4}
@@ -622,7 +637,7 @@ export function DiscoverScreen() {
                                   </View>
                                 </View>
                                 <Text style={styles.dropdownItemSub} numberOfLines={1}>
-                                  📍 {event.location_name} · 🕒 {formatEventDate(event.starts_at, language)}
+                                  {event.location_name} · {formatEventDate(event.starts_at, language)}
                                 </Text>
                               </View>
                               <Feather name="chevron-right" size={18} color={colors.textSecondary} />
@@ -635,12 +650,11 @@ export function DiscoverScreen() {
                 ) : null}
               </View>
 
-              <View style={[styles.chipList, { flexDirection: "row", gap: spacing.xs }]}>
-                <Chip
-                  label={t("all")}
-                  active={originFilter === "all"}
-                  onPress={() => handleSelectOrigin("all")}
-                />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ flexDirection: "row", gap: spacing.xs }}
+              >
                 <Chip
                   label={t("systemEvents")}
                   active={originFilter === "system"}
@@ -651,7 +665,7 @@ export function DiscoverScreen() {
                   active={originFilter === "user"}
                   onPress={() => handleSelectOrigin("user")}
                 />
-              </View>
+              </ScrollView>
 
               <FlatList
                 horizontal
@@ -710,14 +724,14 @@ export function DiscoverScreen() {
               {isMapView ? (
                 <View style={styles.mapCanvasContainer}>
                   <View style={styles.mapHeaderRow}>
-                    <Text style={styles.mapCanvasTitle}>📍 {t("map")} ({filteredMapEvents.length})</Text>
+                    <Text style={styles.mapCanvasTitle}>{t("map")} ({filteredMapEvents.length})</Text>
                     {isLoadingMapEvents ? <ActivityIndicator size="small" color={accentColor} /> : null}
                   </View>
-                  <View style={styles.mapDateFilterRow}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mapDateFilterRow}>
                     <Chip label={t("all")} active={mapDateFilter === "all"} onPress={() => setMapDateFilter("all")} />
                     <Chip label={t("today")} active={mapDateFilter === "today"} onPress={() => setMapDateFilter("today")} />
                     <Chip label={t("thisWeek")} active={mapDateFilter === "week"} onPress={() => setMapDateFilter("week")} />
-                  </View>
+                  </ScrollView>
                   <EventsMapView
                     events={filteredMapEvents}
                     centerLatitude={userCoords?.latitude ?? 41.0082}
@@ -727,6 +741,16 @@ export function DiscoverScreen() {
                     selectedEventId={selectedMapEvent?.id ?? null}
                     height={380}
                   />
+
+                  {!isLoadingMapEvents && filteredMapEvents.length === 0 && (
+                    <View style={styles.mapEmptyState}>
+                      <Text style={styles.mapEmptyStateText}>
+                        {language === "en"
+                          ? "You haven't joined any events yet."
+                          : "Henüz katıldığınız bir etkinlik yok."}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* Selected Event Callout Overlay - Tapping card opens details directly */}
                   {selectedMapEvent && (
@@ -751,10 +775,10 @@ export function DiscoverScreen() {
                         </View>
                         <Text style={styles.calloutTitle} numberOfLines={1}>{selectedMapEvent.title}</Text>
                         <Text style={styles.calloutText} numberOfLines={1}>
-                          📍 {selectedMapEvent.location_name} {getEventDistanceLabel(selectedMapEvent) ? `· 📏 ${getEventDistanceLabel(selectedMapEvent)}` : ""}
+                          {selectedMapEvent.location_name} {getEventDistanceLabel(selectedMapEvent) ? `· ${getEventDistanceLabel(selectedMapEvent)}` : ""}
                         </Text>
                         <Text style={styles.calloutSubText}>
-                          🕒 {formatEventDate(selectedMapEvent.starts_at, language)} · 👥 {selectedMapEvent.attendee_count} {language === "en" ? "Attendees" : "Katılımcı"}
+                          {formatEventDate(selectedMapEvent.starts_at, language)} · {selectedMapEvent.attendee_count} {language === "en" ? "Attendees" : "Katılımcı"}
                         </Text>
                         <View style={[styles.calloutDetailBtnRow, { backgroundColor: accentColor }]}>
                           <Text style={styles.calloutDetailBtnText}>
@@ -799,9 +823,7 @@ export function DiscoverScreen() {
               ? `${getCategoryMeta(selectedCategory).label} kategorisinde şu an etkinlik yok. Başka bir kategori dener misin?`
               : originFilter === "user"
                 ? "Şu an kullanıcıların oluşturduğu bir etkinlik yok."
-                : originFilter === "system"
-                  ? "Şu an sistem etkinliği yok."
-                  : "Şu an gösterilecek etkinlik yok. Daha sonra tekrar kontrol et!"}
+                : "Şu an sistem etkinliği yok."}
           </Text>
         ) : null
       }
@@ -946,6 +968,16 @@ const styles = StyleSheet.create({
   mapDateFilterRow: {
     flexDirection: "row",
     gap: spacing.sm,
+  },
+  mapEmptyState: {
+    padding: spacing.md,
+    alignItems: "center",
+  },
+  mapEmptyStateText: {
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
   },
   mapCalloutCard: {
     backgroundColor: colors.surface,

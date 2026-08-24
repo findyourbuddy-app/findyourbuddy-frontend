@@ -8,6 +8,7 @@ export type FieldKey =
   | "prompt"
   | "hobbies"
   | "interests"
+  | "looking_for"
   | "height"
   | "languages"
   | "occupation"
@@ -118,8 +119,12 @@ export function calculateProfileCompletion(user: User | null): CompletionResult 
     missingEn.push("Languages Spoken");
   }
 
-  // 10. Meslek veya Üniversite (%5)
-  if ((user.occupation && user.occupation.trim()) || (user.university && user.university.trim())) {
+  // 10. Meslek, Üniversite veya Sınıf/Mezuniyet (%5)
+  if (
+    (user.occupation && user.occupation.trim()) ||
+    (user.university && user.university.trim()) ||
+    (user.class_year && user.class_year.trim())
+  ) {
     score += 5;
   } else {
     missingItems.push({ key: "occupation", labelTr: "Meslek / Okul", labelEn: "Occupation / School" });

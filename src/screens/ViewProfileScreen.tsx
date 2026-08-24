@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
-import { Avatar } from "../components/ui/Avatar";
+import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
 import { formatMemberSince } from "../utils/date";
@@ -27,7 +27,9 @@ export function ViewProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      setIsLoading(true);
+      if (!profile) {
+        setIsLoading(true);
+      }
       apiClient.get<User>("/users/me")
         .then((res) => {
           if (active) {
@@ -45,7 +47,7 @@ export function ViewProfileScreen() {
       return () => {
         active = false;
       };
-    }, [])
+    }, [profile])
   );
 
   if (isLoading || !profile) {
@@ -79,7 +81,7 @@ export function ViewProfileScreen() {
       <View style={styles.mainPhotoCard}>
         {photo1 ? (
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxPhoto(photo1)}>
-            <Image source={{ uri: photo1 }} style={styles.fullImage} contentFit="cover" />
+            <Image source={{ uri: resolvePhotoUrl(photo1) ?? undefined }} style={styles.fullImage} contentFit="cover" />
           </Pressable>
         ) : (
           <View style={styles.avatarPlaceholder}>
@@ -125,7 +127,7 @@ export function ViewProfileScreen() {
             ) : null}
             {profile.height && !profile.hidden_fields?.includes("height") ? (
               <View style={styles.trustBadge}>
-                <Text style={styles.trustText}>📏 {profile.height} cm</Text>
+                <Text style={styles.trustText}>{profile.height} cm</Text>
               </View>
             ) : null}
           </View>
@@ -153,9 +155,9 @@ export function ViewProfileScreen() {
           {profile.voice_note_url ? (
             <View style={{ marginTop: spacing.xs }}>
               <Text style={[styles.promptQuestion, { marginBottom: spacing.xs }]}>
-                Ses Tanıtımı 🎙️
+                Ses Tanıtımı
               </Text>
-              <VoiceNotePlayer audioUrl={profile.voice_note_url} />
+              <VoiceNotePlayer audioUrl={resolvePhotoUrl(profile.voice_note_url)} />
             </View>
           ) : null}
         </View>
@@ -164,7 +166,7 @@ export function ViewProfileScreen() {
       {/* Interspersed Photo 2 Card */}
       {photo2 ? (
         <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo2)}>
-          <Image source={{ uri: photo2 }} style={styles.fullImage} contentFit="cover" />
+          <Image source={{ uri: resolvePhotoUrl(photo2) ?? undefined }} style={styles.fullImage} contentFit="cover" />
         </Pressable>
       ) : null}
 
@@ -175,7 +177,7 @@ export function ViewProfileScreen() {
             <View style={{ gap: spacing.xs }}>
               <View style={styles.cardHeader}>
                 <Feather name="heart" size={18} color="#8A2BE2" />
-                <Text style={[styles.cardTitle, { color: "#8A2BE2" }]}>Hobilerim (Max 4)</Text>
+                <Text style={[styles.cardTitle, { color: "#8A2BE2" }]}>Hobilerim</Text>
               </View>
               <View style={styles.chipRow}>
                 {profile.hobbies.map((hobby) => (
@@ -208,36 +210,87 @@ export function ViewProfileScreen() {
       {/* Interspersed Photo 3 Card */}
       {photo3 ? (
         <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo3)}>
-          <Image source={{ uri: photo3 }} style={styles.fullImage} contentFit="cover" />
+          <Image source={{ uri: resolvePhotoUrl(photo3) ?? undefined }} style={styles.fullImage} contentFit="cover" />
         </Pressable>
       ) : null}
 
-      {/* Verbal Card 3: Kariyer & Beklentiler */}
-      {(profile.occupation || profile.university || profile.looking_for) ? (
+      {/* Verbal Card 3: Kariyer & Okul & Beklentiler */}
+      {((profile.occupation && !profile.hidden_fields?.includes("occupation")) ||
+        (profile.university && !profile.hidden_fields?.includes("university")) ||
+        (profile.class_year && !profile.hidden_fields?.includes("class_year")) ||
+        (profile.looking_for && !profile.hidden_fields?.includes("looking_for")) ||
+        (profile.languages_spoken && profile.languages_spoken.length > 0 && !profile.hidden_fields?.includes("languages_spoken"))) ? (
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Feather name="briefcase" size={18} color={colors.primary} />
-            <Text style={styles.cardTitle}>Kariyer & Beklentiler</Text>
+            <Text style={styles.cardTitle}>Kariyer, Eğitim & İletişim</Text>
           </View>
 
-          {profile.occupation ? (
+          {profile.occupation && !profile.hidden_fields?.includes("occupation") ? (
             <View style={styles.infoRow}>
               <Feather name="briefcase" size={16} color={colors.textSecondary} />
               <Text style={styles.infoText}>{profile.occupation}</Text>
             </View>
           ) : null}
 
-          {profile.university ? (
+          {profile.university && !profile.hidden_fields?.includes("university") ? (
             <View style={styles.infoRow}>
               <Feather name="book-open" size={16} color={colors.textSecondary} />
               <Text style={styles.infoText}>{profile.university}</Text>
             </View>
           ) : null}
 
-          {profile.looking_for ? (
+          {profile.class_year && !profile.hidden_fields?.includes("class_year") ? (
+            <View style={styles.infoRow}>
+              <Feather name="award" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoText}>{profile.class_year}</Text>
+            </View>
+          ) : null}
+
+          {profile.looking_for && !profile.hidden_fields?.includes("looking_for") ? (
             <View style={styles.infoRow}>
               <Feather name="target" size={16} color={colors.textSecondary} />
               <Text style={styles.infoText}>Ne Arıyor: {profile.looking_for}</Text>
+            </View>
+          ) : null}
+
+          {profile.languages_spoken && profile.languages_spoken.length > 0 && !profile.hidden_fields?.includes("languages_spoken") ? (
+            <View style={styles.infoRow}>
+              <Feather name="globe" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoText}>Bildiği Diller: {profile.languages_spoken.join(", ")}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      {/* Verbal Card 4: Dünya Görüşü & Kişisel Tercihler */}
+      {((profile.gender && !profile.hidden_fields?.includes("gender")) ||
+        (profile.political_views && !profile.hidden_fields?.includes("political_views")) ||
+        (profile.beliefs && !profile.hidden_fields?.includes("beliefs"))) ? (
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Feather name="compass" size={18} color="#9B51E0" />
+            <Text style={[styles.cardTitle, { color: "#9B51E0" }]}>Dünya Görüşü & Tercihler</Text>
+          </View>
+
+          {profile.gender && !profile.hidden_fields?.includes("gender") ? (
+            <View style={styles.infoRow}>
+              <Feather name="user" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoText}>Cinsiyet: {profile.gender}</Text>
+            </View>
+          ) : null}
+
+          {profile.political_views && !profile.hidden_fields?.includes("political_views") ? (
+            <View style={styles.infoRow}>
+              <Feather name="compass" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoText}>Siyasi Görüş: {profile.political_views}</Text>
+            </View>
+          ) : null}
+
+          {profile.beliefs && !profile.hidden_fields?.includes("beliefs") ? (
+            <View style={styles.infoRow}>
+              <Feather name="sun" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoText}>İnanç: {profile.beliefs}</Text>
             </View>
           ) : null}
         </View>
@@ -246,7 +299,7 @@ export function ViewProfileScreen() {
       {/* Remaining Photos Interspersed */}
       {remainingPhotos.map((uri, idx) => (
         <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(uri)}>
-          <Image source={{ uri }} style={styles.fullImage} contentFit="cover" />
+          <Image source={{ uri: resolvePhotoUrl(uri) ?? undefined }} style={styles.fullImage} contentFit="cover" />
         </Pressable>
       ))}
     </ScrollView>

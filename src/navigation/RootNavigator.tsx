@@ -37,7 +37,7 @@ import { AIRecommendationsScreen } from "../screens/AIRecommendationsScreen";
 import { MyPhotosScreen } from "../screens/MyPhotosScreen";
 import { OnboardingScreen } from "../screens/OnboardingScreen";
 import { PhoneVerificationScreen } from "../screens/PhoneVerificationScreen";
-import type { User } from "../types";
+import type { User, Event as AppEvent } from "../types";
 
 export type AuthStackParamList = {
   Welcome: undefined;
@@ -48,7 +48,7 @@ export type AuthStackParamList = {
   PhoneVerification: { fromSocialSignIn: boolean };
 };
 
-export type SwipeParams = { eventId: number; eventTitle: string } | undefined;
+export type SwipeParams = { eventId: number; eventTitle: string } | { openStore: true } | undefined;
 
 export type MainTabParamList = {
   Discover: undefined;
@@ -86,7 +86,7 @@ export type MainStackParamList = {
   SavedEvents: undefined;
   BlockedUsers: undefined;
   CreateEvent: undefined;
-  EventDetail: { eventId: number };
+  EventDetail: { eventId: number; initialEvent?: AppEvent };
   Notifications: undefined;
   LikesReceived: undefined;
   CandidateProfile: {
@@ -145,7 +145,7 @@ function MainTabNavigator() {
 
 function MainNavigator() {
   const { user, justRegistered } = useAuth();
-  const { t, bgGradient } = useAppTheme();
+  const { t, language, bgGradient } = useAppTheme();
   const isNewOrIncomplete =
     justRegistered ||
     !user?.photo_url ||
@@ -157,10 +157,11 @@ function MainNavigator() {
       initialRouteName={isNewOrIncomplete ? "Onboarding" : "Tabs"}
       screenOptions={{
         contentStyle: { backgroundColor: bgGradient[0] },
+        headerBackTitle: language === "en" ? "Home" : "Anasayfa",
       }}
     >
       <MainStack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
-      <MainStack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false }} />
+      <MainStack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false, title: language === "en" ? "Home" : "Anasayfa" }} />
       <MainStack.Screen
         name="Chat"
         component={ChatScreen}

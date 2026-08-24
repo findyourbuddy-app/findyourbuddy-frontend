@@ -59,7 +59,6 @@ export function CommunityGuidelinesScreen() {
 
   return (
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
-      <Text style={typeScale.display}>Topluluk Kuralları</Text>
       <Text style={styles.subtitle}>
         FindYourBuddy topluluğunun tüm üyeleri için daha güvenli, samimi ve keyifli bir ortam yaratmak adına lütfen aşağıdaki kurallara özen gösterin.
       </Text>

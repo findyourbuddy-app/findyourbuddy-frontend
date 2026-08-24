@@ -31,7 +31,7 @@ export function StealthModeInfoModal({
           </View>
 
           <Text style={typeScale.h1}>
-            {language === "en" ? "Ghost Stealth Mode 👻" : "Gizli Gezinme Modu 👻"}
+            {language === "en" ? "Ghost Stealth Mode" : "Gizli Gezinme Modu"}
           </Text>
 
           <Text style={styles.subtitle}>
@@ -52,7 +52,7 @@ export function StealthModeInfoModal({
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={styles.dummyName}>
-                  {isEnabled ? (language === "en" ? "Hidden Buddy 👻" : "Gizli Kanka 👻") : "Ahmet K. (Normal)"}
+                  {isEnabled ? (language === "en" ? "Hidden Buddy" : "Gizli Kanka") : "Ahmet K. (Normal)"}
                 </Text>
                 <Text style={styles.dummySubtext}>
                   {isEnabled
@@ -62,7 +62,7 @@ export function StealthModeInfoModal({
               </View>
               <View style={[styles.activePill, isEnabled && styles.activePillStealth]}>
                 <Text style={styles.activePillText}>
-                  {isEnabled ? "GİZLİ 👻" : "AÇIK 👁️"}
+                  {isEnabled ? "GİZLİ" : "AÇIK"}
                 </Text>
               </View>
             </View>
@@ -96,7 +96,7 @@ export function StealthModeInfoModal({
               label={
                 isEnabled
                   ? (language === "en" ? "Turn Off Stealth Mode" : "Gizli Gezinmeyi Kapat")
-                  : (language === "en" ? "Activate Stealth Mode ✨" : "Gizli Gezinmeyi Başlat ✨")
+                  : (language === "en" ? "Activate Stealth Mode" : "Gizli Gezinmeyi Başlat")
               }
               variant={isEnabled ? "outline" : "accent"}
               onPress={() => {

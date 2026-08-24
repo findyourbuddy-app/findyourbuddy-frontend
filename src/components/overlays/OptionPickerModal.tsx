@@ -99,6 +99,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   optionText: {
+    flexShrink: 1,
     fontFamily: fontFamily.bodyMedium,
     fontSize: 15,
     color: colors.textPrimary,

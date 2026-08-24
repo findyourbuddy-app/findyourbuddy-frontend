@@ -6,7 +6,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Avatar } from "../components/ui/Avatar";
+import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { Badge } from "../components/ui/Badge";
 import { IconSectionHeader } from "../components/ui/IconSectionHeader";
 import { ProfileCompletionCard } from "../components/profile/ProfileCompletionCard";
@@ -23,7 +23,9 @@ import { getHobbyLabel } from "../constants/hobbies";
 import { formatEventDate, formatMemberSince, isNewMember } from "../utils/date";
 import { listMyAttendingEvents } from "../api/events";
 import * as ImagePicker from "expo-image-picker";
-import { activateBoost, getCurrentUser, uploadProfilePhoto } from "../api/users";
+import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
+import type { GeocodingResult } from "../api/geocoding";
+import { activateBoost, getCurrentUser, updateCurrentUser, uploadProfilePhoto } from "../api/users";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
@@ -57,13 +59,44 @@ export function ProfileScreen() {
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [attendingEvents, setAttendingEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
+  const [isAttendingExpanded, setIsAttendingExpanded] = useState(false);
+  const [isPastExpanded, setIsPastExpanded] = useState(false);
   const [locationName, setLocationName] = useState<string | null>(null);
   const [quickEditKey, setQuickEditKey] = useState<FieldKey | null>(null);
   const [quickEditVisible, setQuickEditVisible] = useState(false);
+  const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
 
-  async function handleAvatarPress() {
+  async function handleLocationSelect(result: GeocodingResult) {
+    try {
+      const updated = await updateCurrentUser({
+        latitude: result.latitude,
+        longitude: result.longitude,
+      });
+      updateUser(updated);
+      if (hasValidCoordinates(result.latitude, result.longitude)) {
+        resolveCityDistrict(result.latitude, result.longitude).then(setLocationName);
+      }
+      Alert.alert(
+        language === "en" ? "Location Updated" : "Konum Güncellendi",
+        language === "en"
+          ? "Your location has been updated successfully!"
+          : "Anlık / sanal konumunuz başarıyla kaydedildi!"
+      );
+    } catch {
+      Alert.alert(
+        language === "en" ? "Error" : "Hata",
+        language === "en" ? "Failed to update location." : "Konum güncellenemedi."
+      );
+    } finally {
+      setLocationPickerVisible(false);
+    }
+  }
+
+
+
+  async function runPickPhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
       Alert.alert(
@@ -98,16 +131,17 @@ export function ProfileScreen() {
         updateUser(updatedUser);
       }
       Alert.alert(
-        language === "en" ? "Success" : "Başarılı 📸",
+        language === "en" ? "Success" : "Başarılı",
         language === "en" ? "Profile photo updated successfully!" : "Profil fotoğrafın başarıyla güncellendi!"
       );
-    } catch {
+    } catch (err: any) {
       if (originalUser) {
         updateUser(originalUser);
       }
+      const msg = err?.message || (language === "en" ? "Failed to update profile photo. Please try again." : "Profil fotoğrafı güncellenemedi. Lütfen tekrar dene.");
       Alert.alert(
         language === "en" ? "Upload Failed" : "Yükleme Başarısız",
-        language === "en" ? "Failed to update profile photo. Please try again." : "Profil fotoğrafı güncellenemedi. Lütfen tekrar dene."
+        msg
       );
     } finally {
       setIsUploadingPhoto(false);
@@ -157,7 +191,7 @@ export function ProfileScreen() {
       const remainingSecs = Math.max(0, Math.floor((new Date(user.boosted_until!).getTime() - Date.now()) / 1000));
       const mins = Math.floor(remainingSecs / 60);
       Alert.alert(
-        language === "en" ? "Spotlight Active! 🚀" : "Spotlight Aktif! 🚀",
+        language === "en" ? "Spotlight Active!" : "Spotlight Aktif!",
         language === "en"
           ? `Your profile is currently featured at top. Remaining time: ${mins} mins.`
           : `Profilin şu an öne çıkarılmış durumda. Kalan süre: ${mins} dakika.`
@@ -180,7 +214,7 @@ export function ProfileScreen() {
                 const updatedUser = await activateBoost();
                 updateUser(updatedUser);
                 Alert.alert(
-                  language === "en" ? "Spotlight Activated! 🚀" : "Spotlight Başlatıldı! 🚀",
+                  language === "en" ? "Spotlight Activated!" : "Spotlight Başlatıldı!",
                   language === "en" ? "Your profile has been moved to top list!" : "Profilin en üst sıraya taşındı!"
                 );
               } catch {
@@ -194,13 +228,7 @@ export function ProfileScreen() {
         ]
       );
     } else {
-      Alert.alert(
-        language === "en" ? "No Spotlight Credits ⚡" : "Spotlight Hakkın Yok ⚡",
-        language === "en"
-          ? "You need Spotlight credits to feature your profile. Visit the Buddy Store on the Swipe screen to get more!"
-          : "Spotlight başlatabilmek için kaydırma ekranındaki Buddy Mağazası'nı ziyaret ederek hak satın alabilirsin!",
-        [{ text: t("ok") }]
-      );
+      navigation.navigate("Tabs", { screen: "Swipe", params: { openStore: true } });
     }
   }
 
@@ -218,18 +246,27 @@ export function ProfileScreen() {
       >
         <View style={styles.heroDecorLarge} />
         <View style={styles.heroDecorSmall} />
-        <Pressable
-          style={styles.avatarRing}
-          onPress={handleAvatarPress}
-          disabled={isUploadingPhoto}
-          accessibilityRole="button"
-          accessibilityLabel="Profil fotoğrafını değiştir"
-        >
-          <Avatar name={user.display_name} photoUrl={user.photo_url} size={88} />
-          <View style={styles.cameraIconBadge}>
+        <View style={styles.avatarRing}>
+          <Pressable
+            onPress={() => {
+              if (user?.photo_url) {
+                setLightboxPhoto(user.photo_url);
+              }
+            }}
+          >
+            <Avatar name={user.display_name} photoUrl={user.photo_url} size={88} />
+          </Pressable>
+
+          <Pressable
+            style={styles.cameraIconBadge}
+            onPress={runPickPhoto}
+            disabled={isUploadingPhoto}
+            accessibilityRole="button"
+            accessibilityLabel="Fotoğrafı değiştir"
+          >
             <Feather name="camera" size={14} color={colors.surface} />
-          </View>
-        </Pressable>
+          </Pressable>
+        </View>
         <Text style={styles.heroName}>
           {user.display_name}
           {user.age ? `, ${user.age}` : ""}
@@ -244,7 +281,7 @@ export function ProfileScreen() {
         <View style={styles.heroBadgeRow}>
           {isPremium ? <Badge label={language === "en" ? "Premium Member" : "Premium Üye"} variant="yellow" icon="⭐" /> : null}
           {user.is_verified || user.verification_status === "verified" ? (
-            <Badge label={language === "en" ? "Verified Profile 🔵" : "Mavi Tik Onaylı Profil 🔵"} variant="blue" icon="✓" />
+            <Badge label={language === "en" ? "Verified Profile" : "Mavi Tik Onaylı"} variant="blue" icon="✓" />
           ) : null}
           {isNewMember(user.created_at) ? (
             <Badge label={t("newMember")} variant="green" />
@@ -267,7 +304,7 @@ export function ProfileScreen() {
       <ProfileCompletionCard user={user} onPressFieldKey={handleOpenQuickEdit} />
 
       {hasValidCoordinates(user.latitude, user.longitude) ? (
-        <Pressable style={[styles.card, styles.cardAccentBlue]} onPress={() => handleOpenQuickEdit("occupation")}>
+        <Pressable style={[styles.card, styles.cardAccentBlue]} onPress={() => setLocationPickerVisible(true)}>
           <IconSectionHeader icon="map-pin" color="#2E7FC9" label={t("location")} />
           <Text style={styles.bio}>{locationName || (language === "en" ? "Location Saved" : "Konum Kaydedildi")}</Text>
         </Pressable>
@@ -280,7 +317,7 @@ export function ProfileScreen() {
         </Pressable>
       ) : null}
 
-      {user.occupation || user.university ? (
+      {user.occupation || user.university || user.class_year ? (
         <Pressable style={[styles.card, styles.cardAccentBlue]} onPress={() => handleOpenQuickEdit("occupation")}>
           <View style={styles.cardHeaderWithHidden}>
             <IconSectionHeader icon="briefcase" color="#2E7FC9" label={t("occupation")} />
@@ -292,13 +329,13 @@ export function ProfileScreen() {
             ) : null}
           </View>
           <Text style={styles.bio}>
-            {[user.occupation, user.university].filter(Boolean).join(" • ")}
+            {[user.occupation, user.university, user.class_year].filter(Boolean).join(" • ")}
           </Text>
         </Pressable>
       ) : null}
 
       {user.looking_for ? (
-        <Pressable style={[styles.card, styles.cardAccentYellow]} onPress={() => handleOpenQuickEdit("interests")}>
+        <Pressable style={[styles.card, styles.cardAccentYellow]} onPress={() => handleOpenQuickEdit("looking_for")}>
           <View style={styles.cardHeaderWithHidden}>
             <IconSectionHeader icon="target" color="#E0A800" label={language === "en" ? "Looking For" : "Aradığı İletişim"} />
             {user.hidden_fields?.includes("looking_for") ? (
@@ -402,7 +439,7 @@ export function ProfileScreen() {
             showsHorizontalScrollIndicator={false}
             renderItem={({ item }) => (
               <Pressable onPress={() => setLightboxPhoto(item.photo_url)}>
-                <Image source={{ uri: item.photo_url }} style={styles.galleryImage} />
+                <Image source={{ uri: resolvePhotoUrl(item.photo_url) ?? undefined }} style={styles.galleryImage} />
               </Pressable>
             )}
             ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
@@ -445,8 +482,8 @@ export function ProfileScreen() {
 
       {attendingEvents.length > 0 ? (
         <View style={[styles.card, styles.cardAccentGreen]}>
-          <IconSectionHeader icon="calendar" color={colors.accentGreen} label={language === "en" ? "Attending Events" : "Katılacağı Etkinlikler"} />
-          {attendingEvents.map((event) => (
+          <IconSectionHeader icon="calendar" color={colors.accentGreen} label={language === "en" ? `Attending Events (${attendingEvents.length})` : `Katılacağı Etkinlikler (${attendingEvents.length})`} />
+          {(isAttendingExpanded ? attendingEvents : attendingEvents.slice(0, 2)).map((event) => (
             <Pressable
               key={event.id}
               style={styles.eventRow}
@@ -458,7 +495,7 @@ export function ProfileScreen() {
                 <View style={styles.eventIcon}>
                   <Feather name="calendar" size={16} color={colors.primary} />
                 </View>
-                <View>
+                <View style={styles.eventTextColumn}>
                   <Text style={styles.eventTitle}>{event.title}</Text>
                   <Text style={styles.eventDate}>{formatEventDate(event.starts_at, language)}</Text>
                 </View>
@@ -466,25 +503,59 @@ export function ProfileScreen() {
               <Feather name="chevron-right" size={18} color={colors.textSecondary} />
             </Pressable>
           ))}
+          {attendingEvents.length > 2 ? (
+            <Pressable
+              style={styles.expandPillBtn}
+              onPress={() => setIsAttendingExpanded((prev) => !prev)}
+            >
+              <Text style={styles.expandPillText}>
+                {isAttendingExpanded
+                  ? (language === "en" ? "Show Less" : "Daha Az Göster")
+                  : (language === "en" ? `Show All (${attendingEvents.length})` : `Tümünü Gör (${attendingEvents.length})`)}
+              </Text>
+              <Feather
+                name={isAttendingExpanded ? "chevron-up" : "chevron-down"}
+                size={14}
+                color={colors.primary}
+              />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
       {pastEvents.length > 0 ? (
         <View style={[styles.card, styles.cardAccentBlue]}>
-          <IconSectionHeader icon="clock" color="#2E7FC9" label={t("pastEvents")} />
-          {pastEvents.map((event) => (
+          <IconSectionHeader icon="clock" color="#2E7FC9" label={`${t("pastEvents")} (${pastEvents.length})`} />
+          {(isPastExpanded ? pastEvents : pastEvents.slice(0, 2)).map((event) => (
             <View key={event.id} style={styles.eventRow}>
               <View style={styles.eventRowLeft}>
                 <View style={[styles.eventIcon, styles.eventIconPast]}>
                   <Feather name="calendar" size={16} color={colors.textSecondary} />
                 </View>
-                <View>
+                <View style={styles.eventTextColumn}>
                   <Text style={[styles.eventTitle, styles.eventTitlePast]}>{event.title}</Text>
                   <Text style={styles.eventDate}>{formatEventDate(event.starts_at, language)}</Text>
                 </View>
               </View>
             </View>
           ))}
+          {pastEvents.length > 2 ? (
+            <Pressable
+              style={styles.expandPillBtn}
+              onPress={() => setIsPastExpanded((prev) => !prev)}
+            >
+              <Text style={styles.expandPillText}>
+                {isPastExpanded
+                  ? (language === "en" ? "Show Less" : "Daha Az Göster")
+                  : (language === "en" ? `Show All (${pastEvents.length})` : `Tümünü Gör (${pastEvents.length})`)}
+              </Text>
+              <Feather
+                name={isPastExpanded ? "chevron-up" : "chevron-down"}
+                size={14}
+                color={colors.primary}
+              />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -503,7 +574,7 @@ export function ProfileScreen() {
             <View style={{ gap: 1 }}>
               <Text style={styles.actionLabel}>
                 {user.boosted_until && new Date(user.boosted_until).getTime() > Date.now()
-                  ? "Spotlight Active! 🚀"
+                  ? "Spotlight Active!"
                   : t("spotlightBoost")}
               </Text>
               <Text style={styles.actionSublabel}>
@@ -544,6 +615,14 @@ export function ProfileScreen() {
         visible={lightboxPhoto !== null}
         photoUrl={lightboxPhoto}
         onClose={() => setLightboxPhoto(null)}
+      />
+
+      <LocationPickerModal
+        visible={locationPickerVisible}
+        onSelect={handleLocationSelect}
+        onDismiss={() => setLocationPickerVisible(false)}
+        initialLatitude={user?.latitude ?? undefined}
+        initialLongitude={user?.longitude ?? undefined}
       />
     </ScrollView>
   );
@@ -742,9 +821,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   eventRowLeft: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
+    marginRight: spacing.sm,
+  },
+  eventTextColumn: {
+    flex: 1,
   },
   eventIcon: {
     width: 32,
@@ -770,6 +854,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 1,
+  },
+  expandPillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    backgroundColor: colors.primaryMuted,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    marginTop: spacing.xs,
+  },
+  expandPillText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.primary,
   },
   actionsCard: {
     backgroundColor: colors.surface,

@@ -2,6 +2,19 @@ import { calculateProfileCompletion } from "./profileCompletion";
 import type { User } from "../types";
 
 const BASE_USER: User = {
+  university: "İstanbul Üniversitesi",
+  class_year: null,
+  verification_status: "verified",
+  looking_for: "Kahve & Sohbet",
+  political_views: null,
+  beliefs: null,
+  hidden_fields: [],
+  phone_number: "+905555555555",
+  age: 26,
+  latitude: null,
+  longitude: null,
+  accepted_terms_at: null,
+  phone_verified: true,
   id: 1,
   email: "test@example.com",
   display_name: "Ada",
@@ -18,7 +31,6 @@ const BASE_USER: User = {
   voice_note_url: "https://example.com/voice.mp3",
   date_of_birth: "1998-04-25",
   gender: "female",
-  is_premium: false,
   is_active: true,
   trust_score: 100,
   created_at: "2026-01-01",

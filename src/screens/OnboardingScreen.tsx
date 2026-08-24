@@ -18,6 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
+import { resolvePhotoUrl } from "../components/ui/Avatar";
 import { OptionPickerModal } from "../components/overlays/OptionPickerModal";
 import { useAuth } from "../context/AuthContext";
 import { apiClient } from "../api/client";
@@ -416,7 +417,7 @@ export function OnboardingScreen() {
       {/* Header Progress Bar */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
-          {language === "en" ? "Create Your Profile ✨" : "Profilini Oluştur ✨"}
+          {language === "en" ? "Create Your Profile" : "Profilini Oluştur"}
         </Text>
         <Text style={styles.stepSubtitle}>
           {language === "en" ? `Step ${step} / 4` : `Adım ${step} / 4`}
@@ -437,7 +438,7 @@ export function OnboardingScreen() {
         {step === 1 ? (
           <View style={styles.stepCard}>
             <Text style={styles.stepHeading}>
-              {language === "en" ? "Basic Info & Identity 👤" : "Temel Bilgiler & Kimlik 👤"}
+              {language === "en" ? "Basic Info & Identity" : "Temel Bilgiler & Kimlik"}
             </Text>
             <Text style={styles.stepDescription}>
               {language === "en"
@@ -447,7 +448,7 @@ export function OnboardingScreen() {
 
             {/* Display Name Input */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Görünen İsim (Ad veya Rumuz) ✨</Text>
+              <Text style={styles.fieldLabel}>Görünen İsim (Ad veya Rumuz)</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Örn. Ahmet, Merve K., Ece..."
@@ -501,7 +502,7 @@ export function OnboardingScreen() {
 
             {/* Looking For Expectation Picker */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Ne Arıyorsun? (Beklentim) 🎯</Text>
+              <Text style={styles.fieldLabel}>Ne Arıyorsun? (Beklentim)</Text>
               <TouchableOpacity
                 style={styles.selectButton}
                 onPress={() => setLookingForPickerVisible(true)}
@@ -514,7 +515,7 @@ export function OnboardingScreen() {
             </View>
 
             <View style={{ marginTop: spacing.md }}>
-              <PrimaryButton label="Devam Et ➡️" onPress={handleNextStep} />
+              <PrimaryButton label="Devam Et" onPress={handleNextStep} />
             </View>
           </View>
         ) : null}
@@ -522,12 +523,12 @@ export function OnboardingScreen() {
         {/* STEP 2: Hobbies & Interests */}
         {step === 2 ? (
           <View style={styles.stepCard}>
-            <Text style={styles.stepHeading}>Hobilerin & Aktivitelerin 🎯</Text>
+            <Text style={styles.stepHeading}>Hobilerin & Aktivitelerin</Text>
             <Text style={styles.stepDescription}>
               Sunulan hobi listesinden en fazla 4 hobi seç (Seçilen: {selectedHobbies.length}/4)
             </Text>
 
-            <Text style={styles.fieldLabel}>Hobilerim (Max 4)</Text>
+            <Text style={styles.fieldLabel}>Hobilerim</Text>
             <View style={styles.chipGrid}>
               {HOBBIES.map((h) => {
                 const isSelected = selectedHobbies.includes(h.slug);
@@ -568,7 +569,7 @@ export function OnboardingScreen() {
                 <Text style={styles.backButtonText}>Geri</Text>
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
-                <PrimaryButton label="Devam Et ➡️" onPress={handleNextStep} />
+                <PrimaryButton label="Devam Et" onPress={handleNextStep} />
               </View>
             </View>
           </View>
@@ -577,7 +578,7 @@ export function OnboardingScreen() {
         {/* STEP 3: Photos Grid (Direct Device Upload up to 6 Photos) */}
         {step === 3 ? (
           <View style={styles.stepCard}>
-            <Text style={styles.stepHeading}>Profil Fotoğrafların 📸</Text>
+            <Text style={styles.stepHeading}>Profil Fotoğrafların</Text>
             <Text style={styles.stepDescription}>
               Galerinden fotoğraf seç. İlk fotoğraf senin ana profil fotoğrafın olacaktır. (En fazla {MAX_PHOTOS} fotoğraf).
             </Text>
@@ -592,11 +593,11 @@ export function OnboardingScreen() {
               {isUploadingMainPhoto ? (
                 <ActivityIndicator size="large" color={colors.primary} />
               ) : mainPhotoUrl ? (
-                <Image source={{ uri: mainPhotoUrl }} style={styles.fullImage} contentFit="cover" />
+                <Image source={{ uri: resolvePhotoUrl(mainPhotoUrl) ?? undefined }} style={styles.fullImage} contentFit="cover" />
               ) : (
                 <View style={styles.photoPlaceholder}>
                   <Feather name="camera" size={36} color={colors.primary} />
-                  <Text style={styles.photoPlaceholderText}>Galeriden Ana Fotoğraf Seç 📷</Text>
+                  <Text style={styles.photoPlaceholderText}>Galeriden Ana Fotoğraf Seç</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -606,7 +607,7 @@ export function OnboardingScreen() {
             <View style={styles.galleryGrid}>
               {galleryPhotos.map((photo) => (
                 <View key={photo.id} style={styles.gallerySlot}>
-                  <Image source={{ uri: photo.photo_url }} style={styles.fullImage} contentFit="cover" />
+                  <Image source={{ uri: resolvePhotoUrl(photo.photo_url) ?? undefined }} style={styles.fullImage} contentFit="cover" />
                   <TouchableOpacity
                     style={styles.deleteBadge}
                     onPress={() => handleDeleteGalleryPhoto(photo.id)}
@@ -639,7 +640,7 @@ export function OnboardingScreen() {
                 <Text style={styles.backButtonText}>Geri</Text>
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
-                <PrimaryButton label="Devam Et ➡️" onPress={handleNextStep} />
+                <PrimaryButton label="Devam Et" onPress={handleNextStep} />
               </View>
             </View>
           </View>
@@ -648,7 +649,7 @@ export function OnboardingScreen() {
         {/* STEP 4: Bio, Prompts, Career & Finish */}
         {step === 4 ? (
           <View style={styles.stepCard}>
-            <Text style={styles.stepHeading}>Hakkımda & Detaylar 📝</Text>
+            <Text style={styles.stepHeading}>Hakkımda & Detaylar</Text>
             <Text style={styles.stepDescription}>
               Son adım! Kendinden bahset ve profiline eğlenceli detaylar ekle.
             </Text>
@@ -705,7 +706,7 @@ export function OnboardingScreen() {
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
                 <PrimaryButton
-                  label={isSubmitting ? "Kaydediliyor..." : "Profilimi Kaydet ve Kankalarını Bul 🚀"}
+                  label={isSubmitting ? "Kaydediliyor..." : "Profilimi Kaydet ve Kankalarını Bul"}
                   onPress={handleFinish}
                   loading={isSubmitting}
                 />
@@ -718,7 +719,7 @@ export function OnboardingScreen() {
       {/* Option Pickers */}
       <OptionPickerModal
         visible={zodiacPickerVisible}
-        title="Burcunu Seç 🔮"
+        title="Burcunu Seç"
         options={zodiacOptions}
         onDismiss={() => setZodiacPickerVisible(false)}
       />

@@ -14,6 +14,7 @@ import type { EventPublicSummary } from "../types";
 import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
+import { resolvePhotoUrl } from "../components/ui/Avatar";
 import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import { useAppTheme } from "../context/ThemeContext";
@@ -73,7 +74,7 @@ export function CandidateProfileScreen({ route }: Props) {
         <View style={styles.mainPhotoCard}>
           {photo1 ? (
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxPhoto(photo1)}>
-              <Image source={{ uri: photo1 }} style={styles.fullImage} contentFit="cover" />
+              <Image source={{ uri: resolvePhotoUrl(photo1) ?? undefined }} style={styles.fullImage} contentFit="cover" />
             </Pressable>
           ) : (
             <View style={styles.avatarPlaceholder}>
@@ -114,7 +115,7 @@ export function CandidateProfileScreen({ route }: Props) {
               ) : null}
               {isNewMember(candidate.created_at) ? (
                 <View style={styles.trustBadge}>
-                  <Text style={styles.trustText}>✨ Yeni Üye</Text>
+                  <Text style={styles.trustText}>Yeni Üye</Text>
                 </View>
               ) : null}
               {candidate.zodiac_sign ? (
@@ -150,9 +151,9 @@ export function CandidateProfileScreen({ route }: Props) {
             {candidate.voice_note_url ? (
               <View style={{ marginTop: spacing.xs }}>
                 <Text style={[styles.promptQuestion, { marginBottom: spacing.xs }]}>
-                  Ses Tanıtımı 🎙️
+                  Ses Tanıtımı
                 </Text>
-                <VoiceNotePlayer audioUrl={candidate.voice_note_url} />
+                <VoiceNotePlayer audioUrl={resolvePhotoUrl(candidate.voice_note_url)} />
               </View>
             ) : null}
           </View>
@@ -194,7 +195,7 @@ export function CandidateProfileScreen({ route }: Props) {
         {/* SECTION 3: Interspersed Photo 2 Card */}
         {photo2 ? (
           <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo2)}>
-            <Image source={{ uri: photo2 }} style={styles.fullImage} contentFit="cover" />
+            <Image source={{ uri: resolvePhotoUrl(photo2) ?? undefined }} style={styles.fullImage} contentFit="cover" />
           </Pressable>
         ) : null}
 
@@ -205,7 +206,7 @@ export function CandidateProfileScreen({ route }: Props) {
               <View style={{ gap: spacing.xs }}>
                 <View style={styles.cardHeader}>
                   <Feather name="heart" size={18} color="#8A2BE2" />
-                  <Text style={[styles.cardTitle, { color: "#8A2BE2" }]}>Hobilerim (Max 4)</Text>
+                  <Text style={[styles.cardTitle, { color: "#8A2BE2" }]}>Hobilerim</Text>
                 </View>
                 <View style={styles.chipRow}>
                   {candidate.hobbies.map((hobby) => (
@@ -238,36 +239,87 @@ export function CandidateProfileScreen({ route }: Props) {
         {/* SECTION 5: Interspersed Photo 3 Card */}
         {photo3 ? (
           <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo3)}>
-            <Image source={{ uri: photo3 }} style={styles.fullImage} contentFit="cover" />
+            <Image source={{ uri: resolvePhotoUrl(photo3) ?? undefined }} style={styles.fullImage} contentFit="cover" />
           </Pressable>
         ) : null}
 
         {/* SECTION 6: Verbal Card 3 - Career, University & Expectations */}
-        {(candidate.occupation || candidate.university || candidate.looking_for) ? (
+        {((candidate.occupation && !candidate.hidden_fields?.includes("occupation")) ||
+          (candidate.university && !candidate.hidden_fields?.includes("university")) ||
+          (candidate.class_year && !candidate.hidden_fields?.includes("class_year")) ||
+          (candidate.looking_for && !candidate.hidden_fields?.includes("looking_for")) ||
+          (candidate.languages_spoken && candidate.languages_spoken.length > 0 && !candidate.hidden_fields?.includes("languages_spoken"))) ? (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Feather name="briefcase" size={18} color={colors.primary} />
-              <Text style={styles.cardTitle}>Kariyer & Beklentiler</Text>
+              <Text style={styles.cardTitle}>Kariyer, Eğitim & İletişim</Text>
             </View>
 
-            {candidate.occupation ? (
+            {candidate.occupation && !candidate.hidden_fields?.includes("occupation") ? (
               <View style={styles.infoRow}>
                 <Feather name="briefcase" size={16} color={colors.textSecondary} />
                 <Text style={styles.infoText}>{candidate.occupation}</Text>
               </View>
             ) : null}
 
-            {candidate.university ? (
+            {candidate.university && !candidate.hidden_fields?.includes("university") ? (
               <View style={styles.infoRow}>
                 <Feather name="book-open" size={16} color={colors.textSecondary} />
                 <Text style={styles.infoText}>{candidate.university}</Text>
               </View>
             ) : null}
 
-            {candidate.looking_for ? (
+            {candidate.class_year && !candidate.hidden_fields?.includes("class_year") ? (
+              <View style={styles.infoRow}>
+                <Feather name="award" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>{candidate.class_year}</Text>
+              </View>
+            ) : null}
+
+            {candidate.looking_for && !candidate.hidden_fields?.includes("looking_for") ? (
               <View style={styles.infoRow}>
                 <Feather name="target" size={16} color={colors.textSecondary} />
                 <Text style={styles.infoText}>Ne Arıyor: {candidate.looking_for}</Text>
+              </View>
+            ) : null}
+
+            {candidate.languages_spoken && candidate.languages_spoken.length > 0 && !candidate.hidden_fields?.includes("languages_spoken") ? (
+              <View style={styles.infoRow}>
+                <Feather name="globe" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>Bildiği Diller: {candidate.languages_spoken.join(", ")}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* SECTION 7: Verbal Card 4 - Worldview & Preferences */}
+        {((candidate.gender && !candidate.hidden_fields?.includes("gender")) ||
+          (candidate.political_views && !candidate.hidden_fields?.includes("political_views")) ||
+          (candidate.beliefs && !candidate.hidden_fields?.includes("beliefs"))) ? (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Feather name="compass" size={18} color="#9B51E0" />
+              <Text style={[styles.cardTitle, { color: "#9B51E0" }]}>Dünya Görüşü & Tercihler</Text>
+            </View>
+
+            {candidate.gender && !candidate.hidden_fields?.includes("gender") ? (
+              <View style={styles.infoRow}>
+                <Feather name="user" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>Cinsiyet: {candidate.gender}</Text>
+              </View>
+            ) : null}
+
+            {candidate.political_views && !candidate.hidden_fields?.includes("political_views") ? (
+              <View style={styles.infoRow}>
+                <Feather name="compass" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>Siyasi Görüş: {candidate.political_views}</Text>
+              </View>
+            ) : null}
+
+            {candidate.beliefs && !candidate.hidden_fields?.includes("beliefs") ? (
+              <View style={styles.infoRow}>
+                <Feather name="sun" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>İnanç: {candidate.beliefs}</Text>
               </View>
             ) : null}
           </View>
@@ -276,7 +328,7 @@ export function CandidateProfileScreen({ route }: Props) {
         {/* SECTION 7: Remaining Photos Interspersed */}
         {remainingPhotos.map((uri, idx) => (
           <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(uri)}>
-            <Image source={{ uri }} style={styles.fullImage} contentFit="cover" />
+            <Image source={{ uri: resolvePhotoUrl(uri) ?? undefined }} style={styles.fullImage} contentFit="cover" />
           </Pressable>
         ))}
       </ScrollView>

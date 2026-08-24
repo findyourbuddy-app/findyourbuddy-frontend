@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSubscription((prev) => {
               if (!prev.is_premium && sub.is_premium) {
                 Alert.alert(
-                  "⭐ Premium Aktif Edildi!",
+                  "Premium Aktif Edildi!",
                   "Ödemen başarıyla onaylandı. Tüm premium ayrıcalıklar hesabına tanımlandı!"
                 );
               }

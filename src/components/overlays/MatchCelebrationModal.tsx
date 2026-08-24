@@ -23,7 +23,7 @@ export function MatchCelebrationModal({
     <Modal visible={matchedUser !== null} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.eyebrow}>{language === "en" ? "🎉 It's a Match!" : "🎉 Eşleştin!"}</Text>
+          <Text style={styles.eyebrow}>{language === "en" ? "It's a Match!" : "Eşleştin!"}</Text>
           {matchedUser ? (
             <>
               <Avatar name={matchedUser.display_name} photoUrl={matchedUser.photo_url} size={88} />

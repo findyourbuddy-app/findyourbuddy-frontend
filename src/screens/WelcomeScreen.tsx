@@ -52,6 +52,14 @@ export function WelcomeScreen() {
 
   async function handleGoogleSignIn(): Promise<void> {
     setError(null);
+    if (googleAuthConfig.webClientId.startsWith("REPLACE")) {
+      setError(
+        language === "en"
+          ? "Google Sign-In is not configured yet. Please set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID."
+          : "Google ile Giriş henüz yapılandırılmadı. Lütfen EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID bilgisini tanımlayın."
+      );
+      return;
+    }
     setIsGoogleSubmitting(true);
     try {
       const result = await promptGoogleSignIn();
@@ -161,7 +169,7 @@ export function WelcomeScreen() {
         <View style={styles.headerBox}>
           <BuddyLogo size={95} showText={true} />
           <Text style={styles.headerTitle}>
-            {language === "en" ? "Find Your Activity Buddy 🚀" : "Etkinlik Arkadaşını Keşfet 🚀"}
+            {language === "en" ? "Find Your Activity Buddy" : "Etkinlik Arkadaşını Keşfet"}
           </Text>
           <Text style={styles.headerSubtitle}>
             {language === "en"

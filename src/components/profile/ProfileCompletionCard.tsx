@@ -42,7 +42,7 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
               {language === "en" ? "Profile Completion" : "Profil Tamamlanma Oranı"}
             </Text>
             <Text style={styles.percentageText}>
-              %{completion.percentage} {isComplete ? "🎉" : ""}
+              %{completion.percentage}
             </Text>
           </View>
         </View>
