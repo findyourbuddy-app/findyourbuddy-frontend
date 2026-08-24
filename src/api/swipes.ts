@@ -12,6 +12,7 @@ export interface SwipeCandidateFilters {
   zodiacSign?: string;
   isVerifiedOnly?: boolean;
   hasVoiceNote?: boolean;
+  minTrustScore?: number;
 }
 
 export function getSwipeCandidates(
@@ -30,6 +31,7 @@ export function getSwipeCandidates(
         zodiac_sign: filters?.zodiacSign,
         is_verified_only: filters?.isVerifiedOnly,
         has_voice_note: filters?.hasVoiceNote,
+        min_trust_score: filters?.minTrustScore,
       },
     })
     .then((res) => res.data);

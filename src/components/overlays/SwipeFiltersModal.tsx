@@ -58,11 +58,19 @@ export function SwipeFiltersModal({
   const [zodiacSign, setZodiacSign] = useState(initialFilters.zodiacSign || "Tümü");
   const [isVerifiedOnly, setIsVerifiedOnly] = useState(Boolean(initialFilters.isVerifiedOnly));
   const [hasVoiceNote, setHasVoiceNote] = useState(Boolean(initialFilters.hasVoiceNote));
+  const [minTrustScore, setMinTrustScore] = useState<number | undefined>(initialFilters.minTrustScore);
 
   const GENDER_PREFERENCES = [
     { id: "all", label: language === "en" ? "Everyone" : "Herkes" },
     { id: "female", label: language === "en" ? "Female" : "Kadın" },
     { id: "male", label: language === "en" ? "Male" : "Erkek" },
+  ];
+
+  const TRUST_SCORE_PRESETS = [
+    { label: language === "en" ? "All" : "Tümü", val: undefined },
+    { label: "🛡️ 50+", val: 50 },
+    { label: "⭐ 70+", val: 70 },
+    { label: "🌟 85+", val: 85 },
   ];
 
   const AGE_PRESETS = [
@@ -91,6 +99,7 @@ export function SwipeFiltersModal({
       setZodiacSign(initialFilters.zodiacSign || "Tümü");
       setIsVerifiedOnly(Boolean(initialFilters.isVerifiedOnly));
       setHasVoiceNote(Boolean(initialFilters.hasVoiceNote));
+      setMinTrustScore(initialFilters.minTrustScore);
     }
   }, [visible, initialFilters]);
 
@@ -121,6 +130,7 @@ export function SwipeFiltersModal({
       zodiacSign: zodiacSign !== "Tümü" ? zodiacSign : undefined,
       isVerifiedOnly,
       hasVoiceNote,
+      minTrustScore,
     });
   }
 
@@ -135,6 +145,7 @@ export function SwipeFiltersModal({
     setZodiacSign("Tümü");
     setIsVerifiedOnly(false);
     setHasVoiceNote(false);
+    setMinTrustScore(undefined);
     onApply({});
   }
 
@@ -388,6 +399,27 @@ export function SwipeFiltersModal({
                 </View>
                 <Switch value={onlyOnline} onValueChange={setOnlyOnline} trackColor={{ false: colors.border, true: colors.primary }} />
               </View>
+            </View>
+
+            {/* Minimum Trust Score Selection */}
+            <View style={styles.field}>
+              <Text style={styles.label}>{language === "en" ? "Minimum Trust Score" : "Minimum Güven Skoru"}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
+                {TRUST_SCORE_PRESETS.map((preset) => {
+                  const isSelected = minTrustScore === preset.val;
+                  return (
+                    <Pressable
+                      key={preset.label}
+                      style={[styles.presetChip, isSelected && styles.presetChipSelected]}
+                      onPress={() => setMinTrustScore(preset.val)}
+                    >
+                      <Text style={[styles.presetText, isSelected && styles.presetTextSelected]}>
+                        {preset.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
 
             {/* Zodiac Sign Selection */}
