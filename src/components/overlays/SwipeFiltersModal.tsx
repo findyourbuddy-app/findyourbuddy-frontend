@@ -218,15 +218,13 @@ export function SwipeFiltersModal({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <Pressable style={styles.backdrop} onPress={onDismiss}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
+      <View style={styles.backdrop}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ width: "100%", justifyContent: "flex-end" }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ width: "100%", height: "100%", justifyContent: "flex-end" }}
         >
-          <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.dragHandle} />
-
+          <View style={styles.card}>
             <View style={styles.headerRow}>
               <View style={styles.headerTitleRow}>
                 <View style={styles.headerIconBadge}>
@@ -451,9 +449,9 @@ export function SwipeFiltersModal({
               <Text style={styles.clearLinkText}>{language === "en" ? "Clear All Filters" : "Filtreleri Sıfırla"}</Text>
             </Pressable>
           </View>
-        </Pressable>
+          </View>
         </KeyboardAvoidingView>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -469,9 +467,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.card * 1.5,
     borderTopRightRadius: radius.card * 1.5,
     padding: spacing.lg,
-    paddingBottom: spacing.sm,
-    height: "82%",
-    maxHeight: "88%",
+    paddingBottom: spacing.md,
+    height: "92%",
+    maxHeight: "95%",
     gap: spacing.md,
     ...shadows.card,
   },
