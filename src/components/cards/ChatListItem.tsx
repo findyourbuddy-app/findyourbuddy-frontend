@@ -11,21 +11,32 @@ interface ChatListItemProps {
   match: Match;
   currentUserId: number;
   onPress: () => void;
+  onPressAvatar?: () => void;
 }
 
-export function ChatListItem({ match, currentUserId, onPress }: ChatListItemProps) {
+export function ChatListItem({ match, currentUserId, onPress, onPressAvatar }: ChatListItemProps) {
   const { language } = useAppTheme();
   const lastMessage = match.last_message;
   const isUnread = Boolean(lastMessage && !lastMessage.is_read && lastMessage.sender_id !== currentUserId);
 
   return (
     <Pressable style={styles.container} onPress={onPress}>
-      <Avatar
-        name={match.other_user.display_name}
-        photoUrl={match.other_user.photo_url}
-        isVerified={match.other_user.is_verified}
-        size={48}
-      />
+      <Pressable
+        onPress={(e) => {
+          if (onPressAvatar) {
+            e.stopPropagation();
+            onPressAvatar();
+          }
+        }}
+        hitSlop={4}
+      >
+        <Avatar
+          name={match.other_user.display_name}
+          photoUrl={match.other_user.photo_url}
+          isVerified={match.other_user.is_verified}
+          size={48}
+        />
+      </Pressable>
       <View style={[styles.textColumn, { marginRight: spacing.sm }]}>
         <View style={styles.topRow}>
           <Text style={[styles.name, isUnread && styles.unreadText]} numberOfLines={1}>

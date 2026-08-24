@@ -165,3 +165,7 @@ export function verifyPhotoWithVision(selfiePhotoUrl: string): Promise<{ verifie
     })
     .then((res) => res.data);
 }
+
+export function getUserById(userId: number): Promise<User> {
+  return apiClient.get<User>(`/users/${userId}`).then((res) => res.data);
+}

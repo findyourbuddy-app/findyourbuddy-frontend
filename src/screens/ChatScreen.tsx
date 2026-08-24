@@ -362,6 +362,23 @@ export function ChatScreen({ route }: Props) {
     ]);
   }, [user, otherUserId, otherUserName, language]);
 
+  async function openTargetUserProfile(): Promise<void> {
+    try {
+      const { getUserById } = require("../api/users");
+      const fetchedUser = await getUserById(otherUserId);
+      if (fetchedUser) {
+        navigation.navigate("CandidateProfile", {
+          candidate: fetchedUser,
+          onSwipeLeft: () => {},
+          onSwipeRight: () => {},
+          onSwipeUp: () => {},
+        });
+      }
+    } catch {
+      Alert.alert("Hata", "Kullanıcı profili açılırken bir sorun oluştu.");
+    }
+  }
+
   useEffect(() => {
     navigation.setOptions({
       headerTitleAlign: "left",
@@ -376,7 +393,10 @@ export function ChatScreen({ route }: Props) {
           >
             <Feather name="chevron-left" size={26} color={colors.textPrimary} />
           </Pressable>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+          <Pressable
+            style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
+            onPress={openTargetUserProfile}
+          >
             <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={36} />
             <Text
               style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary, maxWidth: 140 }}
@@ -385,7 +405,7 @@ export function ChatScreen({ route }: Props) {
             >
               {otherUserName}
             </Text>
-          </View>
+          </Pressable>
         </View>
       ),
       headerTitle: "",

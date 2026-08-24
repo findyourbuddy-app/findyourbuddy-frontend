@@ -60,6 +60,23 @@ export function MessagesScreen() {
     }, [loadMatches])
   );
 
+  async function openUserProfile(userId: number): Promise<void> {
+    try {
+      const { getUserById } = require("../api/users");
+      const fetchedUser = await getUserById(userId);
+      if (fetchedUser) {
+        navigation.navigate("CandidateProfile", {
+          candidate: fetchedUser,
+          onSwipeLeft: () => {},
+          onSwipeRight: () => {},
+          onSwipeUp: () => {},
+        });
+      }
+    } catch {
+      Alert.alert("Hata", "Kullanıcı profili açılırken bir sorun oluştu.");
+    }
+  }
+
   function openChat(match: Match): void {
     navigation.navigate("Chat", {
       matchId: match.id,
@@ -243,6 +260,7 @@ export function MessagesScreen() {
               match={item}
               currentUserId={user ? user.id : 0}
               onPress={() => openChat(item)}
+              onPressAvatar={() => openUserProfile(item.other_user.id)}
             />
           </View>
         )}
