@@ -1,67 +1,93 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useAudioPlayer } from "expo-audio";
+import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
 import { useAppTheme } from "../../context/ThemeContext";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 
 interface VoiceNotePlayerProps {
   audioUrl?: string | null;
+  durationSeconds?: number;
   onDelete?: () => void;
 }
 
 const WAVE_BAR_HEIGHTS = [12, 22, 16, 30, 24, 14, 28, 36, 18, 26, 12, 32, 20, 15, 28, 10, 24, 16];
 
-export function VoiceNotePlayer({ audioUrl, onDelete }: VoiceNotePlayerProps) {
+function formatTime(totalSecs: number): string {
+  if (!totalSecs || isNaN(totalSecs) || totalSecs <= 0) return "0:00";
+  const mins = Math.floor(totalSecs / 60);
+  const secs = Math.floor(totalSecs % 60);
+  return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+}
+
+export function VoiceNotePlayer({ audioUrl, durationSeconds, onDelete }: VoiceNotePlayerProps) {
   const { accentColor } = useAppTheme();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackDisplay, setPlaybackDisplay] = useState("0:00");
+  const [totalDuration, setTotalDuration] = useState<number>(durationSeconds || 0);
+  const [playbackDisplay, setPlaybackDisplay] = useState(formatTime(durationSeconds || 0));
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Expo audio player for native platforms
   const player = useAudioPlayer(audioUrl || "");
+
+  // Detect total duration from native player
+  useEffect(() => {
+    if (Platform.OS !== "web" && player && player.duration > 0) {
+      setTotalDuration(player.duration);
+      if (!isPlaying) {
+        setPlaybackDisplay(formatTime(player.duration));
+      }
+    }
+  }, [player, player?.duration, isPlaying]);
 
   // Web HTML5 Audio setup
   useEffect(() => {
     if (Platform.OS === "web" && audioUrl) {
       const audio = new window.Audio(audioUrl);
       webAudioRef.current = audio;
+      
+      audio.onloadedmetadata = () => {
+        if (audio.duration && !isNaN(audio.duration)) {
+          setTotalDuration(audio.duration);
+          if (!isPlaying) {
+            setPlaybackDisplay(formatTime(audio.duration));
+          }
+        }
+      };
+
       audio.onended = () => {
         setIsPlaying(false);
-        setPlaybackDisplay("0:00");
+        setPlaybackDisplay(formatTime(audio.duration || totalDuration));
       };
+      
       audio.ontimeupdate = () => {
-        const secs = Math.floor(audio.currentTime);
-        const mins = Math.floor(secs / 60);
-        const remSecs = secs % 60;
-        setPlaybackDisplay(`${mins}:${remSecs < 10 ? "0" : ""}${remSecs}`);
+        if (audio.currentTime > 0) {
+          setPlaybackDisplay(formatTime(audio.currentTime));
+        }
       };
+
       return () => {
         audio.pause();
         audio.src = "";
       };
     }
-  }, [audioUrl]);
+  }, [audioUrl, totalDuration, isPlaying]);
 
-  // Native player state sync -- only polls while this note is actually
-  // playing, so idle voice-note bubbles (e.g. several stacked candidate
-  // profiles while swiping) don't each run a background timer forever.
+  // Native player state sync -- only polls while playing
   useEffect(() => {
     if (Platform.OS === "web" || !player || !isPlaying) {
       return;
     }
     const interval = setInterval(() => {
       if (player.playing) {
-        const secs = Math.floor(player.currentTime);
-        const mins = Math.floor(secs / 60);
-        const remSecs = secs % 60;
-        setPlaybackDisplay(`${mins}:${remSecs < 10 ? "0" : ""}${remSecs}`);
+        setPlaybackDisplay(formatTime(player.currentTime));
       } else {
         setIsPlaying(false);
+        setPlaybackDisplay(formatTime(player.duration || totalDuration));
       }
-    }, 250);
+    }, 200);
     return () => clearInterval(interval);
-  }, [player, isPlaying]);
+  }, [player, isPlaying, totalDuration]);
 
   // Waveform pulsation animation
   const animValue = useRef(new Animated.Value(1)).current;
@@ -95,11 +121,19 @@ export function VoiceNotePlayer({ audioUrl, onDelete }: VoiceNotePlayerProps) {
   async function togglePlay() {
     if (!audioUrl) return;
 
+    // Route audio to main loudspeaker in silent mode
+    try {
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+    } catch {
+      // Ignore fallback on unsupported platforms
+    }
+
     if (Platform.OS === "web") {
       if (webAudioRef.current) {
         if (isPlaying) {
           webAudioRef.current.pause();
           setIsPlaying(false);
+          setPlaybackDisplay(formatTime(webAudioRef.current.duration || totalDuration));
         } else {
           try {
             await webAudioRef.current.play();
@@ -116,6 +150,7 @@ export function VoiceNotePlayer({ audioUrl, onDelete }: VoiceNotePlayerProps) {
       if (isPlaying) {
         player.pause();
         setIsPlaying(false);
+        setPlaybackDisplay(formatTime(player.duration || totalDuration));
       } else {
         try {
           player.play();
