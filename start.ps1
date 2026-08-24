@@ -1,3 +1,7 @@
+param (
+    [switch]$Tunnel
+)
+
 # Windows lokal — frontend başlatır
 Set-Location $PSScriptRoot
 
@@ -37,4 +41,10 @@ $html | Out-File -FilePath $qrFile -Encoding utf8
 Start-Process $qrFile
 Write-Host "QR kod tarayicida acildi."
 
-npx expo start --tunnel --clear
+if ($Tunnel) {
+    Write-Host "Tunnel modunda baslatiliyor (ngrok)..." -ForegroundColor Yellow
+    npx expo start --tunnel --clear
+} else {
+    Write-Host "Lokal LAN modunda baslatiliyor (Hizli & Guvenli)..." -ForegroundColor Green
+    npx expo start --lan --clear
+}
