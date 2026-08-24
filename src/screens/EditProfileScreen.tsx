@@ -446,12 +446,17 @@ export function EditProfileScreen() {
       return;
     }
 
+    const previousPhoto = user?.photo_url;
     setIsUploadingPhoto(true);
     setError(null);
+    if (user) updateUser({ ...user, photo_url: asset.uri });
+
     try {
       const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "photo.jpg";
-      updateUser(await uploadProfilePhoto(asset.uri, fileName));
+      const uploaded = await uploadProfilePhoto(asset.uri, fileName);
+      updateUser(uploaded);
     } catch {
+      if (user) updateUser({ ...user, photo_url: previousPhoto ?? null });
       setError("Fotoğraf yüklenemedi, tekrar dener misin?");
     } finally {
       setIsUploadingPhoto(false);

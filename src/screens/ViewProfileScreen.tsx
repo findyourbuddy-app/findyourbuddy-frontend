@@ -3,7 +3,9 @@ import { FlatList, ScrollView, StyleSheet, Text, View, ActivityIndicator, Pressa
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { MainStackParamList } from "../navigation/RootNavigator";
 import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
@@ -18,6 +20,7 @@ import { useAppTheme } from "../context/ThemeContext";
 import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 
 export function ViewProfileScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { bgGradient, accentColor, language } = useAppTheme();
   const [profile, setProfile] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -152,14 +155,27 @@ export function ViewProfileScreen() {
             </View>
           ) : null}
 
-          {profile.voice_note_url ? (
-            <View style={{ marginTop: spacing.xs }}>
-              <Text style={[styles.promptQuestion, { marginBottom: spacing.xs }]}>
-                Ses Tanıtımı
+          <Pressable
+            style={{ marginTop: spacing.xs }}
+            onPress={() => navigation.navigate("EditProfile")}
+          >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
+              <Text style={styles.promptQuestion}>Ses Tanıtımı</Text>
+              <Text style={{ fontSize: 12, color: colors.primary, fontFamily: fontFamily.bodySemiBold }}>
+                {profile.voice_note_url ? (language === "en" ? "Edit" : "Düzenle") : (language === "en" ? "+ Add Voice" : "+ Ses Ekle")}
               </Text>
-              <VoiceNotePlayer audioUrl={resolvePhotoUrl(profile.voice_note_url)} />
             </View>
-          ) : null}
+            {profile.voice_note_url ? (
+              <VoiceNotePlayer audioUrl={resolvePhotoUrl(profile.voice_note_url)} />
+            ) : (
+              <View style={styles.emptyVoiceBox}>
+                <Feather name="mic" size={18} color={colors.primary} />
+                <Text style={styles.emptyVoiceText}>
+                  {language === "en" ? "Tap to record your voice introduction" : "Ses tanıtımını kaydetmek için dokun"}
+                </Text>
+              </View>
+            )}
+          </Pressable>
         </View>
       ) : null}
 
@@ -450,6 +466,21 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 13,
     color: colors.textPrimary,
+  },
+  emptyVoiceBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.primaryMuted,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyVoiceText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.primary,
   },
   interspersedPhotoCard: {
     height: 340,

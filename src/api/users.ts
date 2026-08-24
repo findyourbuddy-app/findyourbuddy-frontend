@@ -10,23 +10,39 @@ import type { User, UserPhoto, UserUpdate } from "../types";
 export async function toUploadFile(
   uri: string,
   rawFileName: string,
-  mimeType = "image/jpeg"
+  mimeType?: string
 ): Promise<Blob> {
   let normalizedUri = (uri || "").split("?")[0];
   if (Platform.OS === "android" && !normalizedUri.startsWith("file://") && !normalizedUri.startsWith("content://")) {
     normalizedUri = `file://${normalizedUri}`;
   }
 
-  const cleanName = (rawFileName.split("?")[0] || "photo.jpg").replace(/[^a-zA-Z0-9._-]/g, "_");
+  const cleanName = (rawFileName.split("?")[0] || "file.jpg").replace(/[^a-zA-Z0-9._-]/g, "_");
   const lower = cleanName.toLowerCase();
+  let type = mimeType || "image/jpeg";
   let ext = ".jpg";
-  let type = "image/jpeg";
+
   if (lower.endsWith(".png")) {
     ext = ".png";
-    type = "image/png";
+    if (!mimeType) type = "image/png";
   } else if (lower.endsWith(".webp")) {
     ext = ".webp";
-    type = "image/webp";
+    if (!mimeType) type = "image/webp";
+  } else if (lower.endsWith(".m4a")) {
+    ext = ".m4a";
+    if (!mimeType) type = "audio/m4a";
+  } else if (lower.endsWith(".mp3")) {
+    ext = ".mp3";
+    if (!mimeType) type = "audio/mpeg";
+  } else if (lower.endsWith(".wav")) {
+    ext = ".wav";
+    if (!mimeType) type = "audio/wav";
+  } else if (lower.endsWith(".caf")) {
+    ext = ".caf";
+    if (!mimeType) type = "audio/caf";
+  } else if (lower.endsWith(".3gp")) {
+    ext = ".3gp";
+    if (!mimeType) type = "audio/3gpp";
   }
 
   const baseName = cleanName.substring(0, cleanName.lastIndexOf(".")) || cleanName;
@@ -35,7 +51,7 @@ export async function toUploadFile(
   if (Platform.OS === "web") {
     const response = await fetch(normalizedUri);
     const blob = await response.blob();
-    return new File([blob], fileName, { type: blob.type || type });
+    return new File([blob], fileName, { type: mimeType || blob.type || type });
   }
   return { uri: normalizedUri, name: fileName, type } as unknown as Blob;
 }
