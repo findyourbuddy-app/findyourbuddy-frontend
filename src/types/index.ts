@@ -239,6 +239,7 @@ export interface Match {
   event_title?: string | null;
   event_category?: string | null;
   event_is_group?: boolean;
+  event_creator_id?: number | null;
   user_a_id: number;
   user_b_id: number;
   score: number;

@@ -151,25 +151,41 @@ export function EventDetailScreen({ route }: Props) {
 
   async function goToSwipe(): Promise<void> {
     if (!event) return;
-    if (!event.is_group_event) {
-      try {
-        const { getSwipeCandidates } = require("../api/swipes");
-        const candidates = await getSwipeCandidates(event.id);
-        if (candidates && candidates.length > 0) {
+    try {
+      const { getSwipeCandidates, createSwipe } = require("../api/swipes");
+      const candidates = await getSwipeCandidates(event.id);
+      if (candidates && candidates.length > 0) {
+        const openCandidate = (index: number) => {
+          if (index >= candidates.length) {
+            Alert.alert("Tebrikler!", "Bu etkinlik için tüm adayları gördün 🎉");
+            return;
+          }
+          const cand = candidates[index];
           navigation.navigate("CandidateProfile", {
-            candidate: candidates[0],
-            onSwipeLeft: () => {},
-            onSwipeRight: () => {},
-            onSwipeUp: () => {},
+            candidate: cand,
+            onSwipeLeft: async () => {
+              try { await createSwipe({ target_id: cand.id, event_id: event.id, direction: "pass" }); } catch {}
+              openCandidate(index + 1);
+            },
+            onSwipeRight: async () => {
+              try { await createSwipe({ target_id: cand.id, event_id: event.id, direction: "like" }); } catch {}
+              openCandidate(index + 1);
+            },
+            onSwipeUp: async () => {
+              try { await createSwipe({ target_id: cand.id, event_id: event.id, direction: "super_like" }); } catch {}
+              openCandidate(index + 1);
+            },
           });
-          return;
-        }
-      } catch {}
+        };
+        openCandidate(0);
+        return;
+      } else {
+        Alert.alert("Henüz Aday Yok", "Bu etkinliğe katılan henüz başka aday bulunmuyor.");
+        return;
+      }
+    } catch {
+      Alert.alert("Bilgi", "Adaylar yüklenirken bir sorun oluştu.");
     }
-    navigation.navigate("Tabs", {
-      screen: "Swipe",
-      params: { eventId: event.id, eventTitle: event.title },
-    });
   }
 
   async function handleAttendAndSwipe(): Promise<void> {

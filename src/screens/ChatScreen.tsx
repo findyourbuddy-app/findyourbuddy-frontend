@@ -29,7 +29,7 @@ import type { Message, ReportReason } from "../types";
 type Props = NativeStackScreenProps<MainStackParamList, "Chat">;
 
 export function ChatScreen({ route }: Props) {
-  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent } = route.params;
+  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent, eventCreatorId } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
@@ -792,25 +792,40 @@ export function ChatScreen({ route }: Props) {
         </View>
       ) : null}
 
-      <View style={styles.inputRow}>
-        <Pressable style={styles.attachButton} onPress={handlePickPhoto} disabled={isSending}>
-          <Feather name="plus" size={20} color={accentColor} />
-        </Pressable>
-        <Pressable style={styles.attachButton} onPress={() => setGifModalVisible(true)} disabled={isSending}>
-          <Text style={styles.gifIconText}>GIF</Text>
-        </Pressable>
-        <TextInput
-          style={styles.input}
-          placeholder={language === "en" ? "Type a message..." : "Bir mesaj yaz..."}
-          placeholderTextColor={colors.textSecondary}
-          value={draft}
-          onChangeText={handleDraftChange}
-          multiline
-        />
-        <Pressable style={[styles.sendButton, { backgroundColor: accentColor }]} onPress={handleSend} disabled={isSending}>
-          <Feather name="send" size={18} color={colors.surface} />
-        </Pressable>
-      </View>
+      {isGroupEvent && user && eventCreatorId && eventCreatorId !== user.id ? (
+        <View style={styles.readOnlyBanner}>
+          <Feather name="volume-2" size={18} color={colors.primary} />
+          <Text style={styles.readOnlyBannerText}>
+            {language === "en"
+              ? "This is an announcement channel. Only the event organizer can post messages."
+              : "📢 Bu bir grup duyuru kanalıdır. Sadece etkinlik sahibi mesaj yazabilir."}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.inputRow}>
+          <Pressable style={styles.attachButton} onPress={handlePickPhoto} disabled={isSending}>
+            <Feather name="plus" size={20} color={accentColor} />
+          </Pressable>
+          <Pressable style={styles.attachButton} onPress={() => setGifModalVisible(true)} disabled={isSending}>
+            <Text style={styles.gifIconText}>GIF</Text>
+          </Pressable>
+          <TextInput
+            style={styles.input}
+            placeholder={
+              isGroupEvent && user && eventCreatorId === user.id
+                ? (language === "en" ? "Write an event announcement..." : "📢 Etkinlik duyurusu yaz...")
+                : (language === "en" ? "Type a message..." : "Bir mesaj yaz...")
+            }
+            placeholderTextColor={colors.textSecondary}
+            value={draft}
+            onChangeText={handleDraftChange}
+            multiline
+          />
+          <Pressable style={[styles.sendButton, { backgroundColor: accentColor }]} onPress={handleSend} disabled={isSending}>
+            <Feather name="send" size={18} color={colors.surface} />
+          </Pressable>
+        </View>
+      )}
 
       {/* GIF Picker Modal */}
       <Modal
@@ -1349,8 +1364,23 @@ const styles = StyleSheet.create({
   },
   reactionEmojiText: {
     fontFamily: fontFamily.bodyMedium,
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textPrimary,
+  },
+  readOnlyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  readOnlyBannerText: {
+    flex: 1,
+    ...typeScale.caption,
+    fontFamily: fontFamily.bodyMedium,
+    color: colors.textSecondary,
   },
   typingIndicator: {
     paddingHorizontal: spacing.lg,

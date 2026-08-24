@@ -67,6 +67,7 @@ export type MainStackParamList = {
     needsFeedback?: boolean;
     eventTitle?: string;
     isGroupEvent?: boolean;
+    eventCreatorId?: number;
   };
   Call: {
     matchId: number;

@@ -69,6 +69,7 @@ export function MessagesScreen() {
       needsFeedback: match.needs_feedback,
       eventTitle: match.event_title || undefined,
       isGroupEvent: match.event_is_group || false,
+      eventCreatorId: match.event_creator_id || undefined,
     });
   }
 
