@@ -312,7 +312,7 @@ export function DiscoverScreen() {
           isSmartMatch(e.location_name ?? "", searchQuery) ||
           isSmartMatch(e.category ?? "", searchQuery)
       );
-    } else if (selectedCategory) {
+    } else if (selectedCategory && originFilter !== "my_created") {
       const targetCategory = selectedCategory.toLowerCase();
       list = list.filter((e) => e.category?.toLowerCase() === targetCategory);
     }

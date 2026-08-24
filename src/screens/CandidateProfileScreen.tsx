@@ -31,6 +31,7 @@ export function CandidateProfileScreen({ route }: Props) {
   const [upcomingEvents, setUpcomingEvents] = useState<EventPublicSummary[]>([]);
 
   useEffect(() => {
+    setProfile(candidate);
     getUserById(candidate.id)
       .then((fullUser) => {
         if (fullUser) {
@@ -42,7 +43,6 @@ export function CandidateProfileScreen({ route }: Props) {
 
   function act(action?: () => void): void {
     if (action) action();
-    navigation.goBack();
   }
 
   const [locationName, setLocationName] = useState<string | null>(null);

@@ -90,6 +90,8 @@ export function MessagesScreen() {
     });
   }
 
+  const [chatTypeFilter, setChatTypeFilter] = useState<"all" | "direct" | "group">("all");
+
   const displayMatches = useMemo(() => {
     const q = query.trim().toLowerCase();
 
@@ -109,6 +111,12 @@ export function MessagesScreen() {
     }
 
     let list = consolidatedList;
+    if (chatTypeFilter === "direct") {
+      list = list.filter((m) => !m.event_is_group);
+    } else if (chatTypeFilter === "group") {
+      list = list.filter((m) => m.event_is_group);
+    }
+
     list.sort((a, b) => {
       const timeA = a.last_message ? new Date(a.last_message.created_at).getTime() : new Date(a.created_at).getTime();
       const timeB = b.last_message ? new Date(b.last_message.created_at).getTime() : new Date(b.created_at).getTime();
@@ -132,7 +140,7 @@ export function MessagesScreen() {
     }
 
     return list;
-  }, [matches, query, showUnreadOnly, user]);
+  }, [matches, query, showUnreadOnly, user, chatTypeFilter]);
 
   const dropdownResults = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -234,6 +242,25 @@ export function MessagesScreen() {
                   ))}
                 </View>
               ) : null}
+            </View>
+
+            {/* Chat Type Filter Chips */}
+            <View style={{ flexDirection: "row", gap: spacing.xs, marginVertical: spacing.xs }}>
+              <Chip
+                label={language === "en" ? "All" : "Hepsi"}
+                active={chatTypeFilter === "all"}
+                onPress={() => setChatTypeFilter("all")}
+              />
+              <Chip
+                label={language === "en" ? "💬 Direct DMs" : "💬 Özel DM'ler"}
+                active={chatTypeFilter === "direct"}
+                onPress={() => setChatTypeFilter("direct")}
+              />
+              <Chip
+                label={language === "en" ? "👥 Group Channels" : "👥 Grup Kanalları"}
+                active={chatTypeFilter === "group"}
+                onPress={() => setChatTypeFilter("group")}
+              />
             </View>
 
             {unreadCount > 0 ? (
