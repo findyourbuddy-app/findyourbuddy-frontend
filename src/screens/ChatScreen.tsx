@@ -29,7 +29,7 @@ import type { Message, ReportReason } from "../types";
 type Props = NativeStackScreenProps<MainStackParamList, "Chat">;
 
 export function ChatScreen({ route }: Props) {
-  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent, eventCreatorId } = route.params;
+  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent, eventCreatorId, eventTitle } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
@@ -393,34 +393,52 @@ export function ChatScreen({ route }: Props) {
           >
             <Feather name="chevron-left" size={26} color={colors.textPrimary} />
           </Pressable>
-          <Pressable
-            style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
-            onPress={openTargetUserProfile}
-          >
-            <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={36} />
-            <Text
-              style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary, maxWidth: 140 }}
-              numberOfLines={1}
-              ellipsizeMode="tail"
+          {isGroupEvent ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
+                <Feather name="users" size={18} color="#FFFFFF" />
+              </View>
+              <View style={{ maxWidth: 180 }}>
+                <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 15, color: colors.textPrimary }} numberOfLines={1}>
+                  {eventTitle || (language === "en" ? "Group Event Chat" : "Grup Etkinlik Sohbeti")}
+                </Text>
+                <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.primary }}>
+                  {language === "en" ? "Group Chat Channel" : "Grup Sohbet Kanalı"}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Pressable
+              style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
+              onPress={openTargetUserProfile}
             >
-              {otherUserName}
-            </Text>
-          </Pressable>
+              <Avatar name={otherUserName} photoUrl={otherUserPhoto} size={36} />
+              <Text
+                style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary, maxWidth: 140 }}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {otherUserName}
+              </Text>
+            </Pressable>
+          )}
         </View>
       ),
       headerTitle: "",
       headerRight: () => (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-          <Pressable onPress={() => initiateCall("voice")} style={styles.headerButton}>
-            <Feather name="phone" size={18} color={accentColor} />
-          </Pressable>
-          <Pressable onPress={() => initiateCall("video")} style={styles.headerButton}>
-            <Feather name="video" size={18} color={accentColor} />
-          </Pressable>
-          <Pressable onPress={openSafetyMenu} style={styles.headerButton}>
-            <Feather name="more-vertical" size={20} color={colors.textPrimary} />
-          </Pressable>
-        </View>
+        !isGroupEvent ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+            <Pressable onPress={() => initiateCall("voice")} style={styles.headerButton}>
+              <Feather name="phone" size={18} color={accentColor} />
+            </Pressable>
+            <Pressable onPress={() => initiateCall("video")} style={styles.headerButton}>
+              <Feather name="video" size={18} color={accentColor} />
+            </Pressable>
+            <Pressable onPress={openSafetyMenu} style={styles.headerButton}>
+              <Feather name="more-vertical" size={20} color={colors.textPrimary} />
+            </Pressable>
+          </View>
+        ) : null
       ),
     });
   }, [otherUserId, otherUserName, otherUserPhoto, accentColor, initiateCall, openSafetyMenu]);
