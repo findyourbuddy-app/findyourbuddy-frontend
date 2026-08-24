@@ -13,10 +13,16 @@ interface VoiceNotePlayerProps {
 
 const WAVE_BAR_HEIGHTS = [12, 22, 16, 30, 24, 14, 28, 36, 18, 26, 12, 32, 20, 15, 28, 10, 24, 16];
 
+function parseSeconds(dur: number): number {
+  if (!dur || isNaN(dur) || dur <= 0) return 0;
+  return dur > 1000 ? dur / 1000 : dur;
+}
+
 function formatTime(totalSecs: number): string {
-  if (!totalSecs || isNaN(totalSecs) || totalSecs <= 0) return "0:00";
-  const mins = Math.floor(totalSecs / 60);
-  const secs = Math.floor(totalSecs % 60);
+  const secsVal = parseSeconds(totalSecs);
+  if (secsVal <= 0) return "0:00";
+  const mins = Math.floor(secsVal / 60);
+  const secs = Math.floor(secsVal % 60);
   return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 }
 
@@ -30,15 +36,35 @@ export function VoiceNotePlayer({ audioUrl, durationSeconds, onDelete }: VoiceNo
   // Expo audio player for native platforms
   const player = useAudioPlayer(audioUrl || "");
 
-  // Detect total duration from native player
+  // Load/replace audio source on native player when audioUrl changes
   useEffect(() => {
-    if (Platform.OS !== "web" && player && player.duration > 0) {
-      setTotalDuration(player.duration);
-      if (!isPlaying) {
-        setPlaybackDisplay(formatTime(player.duration));
+    if (Platform.OS !== "web" && player && audioUrl) {
+      try {
+        player.replace({ uri: audioUrl });
+      } catch {
+        // Best effort
       }
     }
-  }, [player, player?.duration, isPlaying]);
+  }, [player, audioUrl]);
+
+  // Continuously check player duration when idle to populate duration immediately (e.g. 0:14)
+  useEffect(() => {
+    if (Platform.OS === "web" || !player) return;
+
+    const checkDuration = () => {
+      const dur = player.duration;
+      if (dur && dur > 0) {
+        setTotalDuration(dur);
+        if (!isPlaying) {
+          setPlaybackDisplay(formatTime(dur));
+        }
+      }
+    };
+
+    checkDuration();
+    const interval = setInterval(checkDuration, 300);
+    return () => clearInterval(interval);
+  }, [player, isPlaying]);
 
   // Web HTML5 Audio setup
   useEffect(() => {
@@ -46,14 +72,18 @@ export function VoiceNotePlayer({ audioUrl, durationSeconds, onDelete }: VoiceNo
       const audio = new window.Audio(audioUrl);
       webAudioRef.current = audio;
       
-      audio.onloadedmetadata = () => {
-        if (audio.duration && !isNaN(audio.duration)) {
+      const updateDuration = () => {
+        if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
           setTotalDuration(audio.duration);
           if (!isPlaying) {
             setPlaybackDisplay(formatTime(audio.duration));
           }
         }
       };
+
+      audio.onloadedmetadata = updateDuration;
+      audio.oncanplaythrough = updateDuration;
+      audio.load();
 
       audio.onended = () => {
         setIsPlaying(false);
@@ -153,6 +183,11 @@ export function VoiceNotePlayer({ audioUrl, durationSeconds, onDelete }: VoiceNo
         setPlaybackDisplay(formatTime(player.duration || totalDuration));
       } else {
         try {
+          const cur = parseSeconds(player.currentTime);
+          const dur = parseSeconds(player.duration);
+          if (cur >= (dur || 1) - 0.2) {
+            player.seekTo(0);
+          }
           player.play();
           setIsPlaying(true);
         } catch {
