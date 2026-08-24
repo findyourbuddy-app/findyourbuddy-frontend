@@ -674,43 +674,26 @@ export function DiscoverScreen() {
                 ) : null}
               </View>
 
-              {/* Sleek Segmented Navigation Control */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segmentedContainer}>
-                <Pressable
-                  style={[styles.segmentTab, originFilter === null && styles.segmentTabActive]}
-                  onPress={() => handleSelectOrigin(null)}
-                >
-                  <Text style={[styles.segmentText, originFilter === null && styles.segmentTextActive]}>
-                    {language === "en" ? "All Events" : "Tüm Etkinlikler"}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.segmentTab, originFilter === "user" && styles.segmentTabActive]}
-                  onPress={() => handleSelectOrigin("user")}
-                >
-                  <Text style={[styles.segmentText, originFilter === "user" && styles.segmentTextActive]}>
-                    {language === "en" ? "User Events" : "Kullanıcı Etkinlikleri"}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.segmentTab, originFilter === "my_created" && styles.segmentTabActive]}
-                  onPress={() => handleSelectOrigin("my_created")}
-                >
-                  <Text style={[styles.segmentText, originFilter === "my_created" && styles.segmentTextActive]}>
-                    {language === "en" ? "My Created Events" : "Benim Başlattıklarım"}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.segmentTab, originFilter === "system" && styles.segmentTabActive]}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ flexDirection: "row", gap: spacing.xs }}
+              >
+                <Chip
+                  label={t("systemEvents")}
+                  active={originFilter === "system"}
                   onPress={() => handleSelectOrigin("system")}
-                >
-                  <Text style={[styles.segmentText, originFilter === "system" && styles.segmentTextActive]}>
-                    {language === "en" ? "Official Events" : "Resmi Etkinlikler"}
-                  </Text>
-                </Pressable>
+                />
+                <Chip
+                  label={t("userEvents")}
+                  active={originFilter === "user"}
+                  onPress={() => handleSelectOrigin("user")}
+                />
+                <Chip
+                  label={language === "en" ? "My Hosted Events" : "Başlattıklarım"}
+                  active={originFilter === "my_created"}
+                  onPress={() => handleSelectOrigin("my_created")}
+                />
               </ScrollView>
 
               {/* Category Chips Scroller */}
