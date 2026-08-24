@@ -52,6 +52,10 @@ export function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadNotifications();
+      const interval = setInterval(() => {
+        loadNotifications();
+      }, 5000);
+      return () => clearInterval(interval);
     }, [loadNotifications])
   );
 

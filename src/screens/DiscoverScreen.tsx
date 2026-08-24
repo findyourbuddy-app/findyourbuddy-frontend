@@ -337,8 +337,12 @@ export function DiscoverScreen() {
       return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
     });
 
+    if (originFilter === "my_created" && user) {
+      list = list.filter((e) => e.creator_id === user.id);
+    }
+
     return list;
-  }, [events, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm, user]);
+  }, [events, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm, user, originFilter]);
 
   const loadEventsRequestIdRef = useRef(0);
 

@@ -16,23 +16,22 @@ import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
 import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { User } from "../types";
 
+import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 
 export function ViewProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { user } = useAuth();
   const { bgGradient, accentColor, language } = useAppTheme();
-  const [profile, setProfile] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<User | null>(user ?? null);
+  const [isLoading, setIsLoading] = useState(!user);
   const [locationName, setLocationName] = useState<string | null>(null);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      if (!profile) {
-        setIsLoading(true);
-      }
       apiClient.get<User>("/users/me")
         .then((res) => {
           if (active) {
@@ -50,7 +49,7 @@ export function ViewProfileScreen() {
       return () => {
         active = false;
       };
-    }, [profile])
+    }, [])
   );
 
   if (isLoading || !profile) {
