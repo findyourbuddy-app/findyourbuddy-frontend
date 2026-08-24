@@ -44,6 +44,28 @@ export function ChatScreen({ route }: Props) {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [showFeedbackBanner, setShowFeedbackBanner] = useState(Boolean(needsFeedback));
 
+  const isOrganizer = Boolean(user && eventCreatorId && user.id === eventCreatorId);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+
+  const openGroupMembersModal = useCallback(async () => {
+    if (!isOrganizer) return;
+    setShowMembersModal(true);
+    setIsLoadingMembers(true);
+    try {
+      const { listMyMatches } = require("../api/matches");
+      const matches = await listMyMatches();
+      const eventMatches = matches.filter((m: any) => m.event_is_group && m.event_title === eventTitle);
+      const members = eventMatches.map((m: any) => m.other_user);
+      setGroupMembers(members);
+    } catch {
+      // Best effort
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  }, [isOrganizer, eventTitle]);
+
   const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
     { reason: "harassment", label: language === "en" ? "Harassment / Inappropriate Behavior" : "Taciz / Rahatsız Edici Davranış" },
     { reason: "spam", label: language === "en" ? "Spam" : "Spam" },
@@ -394,7 +416,11 @@ export function ChatScreen({ route }: Props) {
             <Feather name="chevron-left" size={26} color={colors.textPrimary} />
           </Pressable>
           {isGroupEvent ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+            <Pressable
+              style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}
+              onPress={isOrganizer ? openGroupMembersModal : undefined}
+              disabled={!isOrganizer}
+            >
               <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
                 <Feather name="users" size={18} color="#FFFFFF" />
               </View>
@@ -403,10 +429,10 @@ export function ChatScreen({ route }: Props) {
                   {eventTitle || (language === "en" ? "Group Event Chat" : "Grup Etkinlik Sohbeti")}
                 </Text>
                 <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.primary }}>
-                  {language === "en" ? "Group Chat Channel" : "Grup Sohbet Kanalı"}
+                  {isOrganizer ? (language === "en" ? "👥 Members (Organizer Only)" : "👥 Katılımcılar (Organizatör ℹ️)") : (language === "en" ? "Group Chat Channel" : "Grup Sohbet Kanalı")}
                 </Text>
               </View>
-            </View>
+            </Pressable>
           ) : (
             <Pressable
               style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
@@ -997,6 +1023,49 @@ export function ChatScreen({ route }: Props) {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Organizer Group Members Modal */}
+      <Modal visible={showMembersModal} transparent animationType="slide" onRequestClose={() => setShowMembersModal(false)}>
+        <Pressable style={styles.callBackdrop} onPress={() => setShowMembersModal(false)}>
+          <Pressable style={[styles.callCard, { width: "90%", maxHeight: "70%" }]} onPress={(e) => e.stopPropagation()}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.md, paddingBottom: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 16, color: colors.textPrimary }}>
+                👥 Katılımcı Listesi (Organizatör Özel)
+              </Text>
+              <Pressable onPress={() => setShowMembersModal(false)}>
+                <Feather name="x" size={20} color={colors.textPrimary} />
+              </Pressable>
+            </View>
+            {isLoadingMembers ? (
+              <ActivityIndicator color={accentColor} style={{ marginVertical: 20 }} />
+            ) : groupMembers.length === 0 ? (
+              <Text style={{ fontFamily: fontFamily.body, color: colors.textSecondary, textAlign: "center", marginVertical: 20 }}>
+                Henüz katılan başka üye bulunmuyor.
+              </Text>
+            ) : (
+              <ScrollView style={{ width: "100%" }}>
+                {groupMembers.map((member) => (
+                  <Pressable
+                    key={member.id}
+                    style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                    onPress={() => {
+                      setShowMembersModal(false);
+                      navigation.navigate("CandidateProfile", { candidate: member, eventTitle });
+                    }}
+                  >
+                    <Avatar name={member.display_name} photoUrl={member.photo_url} size={40} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 15, color: colors.textPrimary }}>{member.display_name}</Text>
+                      <Text style={{ fontFamily: fontFamily.body, fontSize: 12, color: colors.textSecondary }}>{member.university || "Üniversite Belirtilmedi"}</Text>
+                    </View>
+                    <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <PhotoLightboxModal
