@@ -22,6 +22,7 @@ import {
 } from "../api/events";
 import { Avatar } from "../components/ui/Avatar";
 import { DoubleBuddyModal } from "../components/overlays/DoubleBuddyModal";
+import { EventOrganizerApprovalModal } from "../components/overlays/EventOrganizerApprovalModal";
 import { FormattedHtmlText } from "../components/ui/FormattedHtmlText";
 import { getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
@@ -49,6 +50,7 @@ export function EventDetailScreen({ route }: Props) {
   const [joinRequests, setJoinRequests] = useState<User[]>([]);
   const [respondingUserId, setRespondingUserId] = useState<number | null>(null);
   const [doubleBuddyVisible, setDoubleBuddyVisible] = useState(false);
+  const [isApprovalModalVisible, setIsApprovalModalVisible] = useState(false);
 
   const isOwnerOfGroupEvent = Boolean(
     event && event.is_group_event && user && event.creator_id === user.id
@@ -396,9 +398,19 @@ export function EventDetailScreen({ route }: Props) {
 
         {isOwnerOfGroupEvent ? (
           <View style={styles.joinRequestsSection}>
-            <Text style={typeScale.eyebrow}>
-              Katılım İstekleri{joinRequests.length > 0 ? ` (${joinRequests.length})` : ""}
-            </Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
+              <Text style={typeScale.eyebrow}>
+                Katılım İstekleri{joinRequests.length > 0 ? ` (${joinRequests.length})` : ""}
+              </Text>
+              <Pressable
+                style={styles.manageRequestsBtn}
+                onPress={() => setIsApprovalModalVisible(true)}
+              >
+                <Feather name="check-square" size={14} color="#FFFFFF" />
+                <Text style={styles.manageRequestsBtnText}>Yönet & Toplu Onayla</Text>
+              </Pressable>
+            </View>
+
             {joinRequests.length === 0 ? (
               <Text style={styles.helperText}>Şu an bekleyen istek yok.</Text>
             ) : (
@@ -507,6 +519,19 @@ export function EventDetailScreen({ route }: Props) {
       onClose={() => setDoubleBuddyVisible(false)}
       language={language}
     />
+
+    {event && (
+      <EventOrganizerApprovalModal
+        visible={isApprovalModalVisible}
+        eventId={event.id}
+        eventTitle={event.title}
+        onDismiss={() => setIsApprovalModalVisible(false)}
+        onUpdated={() => {
+          getEvent(eventId).then(setEvent);
+          listJoinRequests(eventId).then(setJoinRequests);
+        }}
+      />
+    )}
     </>
   );
 }
@@ -671,6 +696,20 @@ const styles = StyleSheet.create({
   },
   joinRequestsSection: {
     gap: spacing.sm,
+  },
+  manageRequestsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#2ECC71",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.sm,
+    gap: 4,
+  },
+  manageRequestsBtnText: {
+    ...typeScale.caption,
+    fontFamily: fontFamily.displayBold,
+    color: "#FFFFFF",
   },
   joinRequestRow: {
     flexDirection: "row",

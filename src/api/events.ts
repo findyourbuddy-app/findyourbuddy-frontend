@@ -59,6 +59,26 @@ export function createEventCreditsCheckoutSession(): Promise<{ checkout_url: str
     .then((res) => res.data);
 }
 
+export function getEventJoinRequests(eventId: number): Promise<User[]> {
+  return apiClient.get<User[]>(`/events/${eventId}/join-requests`).then((res) => res.data);
+}
+
+export function handleEventJoinRequest(
+  eventId: number,
+  userId: number,
+  approved: boolean
+): Promise<Event> {
+  return apiClient
+    .patch<Event>(`/events/${eventId}/join-requests/${userId}`, { approved })
+    .then((res) => res.data);
+}
+
+export function approveAllEventJoinRequests(eventId: number): Promise<Event> {
+  return apiClient
+    .post<Event>(`/events/${eventId}/join-requests/approve-all`)
+    .then((res) => res.data);
+}
+
 export function listJoinRequests(eventId: number): Promise<User[]> {
   return apiClient.get<User[]>(`/events/${eventId}/join-requests`).then((res) => res.data);
 }
