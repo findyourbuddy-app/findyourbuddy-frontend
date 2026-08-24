@@ -84,6 +84,7 @@ export function DiscoverScreen() {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [originFilter, setOriginFilter] = useState<"system" | "user" | "my_created">("system");
+  const [hasCreatedEvents, setHasCreatedEvents] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -401,8 +402,17 @@ export function DiscoverScreen() {
       const bookmarks = await listMyBookmarks();
       setBookmarkedIds(new Set(bookmarks.map((bookmark) => bookmark.event.id)));
     } catch {
-      // Bookmarks are a non-critical enhancement; failing to load them shouldn't
-      // block the events list itself.
+      // Bookmarks are a non-critical enhancement
+    }
+  }, []);
+
+  const checkCreatedEvents = useCallback(async () => {
+    try {
+      const { listMyCreatedEvents } = require("../api/events");
+      const created = await listMyCreatedEvents(true);
+      setHasCreatedEvents(Boolean(created && created.length > 0));
+    } catch {
+      setHasCreatedEvents(false);
     }
   }, []);
 
@@ -410,9 +420,8 @@ export function DiscoverScreen() {
     useCallback(() => {
       loadEvents(selectedCategory, originFilter);
       loadBookmarks();
-      // selectedCategory/originFilter intentionally omitted: chip taps already trigger their own reload
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loadEvents, loadBookmarks])
+      checkCreatedEvents();
+    }, [loadEvents, loadBookmarks, checkCreatedEvents])
   );
 
   function handleSelectCategory(slug: string): void {
@@ -676,11 +685,13 @@ export function DiscoverScreen() {
                   active={originFilter === "user"}
                   onPress={() => handleSelectOrigin("user")}
                 />
-                <Chip
-                  label={language === "en" ? "👑 My Hosted Events" : "👑 Başlattıklarım (Organizatör)"}
-                  active={originFilter === "my_created"}
-                  onPress={() => handleSelectOrigin("my_created")}
-                />
+                {hasCreatedEvents ? (
+                  <Chip
+                    label={language === "en" ? "My Hosted Events" : "Başlattıklarım"}
+                    active={originFilter === "my_created"}
+                    onPress={() => handleSelectOrigin("my_created")}
+                  />
+                ) : null}
               </ScrollView>
 
               <FlatList

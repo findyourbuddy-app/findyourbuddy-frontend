@@ -72,7 +72,7 @@ export function CandidateProfileScreen({ route }: Props) {
       {eventTitle ? (
         <View style={styles.groupSwipeHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.groupSwipeTag}>📌 Grup Etkinliği Eşleşmesi</Text>
+            <Text style={styles.groupSwipeTag}>Grup Etkinliği Eşleşmesi</Text>
             <Text style={styles.groupSwipeTitle} numberOfLines={1}>
               {eventTitle}
             </Text>
