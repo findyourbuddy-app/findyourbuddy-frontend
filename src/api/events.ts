@@ -31,6 +31,12 @@ export function listMyAttendingEvents(upcomingOnly = true): Promise<Event[]> {
     .then((res) => res.data);
 }
 
+export function listMyCreatedEvents(upcomingOnly = true): Promise<Event[]> {
+  return apiClient
+    .get<Event[]>("/events/me/created", { params: { upcoming_only: upcomingOnly } })
+    .then((res) => res.data);
+}
+
 export function getUserUpcomingEvents(userId: number): Promise<EventPublicSummary[]> {
   return apiClient
     .get<EventPublicSummary[]>(`/events/user/${userId}/upcoming`)

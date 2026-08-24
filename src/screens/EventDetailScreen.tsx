@@ -53,7 +53,7 @@ export function EventDetailScreen({ route }: Props) {
   const [isApprovalModalVisible, setIsApprovalModalVisible] = useState(false);
 
   const isOwnerOfGroupEvent = Boolean(
-    event && event.is_group_event && user && event.creator_id === user.id
+    event && user && event.creator_id === user.id
   );
 
   const refreshJoinRequests = useCallback(async (eventIdToLoad: number) => {
@@ -93,7 +93,7 @@ export function EventDetailScreen({ route }: Props) {
           if (cancelled) return;
           setEvent(loadedEvent);
           setIsBookmarked(bookmarks.some((b) => b.event.id === eventId));
-          if (loadedEvent.is_group_event && user && loadedEvent.creator_id === user.id) {
+          if (user && loadedEvent.creator_id === user.id) {
             refreshJoinRequests(eventId);
           }
         })

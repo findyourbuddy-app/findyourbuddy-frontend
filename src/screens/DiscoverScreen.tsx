@@ -83,7 +83,7 @@ export function DiscoverScreen() {
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [originFilter, setOriginFilter] = useState<"system" | "user">("system");
+  const [originFilter, setOriginFilter] = useState<"system" | "user" | "my_created">("system");
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -115,7 +115,7 @@ export function DiscoverScreen() {
     if (!isMapView) return;
     let cancelled = false;
     setIsLoadingMapEvents(true);
-    listEvents(selectedCategory ?? undefined, true, 0, 200, originFilter)
+    listEvents(selectedCategory ?? undefined, true, 0, 200, originFilter === "my_created" ? undefined : originFilter)
       .then((result) => {
         if (!cancelled) setMapEvents(result);
       })
@@ -158,29 +158,24 @@ export function DiscoverScreen() {
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted" || cancelled) return;
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        if (cancelled) return;
-        setUserCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
-
-        // 1. Try local city/district resolver first
-        const districtCity = await resolveCityDistrict(position.coords.latitude, position.coords.longitude);
-        if (cancelled) return;
-        if (districtCity) {
-          setCityLabel(districtCity);
-          return;
-        }
-
-        // 2. Fallback to reverseGeocode API
-        const result = await reverseGeocode(position.coords.latitude, position.coords.longitude);
-        if (cancelled) return;
-        if (result && result.display_name) {
-          setCityLabel(shortenPlaceLabel(result.display_name));
+        if (status === "granted") {
+          const position = await Location.getCurrentPositionAsync({});
+          if (!cancelled) {
+            setUserCoords({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+            const label = await resolveCityDistrict(
+              position.coords.latitude,
+              position.coords.longitude
+            );
+            if (label && !cancelled) {
+              setCityLabel(label);
+            }
+          }
         }
       } catch {
-        // Best-effort; defaults stay in place.
+        // Best-effort; falls back to default center if location disabled
       }
     })();
     return () => {
@@ -192,11 +187,10 @@ export function DiscoverScreen() {
     setIsCityPickerVisible(true);
   }
 
-  async function handleCitySelect(result: GeocodingResult): Promise<void> {
+  function handleLocationSelected(result: GeocodingResult): void {
     if (!isPremium) {
-      setIsCityPickerVisible(false);
       Alert.alert(
-        language === "en" ? "Travel Passport (Custom Location)" : "Pasaport (Sanal Konum Seçimi)",
+        language === "en" ? "Premium Feature" : "Premium Özellik",
         language === "en"
           ? "Teleporting to custom cities and picking manual locations is exclusive to Premium members!"
           : "Farklı şehirlerdeki etkinlikleri keşfetmek ve özel sanal konum seçmek Premium üyelere özeldir!",
@@ -229,12 +223,13 @@ export function DiscoverScreen() {
     if (result.display_name) {
       setCityLabel(shortenPlaceLabel(result.display_name));
     } else {
-      const label = await resolveCityDistrict(lat, lon);
-      if (label) {
-        setCityLabel(label);
-      } else {
-        setCityLabel(`${lat.toFixed(2)}, ${lon.toFixed(2)}`);
-      }
+      resolveCityDistrict(lat, lon).then((label) => {
+        if (label) {
+          setCityLabel(label);
+        } else {
+          setCityLabel(`${lat.toFixed(2)}, ${lon.toFixed(2)}`);
+        }
+      });
     }
   }
 
@@ -342,16 +337,21 @@ export function DiscoverScreen() {
     });
 
     return list;
-  }, [events, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm]);
+  }, [events, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm, user]);
 
   const loadEventsRequestIdRef = useRef(0);
 
-  const loadEvents = useCallback(async (category: string | null, origin: "system" | "user" | null) => {
+  const loadEvents = useCallback(async (category: string | null, origin: "system" | "user" | "my_created" | null) => {
     const requestId = ++loadEventsRequestIdRef.current;
     setHasMore(true);
     try {
-      // Fetch batch of events for fast category filtering
-      const result = await listEvents(category ?? undefined, true, 0, 100, origin ?? undefined);
+      let result: Event[] = [];
+      if (origin === "my_created") {
+        const { listMyCreatedEvents } = require("../api/events");
+        result = await listMyCreatedEvents(true);
+      } else {
+        result = await listEvents(category ?? undefined, true, 0, 100, origin ?? undefined);
+      }
       if (requestId !== loadEventsRequestIdRef.current) return;
       setEvents(result);
       setHasMore(result.length === 100);
@@ -379,7 +379,9 @@ export function DiscoverScreen() {
     setIsLoadingMore(true);
     try {
       const currentLength = events.length;
-      const result = await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT, originFilter);
+      const result = originFilter === "my_created"
+        ? []
+        : await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT, originFilter);
       setEvents((prev) => {
         const existingIds = new Set(prev.map((event) => event.id));
         const deduped = result.filter((event) => !existingIds.has(event.id));
@@ -419,7 +421,7 @@ export function DiscoverScreen() {
     loadEvents(next, originFilter);
   }
 
-  function handleSelectOrigin(next: "system" | "user"): void {
+  function handleSelectOrigin(next: "system" | "user" | "my_created"): void {
     setOriginFilter(next);
     loadEvents(selectedCategory, next);
   }
@@ -674,6 +676,11 @@ export function DiscoverScreen() {
                   active={originFilter === "user"}
                   onPress={() => handleSelectOrigin("user")}
                 />
+                <Chip
+                  label={language === "en" ? "👑 My Hosted Events" : "👑 Başlattıklarım (Organizatör)"}
+                  active={originFilter === "my_created"}
+                  onPress={() => handleSelectOrigin("my_created")}
+                />
               </ScrollView>
 
               <FlatList
@@ -860,7 +867,7 @@ export function DiscoverScreen() {
     />
     <LocationPickerModal
       visible={isCityPickerVisible}
-      onSelect={handleCitySelect}
+      onSelect={handleLocationSelected}
       onDismiss={() => setIsCityPickerVisible(false)}
       initialLatitude={userCoords?.latitude}
       initialLongitude={userCoords?.longitude}
