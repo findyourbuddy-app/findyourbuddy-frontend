@@ -288,7 +288,7 @@ export function MessagesScreen() {
               </Pressable>
             ) : null}
 
-            {newMatches.length > 0 && !showUnreadOnly ? (
+            {newMatches.length > 0 && !showUnreadOnly && chatTypeFilter === "matches" ? (
               <View style={styles.section}>
                 <Text style={styles.sectionSubTitle}>{t("newMatchesTitle")}</Text>
                 {newMatches.map((match) => (

@@ -83,7 +83,7 @@ export function DiscoverScreen() {
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [originFilter, setOriginFilter] = useState<"system" | "user" | "my_created">("system");
+  const [originFilter, setOriginFilter] = useState<"system" | "user" | "my_created" | null>(null);
   const [hasCreatedEvents, setHasCreatedEvents] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -116,7 +116,7 @@ export function DiscoverScreen() {
     if (!isMapView) return;
     let cancelled = false;
     setIsLoadingMapEvents(true);
-    listEvents(selectedCategory ?? undefined, true, 0, 200, originFilter === "my_created" ? undefined : originFilter)
+    listEvents(selectedCategory ?? undefined, true, 0, 200, (originFilter === "my_created" ? undefined : originFilter) || undefined)
       .then((result) => {
         if (!cancelled) setMapEvents(result);
       })
@@ -386,7 +386,7 @@ export function DiscoverScreen() {
       const currentLength = events.length;
       const result = originFilter === "my_created"
         ? []
-        : await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT, originFilter);
+        : await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT, originFilter || undefined);
       setEvents((prev) => {
         const existingIds = new Set(prev.map((event) => event.id));
         const deduped = result.filter((event) => !existingIds.has(event.id));
@@ -434,7 +434,7 @@ export function DiscoverScreen() {
     loadEvents(next, originFilter);
   }
 
-  function handleSelectOrigin(next: "system" | "user" | "my_created"): void {
+  function handleSelectOrigin(next: "system" | "user" | "my_created" | null): void {
     setOriginFilter(next);
     loadEvents(selectedCategory, next);
   }
@@ -674,29 +674,35 @@ export function DiscoverScreen() {
                 ) : null}
               </View>
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ flexDirection: "row", gap: spacing.xs }}
-              >
-                <Chip
-                  label={t("systemEvents")}
-                  active={originFilter === "system"}
+              {/* Sleek Segmented Navigation Control */}
+              <View style={styles.segmentedContainer}>
+                <Pressable
+                  style={[styles.segmentTab, originFilter === null && styles.segmentTabActive]}
+                  onPress={() => handleSelectOrigin(null)}
+                >
+                  <Text style={[styles.segmentText, originFilter === null && styles.segmentTextActive]}>
+                    {language === "en" ? "All Events" : "Tüm Etkinlikler"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.segmentTab, originFilter === "my_created" && styles.segmentTabActive]}
+                  onPress={() => handleSelectOrigin("my_created")}
+                >
+                  <Text style={[styles.segmentText, originFilter === "my_created" && styles.segmentTextActive]}>
+                    {language === "en" ? "My Events" : "Başlattıklarım"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.segmentTab, originFilter === "system" && styles.segmentTabActive]}
                   onPress={() => handleSelectOrigin("system")}
-                />
-                <Chip
-                  label={t("userEvents")}
-                  active={originFilter === "user"}
-                  onPress={() => handleSelectOrigin("user")}
-                />
-                {hasCreatedEvents ? (
-                  <Chip
-                    label={language === "en" ? "My Hosted Events" : "Başlattıklarım"}
-                    active={originFilter === "my_created"}
-                    onPress={() => handleSelectOrigin("my_created")}
-                  />
-                ) : null}
-              </ScrollView>
+                >
+                  <Text style={[styles.segmentText, originFilter === "system" && styles.segmentTextActive]}>
+                    {language === "en" ? "Official" : "Resmi"}
+                  </Text>
+                </Pressable>
+              </View>
 
               <FlatList
                 horizontal
@@ -1218,5 +1224,30 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     alignItems: "center",
     marginTop: spacing.xs,
+  },
+  segmentedContainer: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: radius.pill,
+    padding: 3,
+    marginVertical: spacing.xs,
+  },
+  segmentTab: {
+    flex: 1,
+    paddingVertical: spacing.xs + 2,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+  },
+  segmentTabActive: {
+    backgroundColor: colors.primary,
+  },
+  segmentText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  segmentTextActive: {
+    color: colors.surface,
   },
 });
