@@ -675,7 +675,7 @@ export function DiscoverScreen() {
               </View>
 
               {/* Sleek Segmented Navigation Control */}
-              <View style={styles.segmentedContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segmentedContainer}>
                 <Pressable
                   style={[styles.segmentTab, originFilter === null && styles.segmentTabActive]}
                   onPress={() => handleSelectOrigin(null)}
@@ -686,11 +686,20 @@ export function DiscoverScreen() {
                 </Pressable>
 
                 <Pressable
+                  style={[styles.segmentTab, originFilter === "user" && styles.segmentTabActive]}
+                  onPress={() => handleSelectOrigin("user")}
+                >
+                  <Text style={[styles.segmentText, originFilter === "user" && styles.segmentTextActive]}>
+                    {language === "en" ? "User Events" : "Kullanıcı Etkinlikleri"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
                   style={[styles.segmentTab, originFilter === "my_created" && styles.segmentTabActive]}
                   onPress={() => handleSelectOrigin("my_created")}
                 >
                   <Text style={[styles.segmentText, originFilter === "my_created" && styles.segmentTextActive]}>
-                    {language === "en" ? "My Events" : "Başlattıklarım"}
+                    {language === "en" ? "My Created Events" : "Benim Başlattıklarım"}
                   </Text>
                 </Pressable>
 
@@ -699,25 +708,10 @@ export function DiscoverScreen() {
                   onPress={() => handleSelectOrigin("system")}
                 >
                   <Text style={[styles.segmentText, originFilter === "system" && styles.segmentTextActive]}>
-                    {language === "en" ? "Official" : "Resmi"}
+                    {language === "en" ? "Official Events" : "Resmi Etkinlikler"}
                   </Text>
                 </Pressable>
-              </View>
-
-              <FlatList
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                data={CATEGORIES}
-                keyExtractor={(category) => category.slug}
-                renderItem={({ item }) => (
-                  <Chip
-                    label={language === "en" ? item.labelEn : item.label}
-                    active={selectedCategory === item.slug}
-                    onPress={() => handleSelectCategory(item.slug)}
-                  />
-                )}
-                style={styles.chipList}
-              />
+              </ScrollView>
 
               <Pressable
                 style={styles.aiMatchingBanner}
@@ -1233,7 +1227,7 @@ const styles = StyleSheet.create({
     marginVertical: spacing.xs,
   },
   segmentTab: {
-    flex: 1,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
     alignItems: "center",
     justifyContent: "center",
