@@ -259,6 +259,46 @@ export function EventDetailScreen({ route }: Props) {
     }
   }
 
+  async function handleStartGroupChat(): Promise<void> {
+    if (!event) return;
+    try {
+      const { listMyMatches } = require("../api/matches");
+      const matches = await listMyMatches();
+      const existingGroupMatch = matches.find((m: any) => m.event_id === event.id);
+      if (existingGroupMatch) {
+        navigation.navigate("Chat", {
+          matchId: existingGroupMatch.id,
+          otherUserId: existingGroupMatch.other_user.id,
+          otherUserName: existingGroupMatch.other_user.display_name,
+          otherUserPhoto: existingGroupMatch.other_user.photo_url,
+          eventTitle: event.title,
+          isGroupEvent: true,
+          eventCreatorId: event.creator_id || undefined,
+        });
+      } else {
+        const { approveAllEventJoinRequests } = require("../api/events");
+        await approveAllEventJoinRequests(event.id);
+        const freshMatches = await listMyMatches();
+        const createdGroupMatch = freshMatches.find((m: any) => m.event_id === event.id);
+        if (createdGroupMatch) {
+          navigation.navigate("Chat", {
+            matchId: createdGroupMatch.id,
+            otherUserId: createdGroupMatch.other_user.id,
+            otherUserName: createdGroupMatch.other_user.display_name,
+            otherUserPhoto: createdGroupMatch.other_user.photo_url,
+            eventTitle: event.title,
+            isGroupEvent: true,
+            eventCreatorId: event.creator_id || undefined,
+          });
+        } else {
+          Alert.alert("Bilgi", "Grup sohbeti başlatmak için en az bir katılımcı isteği onaylanmalıdır.");
+        }
+      }
+    } catch {
+      Alert.alert("Hata", "Grup sohbeti açılırken bir sorun oluştu.");
+    }
+  }
+
   if (isLoading || !event) {
     return (
       <View style={styles.center}>
@@ -423,55 +463,61 @@ export function EventDetailScreen({ route }: Props) {
         )}
 
         {isOwnerOfGroupEvent ? (
-          <View style={styles.joinRequestsSection}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
-              <Text style={typeScale.eyebrow}>
-                Katılım İstekleri{joinRequests.length > 0 ? ` (${joinRequests.length})` : ""}
-              </Text>
-              <Pressable
-                style={styles.manageRequestsBtn}
-                onPress={() => setIsApprovalModalVisible(true)}
-              >
-                <Feather name="check-square" size={14} color="#FFFFFF" />
-                <Text style={styles.manageRequestsBtnText}>Yönet & Toplu Onayla</Text>
-              </Pressable>
-            </View>
+          <View style={{ gap: spacing.md }}>
+            <PrimaryButton
+              label={language === "en" ? "💬 Start / Open Group Chat" : "💬 Grup Sohbetini Başlat / Aç"}
+              onPress={handleStartGroupChat}
+            />
+            <View style={styles.joinRequestsSection}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
+                <Text style={typeScale.eyebrow}>
+                  Katılım İstekleri{joinRequests.length > 0 ? ` (${joinRequests.length})` : ""}
+                </Text>
+                <Pressable
+                  style={styles.manageRequestsBtn}
+                  onPress={() => setIsApprovalModalVisible(true)}
+                >
+                  <Feather name="check-square" size={14} color="#FFFFFF" />
+                  <Text style={styles.manageRequestsBtnText}>Yönet & Toplu Onayla</Text>
+                </Pressable>
+              </View>
 
-            {joinRequests.length === 0 ? (
-              <Text style={styles.helperText}>Şu an bekleyen istek yok.</Text>
-            ) : (
-              joinRequests.map((requester) => (
-                <View key={requester.id} style={styles.joinRequestRow}>
-                  <Pressable
-                    style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: spacing.sm }}
-                    onPress={() => navigation.navigate("CandidateProfile", { candidate: requester, eventTitle: event.title })}
-                  >
-                    <Avatar name={requester.display_name} photoUrl={requester.photo_url} size={40} />
-                    <Text style={styles.joinRequestName} numberOfLines={1}>
-                      {requester.display_name}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.joinRequestApprove}
-                    onPress={() => handleJoinRequestResponse(requester.id, true)}
-                    disabled={respondingUserId === requester.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${requester.display_name} isteğini onayla`}
-                  >
-                    <Feather name="check" size={16} color={colors.surface} />
-                  </Pressable>
-                  <Pressable
-                    style={styles.joinRequestReject}
-                    onPress={() => handleJoinRequestResponse(requester.id, false)}
-                    disabled={respondingUserId === requester.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${requester.display_name} isteğini reddet`}
-                  >
-                    <Feather name="x" size={16} color={colors.textSecondary} />
-                  </Pressable>
-                </View>
-              ))
-            )}
+              {joinRequests.length === 0 ? (
+                <Text style={styles.helperText}>Şu an bekleyen istek yok.</Text>
+              ) : (
+                joinRequests.map((requester) => (
+                  <View key={requester.id} style={styles.joinRequestRow}>
+                    <Pressable
+                      style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: spacing.sm }}
+                      onPress={() => navigation.navigate("CandidateProfile", { candidate: requester, eventTitle: event.title })}
+                    >
+                      <Avatar name={requester.display_name} photoUrl={requester.photo_url} size={40} />
+                      <Text style={styles.joinRequestName} numberOfLines={1}>
+                        {requester.display_name}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.joinRequestApprove}
+                      onPress={() => handleJoinRequestResponse(requester.id, true)}
+                      disabled={respondingUserId === requester.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${requester.display_name} isteğini onayla`}
+                    >
+                      <Feather name="check" size={16} color={colors.surface} />
+                    </Pressable>
+                    <Pressable
+                      style={styles.joinRequestReject}
+                      onPress={() => handleJoinRequestResponse(requester.id, false)}
+                      disabled={respondingUserId === requester.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${requester.display_name} isteğini reddet`}
+                    >
+                      <Feather name="x" size={16} color={colors.textSecondary} />
+                    </Pressable>
+                  </View>
+                ))
+              )}
+            </View>
           </View>
         ) : (
           <View style={{ gap: spacing.xs }}>
@@ -558,8 +604,10 @@ export function EventDetailScreen({ route }: Props) {
         eventTitle={event.title}
         onDismiss={() => setIsApprovalModalVisible(false)}
         onUpdated={() => {
-          getEvent(eventId).then(setEvent);
-          listJoinRequests(eventId).then(setJoinRequests);
+          if (event) {
+            getEvent(event.id).then(setEvent);
+            listJoinRequests(event.id).then(setJoinRequests);
+          }
         }}
       />
     )}

@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-n
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
 import { getUserUpcomingEvents } from "../api/events";
+import { getUserById } from "../api/users";
 import { formatEventDate, formatMemberSince, isNewMember } from "../utils/date";
 import { getCategoryMeta } from "../constants/categories";
 import type { EventPublicSummary } from "../types";
@@ -25,8 +26,19 @@ export function CandidateProfileScreen({ route }: Props) {
   const { candidate, eventTitle, onExitGroupSwipe, onSwipeLeft, onSwipeRight, onSwipeUp } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { bgGradient, language } = useAppTheme();
+  const [profile, setProfile] = useState(candidate);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<EventPublicSummary[]>([]);
+
+  useEffect(() => {
+    getUserById(candidate.id)
+      .then((fullUser) => {
+        if (fullUser) {
+          setProfile((prev) => ({ ...prev, ...fullUser }));
+        }
+      })
+      .catch(() => {});
+  }, [candidate.id]);
 
   function act(action?: () => void): void {
     if (action) action();
@@ -36,26 +48,26 @@ export function CandidateProfileScreen({ route }: Props) {
   const [locationName, setLocationName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (hasValidCoordinates(candidate.latitude, candidate.longitude)) {
-      resolveCityDistrict(candidate.latitude, candidate.longitude).then(setLocationName);
+    if (hasValidCoordinates(profile.latitude, profile.longitude)) {
+      resolveCityDistrict(profile.latitude, profile.longitude).then(setLocationName);
     }
-  }, [candidate.latitude, candidate.longitude]);
+  }, [profile.latitude, profile.longitude]);
 
   useEffect(() => {
-    getUserUpcomingEvents(candidate.id)
+    getUserUpcomingEvents(profile.id)
       .then(setUpcomingEvents)
       .catch(() => {
         // Best-effort; the section just stays hidden if this fails.
       });
-  }, [candidate.id]);
+  }, [profile.id]);
 
   // Extract all photos (main photo_url + photos array)
   const allPhotoUrls: string[] = [];
-  if (candidate.photo_url) {
-    allPhotoUrls.push(candidate.photo_url);
+  if (profile.photo_url) {
+    allPhotoUrls.push(profile.photo_url);
   }
-  if (candidate.photos && candidate.photos.length > 0) {
-    candidate.photos.forEach((p) => {
+  if (profile.photos && profile.photos.length > 0) {
+    profile.photos.forEach((p) => {
       if (p.photo_url && !allPhotoUrls.includes(p.photo_url)) {
         allPhotoUrls.push(p.photo_url);
       }
@@ -111,10 +123,10 @@ export function CandidateProfileScreen({ route }: Props) {
           >
             <View style={styles.nameRow}>
               <Text style={styles.heroName}>
-                {candidate.display_name}
-                {candidate.age ? `, ${candidate.age}` : ""}
+                {profile.display_name}
+                {profile.age ? `, ${profile.age}` : ""}
               </Text>
-              {candidate.is_verified || candidate.verification_status === "verified" ? (
+              {profile.is_verified || profile.verification_status === "verified" ? (
                 <Feather name="check-circle" size={20} color="#1DA1F2" style={{ marginLeft: 6 }} />
               ) : null}
             </View>
@@ -129,55 +141,55 @@ export function CandidateProfileScreen({ route }: Props) {
             ) : null}
 
             <View style={styles.badgeRow}>
-              {candidate.trust_score > 0 ? (
+              {profile.trust_score > 0 ? (
                 <View style={styles.trustBadge}>
                   <Feather name="shield" size={12} color={colors.surface} />
                   <Text style={styles.trustText}>
-                    {candidate.trust_score} Onaylı Buluşma
+                    {profile.trust_score} Onaylı Buluşma
                   </Text>
                 </View>
               ) : null}
-              {isNewMember(candidate.created_at) ? (
+              {isNewMember(profile.created_at) ? (
                 <View style={styles.trustBadge}>
                   <Text style={styles.trustText}>Yeni Üye</Text>
                 </View>
               ) : null}
-              {candidate.zodiac_sign ? (
+              {profile.zodiac_sign ? (
                 <View style={styles.trustBadge}>
-                  <Text style={styles.trustText}>{candidate.zodiac_sign}</Text>
+                  <Text style={styles.trustText}>{profile.zodiac_sign}</Text>
                 </View>
               ) : null}
             </View>
 
-            <Text style={styles.memberSince}>{formatMemberSince(candidate.created_at)}</Text>
+            <Text style={styles.memberSince}>{formatMemberSince(profile.created_at)}</Text>
           </LinearGradient>
         </View>
 
         {/* SECTION 2: Verbal Card 1 - Bio & Prompts & Voice */}
-        {(candidate.bio || candidate.about_me_prompt || candidate.voice_note_url) ? (
+        {(profile.bio || profile.about_me_prompt || profile.voice_note_url) ? (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Feather name="user" size={18} color={colors.primary} />
               <Text style={styles.cardTitle}>Hakkında & Detaylar</Text>
             </View>
 
-            {candidate.bio ? (
-              <Text style={styles.bioText}>{candidate.bio}</Text>
+            {profile.bio ? (
+              <Text style={styles.bioText}>{profile.bio}</Text>
             ) : null}
 
-            {candidate.about_me_prompt ? (
+            {profile.about_me_prompt ? (
               <View style={styles.promptBox}>
                 <Text style={styles.promptQuestion}>Beni yakından tanımak istersen:</Text>
-                <Text style={styles.promptAnswer}>“{candidate.about_me_prompt}”</Text>
+                <Text style={styles.promptAnswer}>“{profile.about_me_prompt}”</Text>
               </View>
             ) : null}
 
-            {candidate.voice_note_url ? (
+            {profile.voice_note_url ? (
               <View style={{ marginTop: spacing.xs }}>
                 <Text style={[styles.promptQuestion, { marginBottom: spacing.xs }]}>
                   Ses Tanıtımı
                 </Text>
-                <VoiceNotePlayer audioUrl={resolvePhotoUrl(candidate.voice_note_url)} />
+                <VoiceNotePlayer audioUrl={resolvePhotoUrl(profile.voice_note_url)} />
               </View>
             ) : null}
           </View>
@@ -224,16 +236,16 @@ export function CandidateProfileScreen({ route }: Props) {
         ) : null}
 
         {/* SECTION 4: Verbal Card 2 - Hobilerim & Yapmak İstediğim Aktiviteler */}
-        {(candidate.hobbies && candidate.hobbies.length > 0) || (candidate.interests && candidate.interests.length > 0) ? (
+        {(profile.hobbies && profile.hobbies.length > 0) || (profile.interests && profile.interests.length > 0) ? (
           <View style={styles.card}>
-            {candidate.hobbies && candidate.hobbies.length > 0 ? (
+            {profile.hobbies && profile.hobbies.length > 0 ? (
               <View style={{ gap: spacing.xs }}>
                 <View style={styles.cardHeader}>
                   <Feather name="heart" size={18} color="#8A2BE2" />
                   <Text style={[styles.cardTitle, { color: "#8A2BE2" }]}>Hobilerim</Text>
                 </View>
                 <View style={styles.chipRow}>
-                  {candidate.hobbies.map((hobby) => (
+                  {profile.hobbies.map((hobby) => (
                     <View key={hobby} style={styles.hobbyChip}>
                       <Text style={styles.hobbyChipText}>{getHobbyLabel(hobby)}</Text>
                     </View>
@@ -242,14 +254,14 @@ export function CandidateProfileScreen({ route }: Props) {
               </View>
             ) : null}
 
-            {candidate.interests && candidate.interests.length > 0 ? (
-              <View style={{ gap: spacing.xs, marginTop: candidate.hobbies?.length ? spacing.md : 0 }}>
+            {profile.interests && profile.interests.length > 0 ? (
+              <View style={{ gap: spacing.xs, marginTop: profile.hobbies?.length ? spacing.md : 0 }}>
                 <View style={styles.cardHeader}>
                   <Feather name="activity" size={18} color={colors.primary} />
                   <Text style={styles.cardTitle}>Yapmak İstediğim Aktiviteler</Text>
                 </View>
                 <View style={styles.chipRow}>
-                  {candidate.interests.map((interest) => (
+                  {profile.interests.map((interest) => (
                     <View key={interest} style={styles.chip}>
                       <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
                     </View>
@@ -268,42 +280,42 @@ export function CandidateProfileScreen({ route }: Props) {
         ) : null}
 
         {/* SECTION 6: Verbal Card 3 - Career, University & Expectations */}
-        {((candidate.occupation && !candidate.hidden_fields?.includes("occupation")) ||
-          (candidate.university && !candidate.hidden_fields?.includes("university")) ||
-          (candidate.class_year && !candidate.hidden_fields?.includes("class_year")) ||
-          (candidate.looking_for && !candidate.hidden_fields?.includes("looking_for")) ||
-          (candidate.languages_spoken && candidate.languages_spoken.length > 0 && !candidate.hidden_fields?.includes("languages_spoken"))) ? (
+        {((profile.occupation && !profile.hidden_fields?.includes("occupation")) ||
+          (profile.university && !profile.hidden_fields?.includes("university")) ||
+          (profile.class_year && !profile.hidden_fields?.includes("class_year")) ||
+          (profile.looking_for && !profile.hidden_fields?.includes("looking_for")) ||
+          (profile.languages_spoken && profile.languages_spoken.length > 0 && !profile.hidden_fields?.includes("languages_spoken"))) ? (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Feather name="briefcase" size={18} color={colors.primary} />
               <Text style={styles.cardTitle}>Kariyer, Eğitim & İletişim</Text>
             </View>
 
-            {candidate.occupation && !candidate.hidden_fields?.includes("occupation") ? (
+            {profile.occupation && !profile.hidden_fields?.includes("occupation") ? (
               <View style={styles.infoRow}>
                 <Feather name="briefcase" size={16} color={colors.textSecondary} />
-                <Text style={styles.infoText}>{candidate.occupation}</Text>
+                <Text style={styles.infoText}>{profile.occupation}</Text>
               </View>
             ) : null}
 
-            {candidate.university && !candidate.hidden_fields?.includes("university") ? (
+            {profile.university && !profile.hidden_fields?.includes("university") ? (
               <View style={styles.infoRow}>
                 <Feather name="book-open" size={16} color={colors.textSecondary} />
-                <Text style={styles.infoText}>{candidate.university}</Text>
+                <Text style={styles.infoText}>{profile.university}</Text>
               </View>
             ) : null}
 
-            {candidate.class_year && !candidate.hidden_fields?.includes("class_year") ? (
+            {profile.class_year && !profile.hidden_fields?.includes("class_year") ? (
               <View style={styles.infoRow}>
                 <Feather name="award" size={16} color={colors.textSecondary} />
-                <Text style={styles.infoText}>{candidate.class_year}</Text>
+                <Text style={styles.infoText}>{profile.class_year}</Text>
               </View>
             ) : null}
 
-            {candidate.looking_for && !candidate.hidden_fields?.includes("looking_for") ? (
+            {profile.looking_for && !profile.hidden_fields?.includes("looking_for") ? (
               <View style={styles.infoRow}>
                 <Feather name="target" size={16} color={colors.textSecondary} />
-                <Text style={styles.infoText}>Ne Arıyor: {candidate.looking_for}</Text>
+                <Text style={styles.infoText}>Ne Arıyor: {profile.looking_for}</Text>
               </View>
             ) : null}
 
