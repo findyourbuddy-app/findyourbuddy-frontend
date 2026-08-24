@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { openAddToCalendar } from "../utils/calendar";
 import { Alert } from "../utils/alert";
@@ -113,6 +113,12 @@ export function EventDetailScreen({ route }: Props) {
       };
     }, [eventId, user, refreshJoinRequests, event])
   );
+
+  useEffect(() => {
+    if (user && event && event.creator_id === user.id) {
+      refreshJoinRequests(event.id);
+    }
+  }, [user, event?.id, event?.creator_id, refreshJoinRequests]);
 
   const bookmarkScale = useRef(new Animated.Value(1)).current;
 

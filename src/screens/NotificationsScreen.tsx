@@ -150,10 +150,25 @@ export function NotificationsScreen() {
   }
 
   function handlePressNotification(item: Notification) {
-    const meta = getNotificationMeta(item.title, item.body);
+    if (item.event_id) {
+      navigation.navigate("EventDetail", { eventId: Number(item.event_id) });
+      return;
+    }
+    if (item.match_id) {
+      navigation.navigate("Chat", {
+        matchId: Number(item.match_id),
+        otherUserId: 0,
+        otherUserName: "Kanka",
+      });
+      return;
+    }
 
     if (item.data && typeof item.data === "object") {
       const data = item.data as Record<string, any>;
+      if (data.event_id) {
+        navigation.navigate("EventDetail", { eventId: Number(data.event_id) });
+        return;
+      }
       if (data.match_id) {
         navigation.navigate("Chat", {
           matchId: Number(data.match_id),
@@ -162,12 +177,9 @@ export function NotificationsScreen() {
         });
         return;
       }
-      if (data.event_id) {
-        navigation.navigate("EventDetail", { eventId: Number(data.event_id) });
-        return;
-      }
     }
 
+    const meta = getNotificationMeta(item.title, item.body);
     if (meta.type === "like") {
       navigation.navigate("LikesReceived");
     } else if (meta.type === "match" || meta.type === "message" || meta.type === "feedback") {

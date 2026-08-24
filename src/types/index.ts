@@ -218,6 +218,8 @@ export interface Notification {
   title: string;
   body: string;
   is_read: boolean;
+  event_id?: number | null;
+  match_id?: number | null;
   data?: Record<string, any> | null;
   created_at: string;
 }
