@@ -92,9 +92,23 @@ export function MessagesScreen() {
 
   const displayMatches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = [...matches];
 
-    // DYNAMIC SORTING: Sort so the match with the most recent message is ALWAYS at the top!
+    // Group event matches should be consolidated so each group event appears ONCE as a Group Chat!
+    const seenGroupEvents = new Set<number>();
+    const consolidatedList: Match[] = [];
+
+    for (const match of matches) {
+      if (match.event_is_group && match.event_id) {
+        if (!seenGroupEvents.has(match.event_id)) {
+          seenGroupEvents.add(match.event_id);
+          consolidatedList.push(match);
+        }
+      } else {
+        consolidatedList.push(match);
+      }
+    }
+
+    let list = consolidatedList;
     list.sort((a, b) => {
       const timeA = a.last_message ? new Date(a.last_message.created_at).getTime() : new Date(a.created_at).getTime();
       const timeB = b.last_message ? new Date(b.last_message.created_at).getTime() : new Date(b.created_at).getTime();

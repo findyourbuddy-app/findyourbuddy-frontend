@@ -19,6 +19,37 @@ export function ChatListItem({ match, currentUserId, onPress, onPressAvatar }: C
   const lastMessage = match.last_message;
   const isUnread = Boolean(lastMessage && !lastMessage.is_read && lastMessage.sender_id !== currentUserId);
 
+  if (match.event_is_group) {
+    return (
+      <Pressable style={styles.container} onPress={onPress}>
+        <View style={styles.groupAvatarBox}>
+          <Feather name="users" size={22} color="#FFFFFF" />
+        </View>
+        <View style={[styles.textColumn, { marginRight: spacing.sm }]}>
+          <View style={styles.topRow}>
+            <Text style={[styles.name, isUnread && styles.unreadText]} numberOfLines={1}>
+              {match.event_title || (language === "en" ? "Group Event Chat" : "Grup Etkinlik Sohbeti")}
+            </Text>
+            {lastMessage ? (
+              <Text style={[styles.time, isUnread && styles.unreadTime]}>{formatRelativeTimestamp(lastMessage.created_at)}</Text>
+            ) : null}
+          </View>
+          <View style={styles.eventPill}>
+            <Feather name="users" size={10} color={colors.primary} />
+            <Text style={styles.eventPillText} numberOfLines={1}>
+              {language === "en" ? "Group Chat Channel" : "Grup Etkinlik Sohbet Kanalı"}
+            </Text>
+          </View>
+          <Text style={[styles.preview, isUnread && styles.unreadText]} numberOfLines={1}>
+            {lastMessage ? lastMessage.content : (language === "en" ? "Group chat created! Send a message..." : "Grup sohbeti başladı! İlk mesajı sen yaz 📢")}
+          </Text>
+        </View>
+        {isUnread ? <View style={styles.unreadDot} /> : null}
+        <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable style={styles.container} onPress={onPress}>
       <Pressable
@@ -67,6 +98,14 @@ export function ChatListItem({ match, currentUserId, onPress, onPressAvatar }: C
 }
 
 const styles = StyleSheet.create({
+  groupAvatarBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   container: {
     flexDirection: "row",
     alignItems: "center",

@@ -118,12 +118,22 @@ export function EditProfileScreen() {
   ];
 
   const LOOKING_FOR_OPTIONS = [
-    { key: "Kahve & Sohbet", tr: "Kahve & Sohbet", en: "Coffee & Chat" },
-    { key: "Spor Arkadaşı", tr: "Spor Arkadaşı", en: "Workout Buddy" },
-    { key: "Konser Kankası", tr: "Konser Kankası", en: "Concert Buddy" },
-    { key: "Yeni Şehirde Rehber", tr: "Yeni Şehirde Rehber", en: "City Guide" },
-    { key: "Sadece Eğlence", tr: "Sadece Eğlence", en: "Just Having Fun" },
-    { key: "Uzun Vadeli Dostluk", tr: "Uzun Vadeli Dostluk", en: "Long-term Friendship" },
+    { key: "Kahve & Sohbet", tr: "Kahve & Sohbet ☕", en: "Coffee & Chat ☕" },
+    { key: "Spor Arkadaşı", tr: "Spor Arkadaşı 🏋️‍♂️", en: "Workout Buddy 🏋️‍♂️" },
+    { key: "Konser & Festival", tr: "Konser & Festival 🎶", en: "Concert & Festival 🎶" },
+    { key: "Ders & Çalışma", tr: "Ders & Çalışma Ekürisi 📚", en: "Study Buddy 📚" },
+    { key: "Seyahat & Gezi", tr: "Seyahat & Gezi Ortağı ✈️", en: "Travel & Trip Partner ✈️" },
+    { key: "Yazılım & Proje", tr: "Yazılım & Proje Ortaklığı 💻", en: "Coding & Project Partner 💻" },
+    { key: "Oyun & E-Spor", tr: "Oyun & E-Spor Kankası 🎮", en: "Gaming & E-Sports Buddy 🎮" },
+    { key: "Sanat & Müze", tr: "Sanat & Müze Gezisi 🎨", en: "Art & Museum Visits 🎨" },
+    { key: "Gece Hayatı & Parti", tr: "Gece Hayatı & Parti 🥳", en: "Nightlife & Party 🥳" },
+    { key: "Yeni Şehirde Çevre", tr: "Yeni Şehirde Çevre / Rehber 🗺️", en: "New City Friends & Guide 🗺️" },
+    { key: "Doğa Yürüyüşü & Kamp", tr: "Doğa Yürüyüşü & Kamp 🏕️", en: "Hiking & Camping 🏕️" },
+    { key: "Yemek & Gurme", tr: "Yemek & Gurme Keşfi 🍕", en: "Food & Foodie Buddy 🍕" },
+    { key: "Fotoğraf & Video", tr: "Fotoğraf & Video Çekimi 📸", en: "Photography & Content 📸" },
+    { key: "Dil Pratiği", tr: "Dil Pratiği (Language Exchange) 🗣️", en: "Language Exchange 🗣️" },
+    { key: "Uzun Vadeli Dostluk", tr: "Uzun Vadeli Dostluk 🤝", en: "Long-term Friendship 🤝" },
+    { key: "Sadece Eğlence", tr: "Sadece Eğlence & Aktivite 🎉", en: "Just Fun & Activities 🎉" },
   ];
 
   const POLITICAL_OPTIONS = [
