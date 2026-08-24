@@ -165,7 +165,7 @@ export function EventDetailScreen({ route }: Props) {
             candidate: cand,
             eventTitle: event.title,
             onExitGroupSwipe: () => {
-              navigation.navigate("Tabs", { screen: "Discover" });
+              navigation.popToTop();
             },
             onSwipeLeft: async () => {
               try { await createSwipe({ target_id: cand.id, event_id: event.id, direction: "pass" }); } catch {}
