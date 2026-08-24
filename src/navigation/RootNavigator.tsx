@@ -92,6 +92,8 @@ export type MainStackParamList = {
   LikesReceived: undefined;
   CandidateProfile: {
     candidate: User;
+    eventTitle?: string;
+    onExitGroupSwipe?: () => void;
     onSwipeLeft: () => void;
     onSwipeRight: () => void;
     onSwipeUp: () => void;

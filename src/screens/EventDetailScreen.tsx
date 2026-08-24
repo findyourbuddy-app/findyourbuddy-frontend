@@ -163,6 +163,10 @@ export function EventDetailScreen({ route }: Props) {
           const cand = candidates[index];
           navigation.navigate("CandidateProfile", {
             candidate: cand,
+            eventTitle: event.title,
+            onExitGroupSwipe: () => {
+              navigation.navigate("Tabs", { screen: "Discover" });
+            },
             onSwipeLeft: async () => {
               try { await createSwipe({ target_id: cand.id, event_id: event.id, direction: "pass" }); } catch {}
               openCandidate(index + 1);

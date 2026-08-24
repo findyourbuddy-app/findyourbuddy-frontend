@@ -321,18 +321,27 @@ export function DiscoverScreen() {
       list = list.filter((e) => e.category?.toLowerCase() === targetCategory);
     }
 
-    if (sortBy === "distance" && userCoords) {
-      return list.sort((a, b) => {
+    // Priority sort: Applied / Joined / Created events ALWAYS come first at the very top of the list!
+    list.sort((a, b) => {
+      const isPriorityA = Boolean(a.is_attending || a.is_pending || (user && a.creator_id === user.id));
+      const isPriorityB = Boolean(b.is_attending || b.is_pending || (user && b.creator_id === user.id));
+      if (isPriorityA !== isPriorityB) {
+        return isPriorityA ? -1 : 1;
+      }
+
+      if (sortBy === "distance" && userCoords) {
         const distA = getDistanceInKm(a.latitude, a.longitude, userCoords.latitude, userCoords.longitude);
         const distB = getDistanceInKm(b.latitude, b.longitude, userCoords.latitude, userCoords.longitude);
         return distA - distB;
-      });
-    }
-    if (sortBy === "popularity") {
-      return list.sort((a, b) => b.attendee_count - a.attendee_count);
-    }
-    // Default: Sort by date
-    return list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+      }
+      if (sortBy === "popularity") {
+        return b.attendee_count - a.attendee_count;
+      }
+      // Default: Sort by date
+      return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    });
+
+    return list;
   }, [events, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm]);
 
   const loadEventsRequestIdRef = useRef(0);
