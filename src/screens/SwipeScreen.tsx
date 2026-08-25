@@ -538,7 +538,7 @@ export function SwipeScreen() {
         </View>
       ) : null}
 
-      <View style={styles.cardArea}>
+      <View style={[styles.cardArea, (activeTab === "user" && userSubTab === "group") && { paddingBottom: 10 }]}>
         {activeTab === "user" && userSubTab === "group" ? (
           isLoadingGroups ? (
             <View style={styles.center}>
