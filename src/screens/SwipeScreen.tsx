@@ -938,11 +938,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
+    flexShrink: 1,
+    maxWidth: "62%",
   },
   eventPillText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: 13,
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   quotaText: {
     fontFamily: fontFamily.bodyMedium,

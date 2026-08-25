@@ -431,14 +431,15 @@ export function DiscoverScreen() {
   function handleSelectCategory(slug: string): void {
     const next = selectedCategory === slug ? null : slug;
     setSelectedCategory(next);
+    setIsRefreshing(true);
     loadEvents(next, originFilter);
   }
 
   function handleSelectOrigin(next: "system" | "user" | "my_created" | null): void {
-    setOriginFilter(next);
-    setEvents([]);
+    const target = originFilter === next ? null : next;
+    setOriginFilter(target);
     setIsRefreshing(true);
-    loadEvents(selectedCategory, next);
+    loadEvents(selectedCategory, target);
   }
 
   async function toggleBookmark(eventId: number): Promise<void> {
