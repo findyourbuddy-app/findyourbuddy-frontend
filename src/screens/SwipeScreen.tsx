@@ -865,6 +865,7 @@ const styles = StyleSheet.create({
   cardArea: {
     flex: 1,
     marginVertical: 2,
+    paddingBottom: 95,
   },
   center: {
     flex: 1,
@@ -882,7 +883,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: spacing.lg,
     right: spacing.lg,
-    bottom: 28,
+    bottom: 82,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
