@@ -75,7 +75,7 @@ export function SwipeScreen() {
   // picking used to double as an implicit "join", letting people swipe on any
   // nearby system event whether or not they said they were going.
   const systemEvents = useMemo(
-    () => availableEvents.filter((event) => !event.creator_id),
+    () => availableEvents.filter((event) => !event.creator_id && event.is_attending),
     [availableEvents]
   );
   const userEvents = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id)), [availableEvents]);
