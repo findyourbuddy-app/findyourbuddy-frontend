@@ -431,8 +431,6 @@ export function DiscoverScreen() {
   function handleSelectCategory(slug: string): void {
     const next = selectedCategory === slug ? null : slug;
     setSelectedCategory(next);
-    setIsRefreshing(true);
-    loadEvents(next, originFilter);
   }
 
   function handleSelectOrigin(next: "system" | "user" | "my_created" | null): void {

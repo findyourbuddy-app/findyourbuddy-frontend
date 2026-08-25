@@ -508,65 +508,25 @@ export function SwipeScreen() {
 
 
       <View style={styles.metaRow}>
-        {activeTab === "system" ? (
-          activeEvent ? (
-            <Pressable
-              style={styles.eventPill}
-              onPress={openEventPicker}
-              accessibilityRole="button"
-              accessibilityLabel="Etkinlik değiştir"
-            >
-              <Feather name="map-pin" size={14} color={colors.primary} />
-              <Text style={styles.eventPillText} numberOfLines={1}>
-                {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
-              </Text>
-              {tabEvents.length > 1 ? (
-                <Feather name="chevron-down" size={12} color={colors.textSecondary} />
-              ) : null}
-            </Pressable>
-          ) : (
-            <View style={styles.eventPill}>
-              <Feather name="map-pin" size={14} color={colors.primary} />
-              <Text style={styles.eventPillText}>
-                {language === "en" ? "System Events" : "Resmi Etkinlikler"}
-              </Text>
-            </View>
-          )
-        ) : userSubTab === "birebir" ? (
-          activeEvent ? (
-            <Pressable
-              style={styles.eventPill}
-              onPress={openEventPicker}
-              accessibilityRole="button"
-              accessibilityLabel="Etkinlik değiştir"
-            >
-              <Feather name="user" size={14} color={colors.primary} />
-              <Text style={styles.eventPillText} numberOfLines={1}>
-                {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
-              </Text>
-              {tabEvents.length > 1 ? (
-                <Feather name="chevron-down" size={12} color={colors.textSecondary} />
-              ) : null}
-            </Pressable>
-          ) : (
-            <View style={styles.eventPill}>
-              <Feather name="user" size={14} color={colors.primary} />
-              <Text style={styles.eventPillText}>
-                {language === "en" ? "1-on-1 Events" : "Birebir Etkinlikler"}
-              </Text>
-            </View>
-          )
-        ) : (
-          <View style={styles.eventPill}>
-            <Feather name="users" size={14} color={colors.primary} />
-            <Text style={styles.eventPillText}>
-              {language === "en" ? "Group Events" : "Grup Etkinlikleri"}
+        {activeTab === "system" && activeEvent ? (
+          <Pressable
+            style={styles.eventPill}
+            onPress={openEventPicker}
+            accessibilityRole="button"
+            accessibilityLabel="Etkinlik değiştir"
+          >
+            <Feather name="map-pin" size={14} color={colors.primary} />
+            <Text style={styles.eventPillText} numberOfLines={1}>
+              {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
             </Text>
-          </View>
-        )}
+            {tabEvents.length > 1 ? (
+              <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+            ) : null}
+          </Pressable>
+        ) : null}
 
         {quota ? (
-          <Text style={styles.quotaText}>
+          <Text style={[styles.quotaText, (activeTab !== "system" || !activeEvent) && { marginLeft: "auto" }]}>
             {quota.is_premium
               ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
               : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}
