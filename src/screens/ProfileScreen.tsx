@@ -67,7 +67,7 @@ export function ProfileScreen() {
   const [quickEditVisible, setQuickEditVisible] = useState(false);
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [lightboxData, setLightboxData] = useState<{ url: string; photos: string[] } | null>(null);
   const [trustInfoVisible, setTrustInfoVisible] = useState(false);
 
   async function handleLocationSelect(result: GeocodingResult) {
@@ -252,7 +252,7 @@ export function ProfileScreen() {
           <Pressable
             onPress={() => {
               if (user?.photo_url) {
-                setLightboxPhoto(user.photo_url);
+                setLightboxData({ url: user.photo_url, photos: [user.photo_url] });
               }
             }}
           >
@@ -441,11 +441,14 @@ export function ProfileScreen() {
             keyExtractor={(photo) => String(photo.id)}
             horizontal
             showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <Pressable onPress={() => setLightboxPhoto(item.photo_url)}>
-                <Image source={{ uri: resolvePhotoUrl(item.photo_url) ?? undefined }} style={styles.galleryImage} />
-              </Pressable>
-            )}
+            renderItem={({ item }) => {
+              const galleryPhotos = user.photos.map((p) => p.photo_url).filter((u): u is string => Boolean(u));
+              return (
+                <Pressable onPress={() => setLightboxData({ url: item.photo_url, photos: galleryPhotos })}>
+                  <Image source={{ uri: resolvePhotoUrl(item.photo_url) ?? undefined }} style={styles.galleryImage} />
+                </Pressable>
+              );
+            }}
             ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
           />
         </Pressable>
@@ -616,10 +619,10 @@ export function ProfileScreen() {
       />
 
       <PhotoLightboxModal
-        visible={lightboxPhoto !== null}
-        photoUrl={lightboxPhoto}
-        photos={Array.from(new Set([user?.photo_url, ...(user?.photos?.map((p) => p.photo_url) || [])].filter((u): u is string => Boolean(u))))}
-        onClose={() => setLightboxPhoto(null)}
+        visible={lightboxData !== null}
+        photoUrl={lightboxData?.url}
+        photos={lightboxData?.photos}
+        onClose={() => setLightboxData(null)}
       />
 
       <LocationPickerModal

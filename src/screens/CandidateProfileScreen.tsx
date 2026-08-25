@@ -109,23 +109,20 @@ export function CandidateProfileScreen({ route }: Props) {
       });
   }, [profile.id]);
 
-  // Extract all photos (main photo_url + photos array)
-  const allPhotoUrls: string[] = [];
-  if (profile.photo_url) {
-    allPhotoUrls.push(profile.photo_url);
-  }
-  if (profile.photos && profile.photos.length > 0) {
-    profile.photos.forEach((p) => {
-      if (p.photo_url && !allPhotoUrls.includes(p.photo_url)) {
-        allPhotoUrls.push(p.photo_url);
-      }
-    });
-  }
+  const [lightboxData, setLightboxData] = useState<{ url: string; photos: string[] } | null>(null);
 
-  const photo1 = allPhotoUrls[0] || null;
-  const photo2 = allPhotoUrls[1] || null;
-  const photo3 = allPhotoUrls[2] || null;
-  const remainingPhotos = allPhotoUrls.slice(3);
+  // Separate profile photo (avatar) from gallery photos category
+  const profilePhoto = profile.photo_url || null;
+  const galleryPhotos: string[] = (profile.photos || [])
+    .map((p) => p.photo_url)
+    .filter((u): u is string => Boolean(u));
+
+  const photo1 = profilePhoto || galleryPhotos[0] || null;
+  const displayedGalleryPhotos = galleryPhotos.filter((url) => url !== photo1);
+
+  const photo2 = displayedGalleryPhotos[0] || null;
+  const photo3 = displayedGalleryPhotos[1] || null;
+  const remainingPhotos = displayedGalleryPhotos.slice(2);
 
   return (
     <Animated.View style={[{ flex: 1 }, pan.getLayout()]} {...panResponder.panHandlers}>
@@ -158,7 +155,7 @@ export function CandidateProfileScreen({ route }: Props) {
         {/* SECTION 1: Main Photo 1 Hero with overlay */}
         <View style={styles.mainPhotoCard}>
           {photo1 ? (
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxPhoto(photo1)}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxData({ url: photo1, photos: [photo1] })}>
               <Image source={{ uri: resolvePhotoUrl(photo1) ?? undefined }} style={styles.fullImage} contentFit="cover" />
             </Pressable>
           ) : (
@@ -285,7 +282,7 @@ export function CandidateProfileScreen({ route }: Props) {
 
         {/* SECTION 3: Interspersed Photo 2 Card */}
         {photo2 ? (
-          <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo2)}>
+          <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: photo2, photos: galleryPhotos })}>
             <Image source={{ uri: resolvePhotoUrl(photo2) ?? undefined }} style={styles.fullImage} contentFit="cover" />
           </Pressable>
         ) : null}
@@ -329,7 +326,7 @@ export function CandidateProfileScreen({ route }: Props) {
 
         {/* SECTION 5: Interspersed Photo 3 Card */}
         {photo3 ? (
-          <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo3)}>
+          <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: photo3, photos: galleryPhotos })}>
             <Image source={{ uri: resolvePhotoUrl(photo3) ?? undefined }} style={styles.fullImage} contentFit="cover" />
           </Pressable>
         ) : null}
@@ -418,17 +415,17 @@ export function CandidateProfileScreen({ route }: Props) {
 
         {/* SECTION 7: Remaining Photos Interspersed */}
         {remainingPhotos.map((uri, idx) => (
-          <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(uri)}>
+          <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: uri, photos: galleryPhotos })}>
             <Image source={{ uri: resolvePhotoUrl(uri) ?? undefined }} style={styles.fullImage} contentFit="cover" />
           </Pressable>
         ))}
       </ScrollView>
 
       <PhotoLightboxModal
-        visible={lightboxPhoto !== null}
-        photoUrl={lightboxPhoto}
-        photos={allPhotoUrls}
-        onClose={() => setLightboxPhoto(null)}
+        visible={lightboxData !== null}
+        photoUrl={lightboxData?.url}
+        photos={lightboxData?.photos}
+        onClose={() => setLightboxData(null)}
       />
 
       <TrustScoreInfoModal
