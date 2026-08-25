@@ -300,9 +300,6 @@ export function DiscoverScreen() {
   const sortedEvents = useMemo(() => {
     if (events.length === 0) return [];
 
-    // originFilter is applied server-side (see loadEvents) since client-side
-    // filtering over a date-sorted page would never surface user events
-    // once enough system events (there can be thousands) sort before them.
     let list = [...events];
     if (searchQuery.trim()) {
       list = list.filter(
@@ -312,9 +309,6 @@ export function DiscoverScreen() {
           isSmartMatch(e.location_name ?? "", searchQuery) ||
           isSmartMatch(e.category ?? "", searchQuery)
       );
-    } else if (selectedCategory && originFilter !== "my_created") {
-      const targetCategory = selectedCategory.toLowerCase();
-      list = list.filter((e) => e.category?.toLowerCase() === targetCategory);
     }
 
     // Priority sort: Applied / Joined / Created events ALWAYS come first at the very top of the list!
@@ -337,16 +331,8 @@ export function DiscoverScreen() {
       return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
     });
 
-    if (originFilter === "system") {
-      list = list.filter((e) => !e.creator_id);
-    } else if (originFilter === "user") {
-      list = list.filter((e) => Boolean(e.creator_id));
-    } else if (originFilter === "my_created" && user) {
-      list = list.filter((e) => e.creator_id === user.id);
-    }
-
     return list;
-  }, [events, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm, user, originFilter]);
+  }, [events, searchQuery, sortBy, userCoords, getDistanceInKm, user]);
 
   const loadEventsRequestIdRef = useRef(0);
 
@@ -435,6 +421,7 @@ export function DiscoverScreen() {
   function handleSelectCategory(slug: string): void {
     const next = selectedCategory === slug ? null : slug;
     setSelectedCategory(next);
+    loadEvents(next, originFilter);
   }
 
   function handleSelectOrigin(next: "system" | "user" | "my_created" | null): void {
