@@ -730,12 +730,14 @@ const styles = StyleSheet.create({
   heroStatsRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: spacing.md,
     marginTop: spacing.md,
-    backgroundColor: "rgba(255,255,255,0.14)",
+    backgroundColor: "rgba(255,255,255,0.18)",
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg + 4,
+    paddingVertical: spacing.sm + 2,
+    alignSelf: "center",
   },
   heroStat: {
     flexDirection: "row",

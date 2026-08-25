@@ -45,18 +45,18 @@ export function CandidateProfileScreen({ route }: Props) {
         pan.x.setValue(gestureState.dx);
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > 90) {
-          Animated.timing(pan, { toValue: { x: 500, y: 0 }, duration: 180, useNativeDriver: false }).start(() => {
+        if (gestureState.dx > 65) {
+          Animated.timing(pan, { toValue: { x: 500, y: 0 }, duration: 150, useNativeDriver: false }).start(() => {
             pan.setValue({ x: 0, y: 0 });
             act(onSwipeRight);
           });
-        } else if (gestureState.dx < -90) {
-          Animated.timing(pan, { toValue: { x: -500, y: 0 }, duration: 180, useNativeDriver: false }).start(() => {
+        } else if (gestureState.dx < -65) {
+          Animated.timing(pan, { toValue: { x: -500, y: 0 }, duration: 150, useNativeDriver: false }).start(() => {
             pan.setValue({ x: 0, y: 0 });
             act(onSwipeLeft);
           });
         } else {
-          Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 6, useNativeDriver: false }).start();
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 7, useNativeDriver: false }).start();
         }
       },
     })
@@ -64,14 +64,23 @@ export function CandidateProfileScreen({ route }: Props) {
 
   useEffect(() => {
     setProfile(candidate);
-    getUserById(candidate.id)
-      .then((fullUser) => {
-        if (fullUser) {
-          setProfile((prev) => ({ ...prev, ...fullUser }));
-        }
-      })
-      .catch(() => {});
-  }, [candidate.id]);
+    let cancelled = false;
+
+    Promise.all([
+      getUserById(candidate.id).catch(() => null),
+      getUserUpcomingEvents(candidate.id).catch(() => []),
+    ]).then(([fullUser, events]) => {
+      if (cancelled) return;
+      if (fullUser) {
+        setProfile((prev) => ({ ...prev, ...fullUser }));
+      }
+      setUpcomingEvents(events);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [candidate]);
 
   async function act(action?: () => any): Promise<void> {
     if (action) {
@@ -503,28 +512,30 @@ const styles = StyleSheet.create({
   badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.xs,
-    marginTop: 4,
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+    marginBottom: 2,
   },
   trustBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.22)",
     paddingHorizontal: spacing.md,
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
     borderRadius: radius.pill,
   },
   trustText: {
-    fontFamily: fontFamily.bodyMedium,
+    fontFamily: fontFamily.bodySemiBold,
     fontSize: 12,
     color: colors.surface,
   },
   memberSince: {
-    fontFamily: fontFamily.body,
+    fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
-    color: "rgba(255,255,255,0.75)",
-    marginTop: 2,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 4,
   },
   card: {
     backgroundColor: colors.surface,
