@@ -225,6 +225,10 @@ export function EditProfileScreen() {
       } else {
         next.add(fieldKey);
       }
+      const hiddenArray = Array.from(next);
+      updateCurrentUser({ hidden_fields: hiddenArray })
+        .then((updatedUser) => updateUser(updatedUser))
+        .catch(() => {});
       return next;
     });
   }

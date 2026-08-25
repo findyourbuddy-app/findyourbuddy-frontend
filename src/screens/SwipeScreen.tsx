@@ -246,8 +246,9 @@ export function SwipeScreen() {
   }
 
   function openEventPicker(): void {
-    if (tabEvents.length <= 1) return;
-    setEventPickerVisible(true);
+    if (tabEvents.length > 1) {
+      setEventPickerVisible(true);
+    }
   }
 
   const eventPickerOptions = tabEvents.map((event) => ({
@@ -467,7 +468,7 @@ export function SwipeScreen() {
 
 
       <View style={styles.metaRow}>
-        {activeTab === "system" && activeEvent && tabEvents.length > 1 ? (
+        {activeTab === "system" && activeEvent ? (
           <Pressable
             style={styles.eventPill}
             onPress={openEventPicker}
@@ -478,7 +479,9 @@ export function SwipeScreen() {
             <Text style={styles.eventPillText}>
               {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
             </Text>
-            <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+            {tabEvents.length > 1 ? (
+              <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+            ) : null}
           </Pressable>
         ) : <View />}
 
