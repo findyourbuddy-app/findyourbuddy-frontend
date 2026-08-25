@@ -261,6 +261,19 @@ export function WelcomeScreen() {
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
+
+            {/* Register Link on First Screen */}
+            <Pressable
+              style={{ marginTop: spacing.md, alignItems: "center" }}
+              onPress={() => navigation.navigate("Register")}
+            >
+              <Text style={{ fontFamily: fontFamily.body, fontSize: 14, color: colors.textSecondary }}>
+                {language === "en" ? "Don't have an account? " : "Hesabın yok mu? "}
+                <Text style={{ fontFamily: fontFamily.bodySemiBold, color: colors.primary }}>
+                  {language === "en" ? "Sign Up Free" : "Ücretsiz Kayıt Ol"}
+                </Text>
+              </Text>
+            </Pressable>
           </View>
         </View>
       </ScrollView>
