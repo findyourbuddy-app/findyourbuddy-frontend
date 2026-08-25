@@ -285,21 +285,22 @@ export function ProfileScreen() {
           {user.is_verified || user.verification_status === "verified" ? (
             <Badge label={language === "en" ? "Verified Profile" : "Mavi Tik Onaylı"} variant="blue" icon="✓" />
           ) : null}
-          {isNewMember(user.created_at) ? (
-            <Badge label={t("newMember")} variant="green" />
-          ) : null}
         </View>
-        <View style={styles.heroStatsRow}>
-          <Pressable style={styles.heroStat} onPress={() => setTrustInfoVisible(true)}>
-            <Feather name="shield" size={14} color={colors.surface} />
-            <Text style={styles.heroStatText}>{t("trustScore")} {user.trust_score}</Text>
-            <Feather name="info" size={12} color="rgba(255,255,255,0.8)" style={{ marginLeft: 3 }} />
-          </Pressable>
-          <View style={styles.heroStatDivider} />
-          <View style={styles.heroStat}>
-            <Feather name="calendar" size={14} color={colors.surface} />
-            <Text style={styles.heroStatText}>{formatMemberSince(user.created_at, language)}</Text>
-          </View>
+
+        <Pressable style={styles.heroTrustScorePill} onPress={() => setTrustInfoVisible(true)}>
+          <Feather name="shield" size={15} color={colors.surface} />
+          <Text style={styles.heroTrustScoreText}>{t("trustScore")}: {user.trust_score}</Text>
+          <Feather name="info" size={13} color="rgba(255,255,255,0.85)" style={{ marginLeft: 4 }} />
+        </Pressable>
+
+        <View style={styles.heroMemberSinceRow}>
+          <Feather name="calendar" size={13} color="rgba(255,255,255,0.9)" />
+          <Text style={styles.heroMemberSinceText}>{formatMemberSince(user.created_at, language)}</Text>
+          {isNewMember(user.created_at) ? (
+            <View style={styles.newMemberBadgeInline}>
+              <Text style={styles.newMemberBadgeText}>{t("newMember")}</Text>
+            </View>
+          ) : null}
         </View>
       </LinearGradient>
 
@@ -727,31 +728,43 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.75)",
     marginTop: spacing.xs,
   },
-  heroStatsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.md,
-    marginTop: spacing.md,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg + 4,
-    paddingVertical: spacing.sm + 2,
-    alignSelf: "center",
-  },
-  heroStat: {
+  heroTrustScorePill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    marginTop: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    alignSelf: "center",
   },
-  heroStatDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: "rgba(255,255,255,0.3)",
+  heroTrustScoreText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.surface,
   },
-  heroStatText: {
+  heroMemberSinceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: spacing.sm,
+  },
+  heroMemberSinceText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
+    color: "rgba(255,255,255,0.9)",
+  },
+  newMemberBadgeInline: {
+    backgroundColor: "#27AE60",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    marginLeft: 4,
+  },
+  newMemberBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 10,
     color: colors.surface,
   },
   card: {

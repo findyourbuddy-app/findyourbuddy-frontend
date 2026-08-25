@@ -192,17 +192,12 @@ export function CandidateProfileScreen({ route }: Props) {
             <View style={styles.badgeRow}>
               {profile.trust_score > 0 ? (
                 <Pressable style={styles.trustBadge} onPress={() => setTrustInfoVisible(true)}>
-                  <Feather name="shield" size={12} color={colors.surface} />
+                  <Feather name="shield" size={13} color={colors.surface} />
                   <Text style={styles.trustText}>
-                    {profile.trust_score} Onaylı Buluşma
+                    Güven Skoru: {profile.trust_score}
                   </Text>
-                  <Feather name="info" size={10} color="rgba(255,255,255,0.8)" style={{ marginLeft: 2 }} />
+                  <Feather name="info" size={11} color="rgba(255,255,255,0.85)" style={{ marginLeft: 3 }} />
                 </Pressable>
-              ) : null}
-              {isNewMember(profile.created_at) ? (
-                <View style={styles.trustBadge}>
-                  <Text style={styles.trustText}>Yeni Üye</Text>
-                </View>
               ) : null}
               {!profile.hidden_fields?.includes("zodiac_sign") && profile.zodiac_sign ? (
                 <View style={styles.trustBadge}>
@@ -211,7 +206,15 @@ export function CandidateProfileScreen({ route }: Props) {
               ) : null}
             </View>
 
-            <Text style={styles.memberSince}>{formatMemberSince(profile.created_at)}</Text>
+            <View style={styles.heroMemberSinceRow}>
+              <Feather name="calendar" size={13} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.heroMemberSinceText}>{formatMemberSince(profile.created_at)}</Text>
+              {isNewMember(profile.created_at) ? (
+                <View style={styles.newMemberBadgeInline}>
+                  <Text style={styles.newMemberBadgeText}>Yeni Üye</Text>
+                </View>
+              ) : null}
+            </View>
           </LinearGradient>
         </View>
 
@@ -531,11 +534,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.surface,
   },
-  memberSince: {
+  heroMemberSinceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: spacing.xs,
+  },
+  heroMemberSinceText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
-    color: "rgba(255,255,255,0.85)",
-    marginTop: 4,
+    color: "rgba(255,255,255,0.9)",
+  },
+  newMemberBadgeInline: {
+    backgroundColor: "#27AE60",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    marginLeft: 4,
+  },
+  newMemberBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 10,
+    color: colors.surface,
   },
   card: {
     backgroundColor: colors.surface,
