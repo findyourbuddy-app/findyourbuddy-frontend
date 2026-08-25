@@ -135,6 +135,7 @@ export interface EventCreate {
   max_attendees?: number | null;
   is_paid?: boolean;
   ticket_price?: number | null;
+  image_url?: string | null;
 }
 
 export interface EventCreationQuota {

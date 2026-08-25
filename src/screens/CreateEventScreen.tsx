@@ -5,6 +5,7 @@ import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { Chip } from "../components/ui/Chip";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
@@ -70,6 +71,7 @@ export function CreateEventScreen() {
   const [maxAttendees, setMaxAttendees] = useState("10");
   const [isPaid, setIsPaid] = useState(false);
   const [ticketPrice, setTicketPrice] = useState("");
+  const [coverOption, setCoverOption] = useState<"profile" | "category">("profile");
   const [quota, setQuota] = useState<EventCreationQuota | null>(null);
   const [isQuotaLoading, setIsQuotaLoading] = useState(true);
   const [isBuyingCredits, setIsBuyingCredits] = useState(false);
@@ -210,10 +212,14 @@ export function CreateEventScreen() {
 
     setIsSaving(true);
     try {
+      const selectedMeta = CATEGORIES.find((c) => c.slug === category);
+      const imageUrlToSave = coverOption === "category" ? selectedMeta?.defaultImage : undefined;
+
       await createEvent({
         title: title.trim(),
         description: description.trim() ? description.trim() : undefined,
         category,
+        image_url: imageUrlToSave,
         location_name: locationName.trim(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
@@ -320,6 +326,38 @@ export function CreateEventScreen() {
             />
           ))}
         </View>
+      </View>
+
+      <View style={styles.field}>
+        <Text style={typeScale.eyebrow}>
+          {language === "en" ? "Cover Photo Choice" : "Kapak Görseli Seçimi"}
+        </Text>
+        <View style={styles.chipGrid}>
+          <Chip
+            label={language === "en" ? "My Profile Photo" : "Profil Fotoğrafım"}
+            active={coverOption === "profile"}
+            onPress={() => setCoverOption("profile")}
+          />
+          <Chip
+            label={language === "en" ? "Category Cover Photo" : "Kategori Görseli"}
+            active={coverOption === "category"}
+            onPress={() => setCoverOption("category")}
+          />
+        </View>
+        {coverOption === "category" ? (
+          <View style={styles.coverPreviewCard}>
+            <Image
+              source={{ uri: CATEGORIES.find((c) => c.slug === category)?.defaultImage }}
+              style={styles.coverPreviewImage}
+              contentFit="cover"
+            />
+            <Text style={styles.coverPreviewCaption}>
+              {language === "en"
+                ? "This category cover photo will be displayed on your event card."
+                : "Etkinlik kartında bu kategori kapak fotoğrafı görüntülenecektir."}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.field}>
@@ -903,5 +941,24 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 13,
     color: colors.textPrimary,
+  },
+  coverPreviewCard: {
+    marginTop: spacing.xs,
+    borderRadius: radius.card,
+    overflow: "hidden",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  coverPreviewImage: {
+    width: "100%",
+    height: 140,
+  },
+  coverPreviewCaption: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+    padding: spacing.xs,
+    textAlign: "center",
   },
 });
