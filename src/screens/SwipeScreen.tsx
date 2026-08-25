@@ -20,7 +20,7 @@ import { activateBoost, createPurchaseCheckoutSession } from "../api/users";
 import type { SwipeCandidateFilters, SwipeQuota } from "../api/swipes";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
-import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
+import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event, User, UserPublic } from "../types";
 
@@ -878,39 +878,36 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   actionRow: {
+    position: "absolute",
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: 28,
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
     gap: spacing.xl,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl + 12,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm + 4,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderRadius: radius.pill,
+    ...shadows.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   actionButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  passButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadows.soft,
+  },
+  passButton: {
     backgroundColor: colors.surface,
   },
   superLikeButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
     backgroundColor: "#2E7FC9",
   },
   likeButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
     backgroundColor: colors.primary,
   },
   likesReceivedButton: {
