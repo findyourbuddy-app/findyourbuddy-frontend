@@ -245,6 +245,37 @@ export function SwipeScreen() {
       .finally(() => setIsLoading(false));
   }
 
+  async function handleSelectTab(nextTab: "system" | "user"): Promise<void> {
+    if (activeTab === nextTab) return;
+    setActiveTab(nextTab);
+    setCandidates([]);
+    setCurrentIndex(0);
+    setIsLoading(true);
+
+    const matchingEvents = availableEvents.filter((event) =>
+      nextTab === "system"
+        ? !event.creator_id && event.is_attending
+        : Boolean(event.creator_id) && !event.is_group_event
+    );
+
+    const targetEvent = matchingEvents[0] || null;
+    if (targetEvent) {
+      setActiveEvent({ id: targetEvent.id, title: targetEvent.title, location_name: targetEvent.location_name });
+      try {
+        const list = await getSwipeCandidates(targetEvent.id, filters);
+        setCandidates(list);
+      } catch {
+        setCandidates([]);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setActiveEvent(null);
+      setCandidates([]);
+      setIsLoading(false);
+    }
+  }
+
   function openEventPicker(): void {
     if (tabEvents.length > 1) {
       setEventPickerVisible(true);
@@ -423,7 +454,7 @@ export function SwipeScreen() {
       <View style={styles.tabRow}>
         <Pressable
           style={[styles.tabButton, activeTab === "system" && styles.tabButtonActive]}
-          onPress={() => setActiveTab("system")}
+          onPress={() => handleSelectTab("system")}
           accessibilityRole="button"
           accessibilityLabel={t("systemEvents")}
         >
@@ -433,7 +464,7 @@ export function SwipeScreen() {
         </Pressable>
         <Pressable
           style={[styles.tabButton, activeTab === "user" && styles.tabButtonActive]}
-          onPress={() => setActiveTab("user")}
+          onPress={() => handleSelectTab("user")}
           accessibilityRole="button"
           accessibilityLabel={t("userEvents")}
         >
