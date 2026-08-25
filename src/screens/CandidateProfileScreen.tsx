@@ -427,6 +427,7 @@ export function CandidateProfileScreen({ route }: Props) {
       <PhotoLightboxModal
         visible={lightboxPhoto !== null}
         photoUrl={lightboxPhoto}
+        photos={allPhotoUrls}
         onClose={() => setLightboxPhoto(null)}
       />
 

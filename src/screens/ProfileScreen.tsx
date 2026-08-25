@@ -618,6 +618,7 @@ export function ProfileScreen() {
       <PhotoLightboxModal
         visible={lightboxPhoto !== null}
         photoUrl={lightboxPhoto}
+        photos={Array.from(new Set([user?.photo_url, ...(user?.photos?.map((p) => p.photo_url) || [])].filter((u): u is string => Boolean(u))))}
         onClose={() => setLightboxPhoto(null)}
       />
 

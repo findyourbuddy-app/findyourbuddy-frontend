@@ -330,6 +330,7 @@ export function ViewProfileScreen() {
     <PhotoLightboxModal
       visible={lightboxPhoto !== null}
       photoUrl={lightboxPhoto}
+      photos={allPhotoUrls}
       onClose={() => setLightboxPhoto(null)}
     />
     </>
