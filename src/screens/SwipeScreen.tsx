@@ -508,22 +508,62 @@ export function SwipeScreen() {
 
 
       <View style={styles.metaRow}>
-        {activeTab === "system" && activeEvent ? (
-          <Pressable
-            style={styles.eventPill}
-            onPress={openEventPicker}
-            accessibilityRole="button"
-            accessibilityLabel="Etkinlik değiştir"
-          >
-            <Feather name="map-pin" size={14} color={colors.primary} />
+        {activeTab === "system" ? (
+          activeEvent ? (
+            <Pressable
+              style={styles.eventPill}
+              onPress={openEventPicker}
+              accessibilityRole="button"
+              accessibilityLabel="Etkinlik değiştir"
+            >
+              <Feather name="map-pin" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText} numberOfLines={1}>
+                {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
+              </Text>
+              {tabEvents.length > 1 ? (
+                <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+              ) : null}
+            </Pressable>
+          ) : (
+            <View style={styles.eventPill}>
+              <Feather name="map-pin" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText}>
+                {language === "en" ? "System Events" : "Resmi Etkinlikler"}
+              </Text>
+            </View>
+          )
+        ) : userSubTab === "birebir" ? (
+          activeEvent ? (
+            <Pressable
+              style={styles.eventPill}
+              onPress={openEventPicker}
+              accessibilityRole="button"
+              accessibilityLabel="Etkinlik değiştir"
+            >
+              <Feather name="user" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText} numberOfLines={1}>
+                {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
+              </Text>
+              {tabEvents.length > 1 ? (
+                <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+              ) : null}
+            </Pressable>
+          ) : (
+            <View style={styles.eventPill}>
+              <Feather name="user" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText}>
+                {language === "en" ? "1-on-1 Events" : "Birebir Etkinlikler"}
+              </Text>
+            </View>
+          )
+        ) : (
+          <View style={styles.eventPill}>
+            <Feather name="users" size={14} color={colors.primary} />
             <Text style={styles.eventPillText}>
-              {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
+              {language === "en" ? "Group Events" : "Grup Etkinlikleri"}
             </Text>
-            {tabEvents.length > 1 ? (
-              <Feather name="chevron-down" size={12} color={colors.textSecondary} />
-            ) : null}
-          </Pressable>
-        ) : <View />}
+          </View>
+        )}
 
         {quota ? (
           <Text style={styles.quotaText}>
@@ -536,7 +576,7 @@ export function SwipeScreen() {
         ) : null}
       </View>
 
-      <View style={[styles.cardArea, (activeTab === "user" && userSubTab === "group") && { paddingBottom: 10 }]}>
+      <View style={styles.cardArea}>
         {activeTab === "user" && userSubTab === "group" ? (
           isLoadingGroups ? (
             <View style={styles.center}>
@@ -886,7 +926,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    flexWrap: "wrap",
+    minHeight: 36,
     gap: spacing.sm,
   },
   eventPill: {
