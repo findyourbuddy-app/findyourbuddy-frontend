@@ -473,28 +473,37 @@ export function SwipeScreen() {
           </Text>
         </Pressable>
       </View>
-      {activeTab === "user" ? (
-        <View style={styles.subTabRow}>
-          <Pressable
-            style={[styles.subTabButton, userSubTab === "birebir" && styles.subTabButtonActive]}
-            onPress={() => setUserSubTab("birebir")}
-          >
-            <Feather name="user" size={13} color={userSubTab === "birebir" ? colors.primary : colors.textSecondary} />
-            <Text style={[styles.subTabButtonText, userSubTab === "birebir" && styles.subTabButtonTextActive]}>
-              {language === "en" ? "1-on-1 Buddy" : "Birebir Eşleşme"}
+      <View style={styles.subTabRow}>
+        {activeTab === "user" ? (
+          <>
+            <Pressable
+              style={[styles.subTabButton, userSubTab === "birebir" && styles.subTabButtonActive]}
+              onPress={() => setUserSubTab("birebir")}
+            >
+              <Feather name="user" size={13} color={userSubTab === "birebir" ? colors.primary : colors.textSecondary} />
+              <Text style={[styles.subTabButtonText, userSubTab === "birebir" && styles.subTabButtonTextActive]}>
+                {language === "en" ? "1-on-1 Buddy" : "Birebir Eşleşme"}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.subTabButton, userSubTab === "group" && styles.subTabButtonActive]}
+              onPress={() => setUserSubTab("group")}
+            >
+              <Feather name="users" size={13} color={userSubTab === "group" ? colors.primary : colors.textSecondary} />
+              <Text style={[styles.subTabButtonText, userSubTab === "group" && styles.subTabButtonTextActive]}>
+                {language === "en" ? "Group Events" : "Grup Etkinlikleri"}
+              </Text>
+            </Pressable>
+          </>
+        ) : (
+          <View style={styles.systemSubTabPill}>
+            <Feather name="shield" size={13} color={colors.primary} />
+            <Text style={styles.systemSubTabPillText}>
+              {language === "en" ? "Official System Events" : "Resmi Sistem Etkinlikleri"}
             </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.subTabButton, userSubTab === "group" && styles.subTabButtonActive]}
-            onPress={() => setUserSubTab("group")}
-          >
-            <Feather name="users" size={13} color={userSubTab === "group" ? colors.primary : colors.textSecondary} />
-            <Text style={[styles.subTabButtonText, userSubTab === "group" && styles.subTabButtonTextActive]}>
-              {language === "en" ? "Group Events" : "Grup Etkinlikleri"}
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
+          </View>
+        )}
+      </View>
 
 
 
@@ -1157,6 +1166,23 @@ const styles = StyleSheet.create({
   subTabButtonTextActive: {
     color: colors.primary,
     fontFamily: fontFamily.bodySemiBold,
+  },
+  systemSubTabPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryMuted,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  systemSubTabPillText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
   },
   groupCardItem: {
     backgroundColor: colors.surface,
