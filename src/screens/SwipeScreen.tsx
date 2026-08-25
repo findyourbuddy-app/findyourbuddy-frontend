@@ -27,6 +27,7 @@ import type { Event, User, UserPublic } from "../types";
 interface ActiveEvent {
   id: number;
   title: string;
+  location_name?: string | null;
 }
 
 // `listEvents` returns a fixed, date-sorted page -- an event the user is already
@@ -74,12 +75,11 @@ export function SwipeScreen() {
   // picking used to double as an implicit "join", letting people swipe on any
   // nearby system event whether or not they said they were going.
   const systemEvents = useMemo(
-    () => availableEvents.filter((event) => !event.creator_id && event.is_attending),
+    () => availableEvents.filter((event) => !event.creator_id),
     [availableEvents]
   );
-  const user1on1Events = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id) && !event.is_group_event), [availableEvents]);
-  const userGroupAttendingEvents = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id) && Boolean(event.is_group_event)), [availableEvents]);
-  const tabEvents = activeTab === "system" ? systemEvents : user1on1Events;
+  const userEvents = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id)), [availableEvents]);
+  const tabEvents = activeTab === "system" ? systemEvents : userEvents;
 
   // useFocusEffect (not useEffect) so returning to this tab -- e.g. from
   // EventDetail after applying, or after the organizer approves a request --
@@ -251,7 +251,7 @@ export function SwipeScreen() {
 
   const eventPickerOptions = tabEvents.map((event) => ({
     key: String(event.id),
-    label: event.title,
+    label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
     icon: "map-pin" as const,
     onPress: () => switchEvent(event),
   }));
@@ -440,7 +440,6 @@ export function SwipeScreen() {
           </Text>
         </Pressable>
       </View>
-
       {activeTab === "user" ? (
         <View style={styles.subTabRow}>
           <Pressable
@@ -449,7 +448,7 @@ export function SwipeScreen() {
           >
             <Feather name="user" size={13} color={userSubTab === "birebir" ? colors.primary : colors.textSecondary} />
             <Text style={[styles.subTabButtonText, userSubTab === "birebir" && styles.subTabButtonTextActive]}>
-              {language === "en" ? "1-on-1 Buddy" : "Birebir (1-on-1)"}
+              {language === "en" ? "1-on-1 Buddy" : "Birebir Eşleşme"}
             </Text>
           </Pressable>
           <Pressable
@@ -464,6 +463,8 @@ export function SwipeScreen() {
         </View>
       ) : null}
 
+
+
       <View style={styles.metaRow}>
         {activeTab === "system" && activeEvent && tabEvents.length > 1 ? (
           <Pressable
@@ -473,7 +474,9 @@ export function SwipeScreen() {
             accessibilityLabel="Etkinlik değiştir"
           >
             <Feather name="map-pin" size={14} color={colors.primary} />
-            <Text style={styles.eventPillText}>{activeEvent.title}</Text>
+            <Text style={styles.eventPillText}>
+              {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
+            </Text>
             <Feather name="chevron-down" size={12} color={colors.textSecondary} />
           </Pressable>
         ) : <View />}
@@ -620,7 +623,7 @@ export function SwipeScreen() {
         )}
       </View>
 
-      {(activeTab !== "user" || userSubTab !== "group") && activeEvent && candidates[currentIndex] ? (
+      {activeEvent && candidates[currentIndex] ? (
         <View style={styles.actionRow}>
           <Pressable
             style={[styles.actionButton, styles.passButton]}
