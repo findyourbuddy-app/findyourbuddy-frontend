@@ -261,47 +261,48 @@ export function SwipeScreen() {
     setFiltersVisible(false);
   }
 
-  async function handleSwipe(direction: "like" | "pass" | "super_like"): Promise<void> {
+  async function handleSwipe(direction: "like" | "pass" | "super_like"): Promise<User | null> {
     const target = candidates[currentIndex];
     if (!activeEvent || !target) {
-      return;
+      return null;
     }
     const targetId = target.id;
     const eventId = activeEvent.id;
 
     // OPTIMISTIC UPDATE: Increment candidate index IMMEDIATELY for 0ms instant UI transition!
-    setCurrentIndex((index) => index + 1);
+    const nextIndex = currentIndex + 1;
+    setCurrentIndex(nextIndex);
 
-    try {
-      const result = await createSwipe({ target_id: targetId, event_id: eventId, direction });
-      if (result.match_id !== null && result.matched_user !== null) {
-        setMatch({ id: result.match_id, user: result.matched_user });
-      }
-      refreshQuota();
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status;
-        const detail = error.response?.data?.detail as string | undefined;
-
-        if (status === 409 || status === 403 || detail?.includes("Already swiped")) {
-          // Idempotent swipe: already recorded in DB; silently ignore!
-          return;
+    createSwipe({ target_id: targetId, event_id: eventId, direction })
+      .then((result) => {
+        if (result.match_id !== null && result.matched_user !== null) {
+          setMatch({ id: result.match_id, user: result.matched_user });
         }
+        refreshQuota();
+      })
+      .catch((error) => {
+        if (axios.isAxiosError(error)) {
+          const status = error.response?.status;
+          const detail = error.response?.data?.detail as string | undefined;
 
-        if (status === 429) {
-          if (detail === "Daily super like limit reached") {
-            Alert.alert(
-              "Süper beğeni hakkın bitti",
-              "Bugünlük süper beğeni hakkın doldu, yarın tekrar dene ya da Premium'a geç."
-            );
-          } else {
-            Alert.alert("Günlük limit doldu", "Bugünlük beğeni hakkın bitti, yarın tekrar dene. Geçmeye devam edebilirsin.");
+          if (status === 409 || status === 403 || detail?.includes("Already swiped")) {
+            return;
           }
-          return;
+
+          if (status === 429) {
+            if (detail === "Daily super like limit reached") {
+              Alert.alert(
+                "Süper beğeni hakkın bitti",
+                "Bugünlük süper beğeni hakkın doldu, yarın tekrar dene ya da Premium'a geç."
+              );
+            } else {
+              Alert.alert("Günlük limit doldu", "Bugünlük beğeni hakkın bitti, yarın tekrar dene. Geçmeye devam edebilirsin.");
+            }
+          }
         }
-      }
-      // Best-effort silent recovery for background swipe network glitches
-    }
+      });
+
+    return candidates[nextIndex] || null;
   }
 
   function goToMatchChat(): void {

@@ -71,8 +71,15 @@ export function CandidateProfileScreen({ route }: Props) {
       .catch(() => {});
   }, [candidate.id]);
 
-  function act(action?: () => void): void {
-    if (action) action();
+  async function act(action?: () => any): Promise<void> {
+    if (action) {
+      const nextCandidate = await action();
+      if (nextCandidate) {
+        setProfile(nextCandidate);
+      } else {
+        navigation.goBack();
+      }
+    }
   }
 
   const [locationName, setLocationName] = useState<string | null>(null);
