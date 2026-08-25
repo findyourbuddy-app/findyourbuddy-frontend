@@ -6,6 +6,8 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { resolvePhotoUrl } from "../components/ui/Avatar";
 import { Chip } from "../components/ui/Chip";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
@@ -53,7 +55,7 @@ function parseLocalDateTime(dateText: string, timeText: string): Date | null {
 
 export function CreateEventScreen() {
   const navigation = useNavigation<CreateEventNavigationProp>();
-  const { updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -359,7 +361,23 @@ export function CreateEventScreen() {
             onPress={() => setCoverOption("category")}
           />
         </View>
-        {coverOption === "category" ? (
+        {coverOption === "profile" ? (
+          <View style={styles.coverPreviewCard}>
+            {user?.photo_url ? (
+              <Image
+                source={{ uri: resolvePhotoUrl(user.photo_url) ?? undefined }}
+                style={styles.coverPreviewImage}
+                contentFit="cover"
+              />
+            ) : (
+              <LinearGradient colors={currentCategoryMeta?.gradient || ["#B8AEE8", "#6C4CF1"]} style={styles.coverPreviewImage}>
+                <View style={styles.gradientFallbackIcon}>
+                  <Feather name={currentCategoryMeta?.icon || "grid"} size={40} color={colors.surface} />
+                </View>
+              </LinearGradient>
+            )}
+          </View>
+        ) : coverOption === "category" ? (
           <View style={styles.coverPreviewCard}>
             <Image
               source={{ uri: activeStockUrl }}
@@ -1030,6 +1048,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: 18,
     height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gradientFallbackIcon: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
