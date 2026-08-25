@@ -35,27 +35,26 @@ export function CandidateProfileScreen({ route }: Props) {
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 35 || Math.abs(gestureState.dy) > 35;
+        // Only capture intentional horizontal swipes (dx > 40 AND dx > dy * 2.0)
+        // so vertical scrolling on the profile remains 100% smooth and never wiggles!
+        return Math.abs(gestureState.dx) > 40 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 2.0;
       },
-      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+      onPanResponderMove: (_, gestureState) => {
+        pan.x.setValue(gestureState.dx);
+      },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > 100) {
-          Animated.timing(pan, { toValue: { x: 500, y: gestureState.dy }, duration: 180, useNativeDriver: false }).start(() => {
+        if (gestureState.dx > 90) {
+          Animated.timing(pan, { toValue: { x: 500, y: 0 }, duration: 180, useNativeDriver: false }).start(() => {
             pan.setValue({ x: 0, y: 0 });
             act(onSwipeRight);
           });
-        } else if (gestureState.dx < -100) {
-          Animated.timing(pan, { toValue: { x: -500, y: gestureState.dy }, duration: 180, useNativeDriver: false }).start(() => {
+        } else if (gestureState.dx < -90) {
+          Animated.timing(pan, { toValue: { x: -500, y: 0 }, duration: 180, useNativeDriver: false }).start(() => {
             pan.setValue({ x: 0, y: 0 });
             act(onSwipeLeft);
           });
-        } else if (gestureState.dy < -100) {
-          Animated.timing(pan, { toValue: { x: gestureState.dx, y: -500 }, duration: 180, useNativeDriver: false }).start(() => {
-            pan.setValue({ x: 0, y: 0 });
-            act(onSwipeUp);
-          });
         } else {
-          Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 6, useNativeDriver: false }).start();
         }
       },
     })
