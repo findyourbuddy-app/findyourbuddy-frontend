@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -29,6 +29,37 @@ export function CandidateProfileScreen({ route }: Props) {
   const [profile, setProfile] = useState(candidate);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<EventPublicSummary[]>([]);
+
+  const pan = useRef(new Animated.ValueXY()).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 35 || Math.abs(gestureState.dy) > 35;
+      },
+      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > 100) {
+          Animated.timing(pan, { toValue: { x: 500, y: gestureState.dy }, duration: 180, useNativeDriver: false }).start(() => {
+            pan.setValue({ x: 0, y: 0 });
+            act(onSwipeRight);
+          });
+        } else if (gestureState.dx < -100) {
+          Animated.timing(pan, { toValue: { x: -500, y: gestureState.dy }, duration: 180, useNativeDriver: false }).start(() => {
+            pan.setValue({ x: 0, y: 0 });
+            act(onSwipeLeft);
+          });
+        } else if (gestureState.dy < -100) {
+          Animated.timing(pan, { toValue: { x: gestureState.dx, y: -500 }, duration: 180, useNativeDriver: false }).start(() => {
+            pan.setValue({ x: 0, y: 0 });
+            act(onSwipeUp);
+          });
+        } else {
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+        }
+      },
+    })
+  ).current;
 
   useEffect(() => {
     setProfile(candidate);
@@ -80,7 +111,8 @@ export function CandidateProfileScreen({ route }: Props) {
   const remainingPhotos = allPhotoUrls.slice(3);
 
   return (
-    <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
+    <Animated.View style={[{ flex: 1 }, pan.getLayout()]} {...panResponder.panHandlers}>
+      <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
       {eventTitle ? (
         <View style={styles.groupSwipeHeader}>
           <View style={{ flex: 1 }}>
@@ -403,6 +435,7 @@ export function CandidateProfileScreen({ route }: Props) {
         </Pressable>
       </View>
     </View>
+  </Animated.View>
   );
 }
 

@@ -436,6 +436,8 @@ export function DiscoverScreen() {
 
   function handleSelectOrigin(next: "system" | "user" | "my_created" | null): void {
     setOriginFilter(next);
+    setEvents([]);
+    setIsRefreshing(true);
     loadEvents(selectedCategory, next);
   }
 

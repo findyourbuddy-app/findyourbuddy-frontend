@@ -233,26 +233,52 @@ export function EventDetailScreen({ route }: Props) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Konum izni gerekli", "Etkinlikte olduğunu doğrulamak için konum iznine ihtiyacımız var.");
+        Alert.alert("Konum İzni Gerekli", "Etkinlikte olduğunu doğrulamak için konum iznine ihtiyacımız var.");
         return;
       }
       const position = await Location.getCurrentPositionAsync({});
+
+      // Strict GPS Proximity Distance Check (< 500m)
+      if (hasValidCoordinates(event.latitude, event.longitude)) {
+        const R = 6371;
+        const dLat = (event.latitude - position.coords.latitude) * (Math.PI / 180);
+        const dLon = (event.longitude - position.coords.longitude) * (Math.PI / 180);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(position.coords.latitude * (Math.PI / 180)) *
+            Math.cos(event.latitude * (Math.PI / 180)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distKm = R * c;
+
+        if (distKm > 0.5) {
+          const distMeters = Math.round(distKm * 1000);
+          Alert.alert(
+            "Etkinlik Konumuna Uzaktasın",
+            `Katılımını onaylayabilmek için etkinlik alanına (en fazla 500m) yakın olmalısın. Şu anki mesafen: ${distMeters} metre.`
+          );
+          setIsCheckingIn(false);
+          return;
+        }
+      }
+
       const updated = await checkInToEvent(event.id, {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       });
       setEvent(updated);
-      Alert.alert("Katılımın Onaylandı!", "Bu etkinlikte olduğun doğrulandı.");
+      Alert.alert("Katılımın Onaylandı!", "Konumun doğrulandı ve etkinliğe katılımın onaylandı (+5 Güven Puanı!).");
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
         const detail = err.response.data?.detail as string | undefined;
         if (detail?.toLowerCase().includes("far")) {
-          Alert.alert("Çok Uzaktasın", "Katılımını onaylamak için etkinlik konumuna yakın olman gerekiyor.");
+          Alert.alert("Çok Uzaktasın", "Katılımını onaylamak için etkinlik alanında (en fazla 500m) olmalısın.");
         } else {
           Alert.alert("Check-in Zamanı Değil", "Check-in sadece etkinlik saatine yakın zamanlarda yapılabilir.");
         }
       } else {
-        Alert.alert("Bir sorun oluştu", "Konum alınamadı, tekrar dener misin?");
+        Alert.alert("Bir sorun oluştu", "Konum doğrulanamadı. Lütfen tekrar dene.");
       }
     } finally {
       setIsCheckingIn(false);
