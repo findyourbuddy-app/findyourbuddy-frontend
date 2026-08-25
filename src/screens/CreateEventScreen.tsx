@@ -72,6 +72,22 @@ export function CreateEventScreen() {
   const [isPaid, setIsPaid] = useState(false);
   const [ticketPrice, setTicketPrice] = useState("");
   const [coverOption, setCoverOption] = useState<"profile" | "category">("profile");
+  const [selectedStockUrl, setSelectedStockUrl] = useState<string | null>(null);
+
+  const currentCategoryMeta = useMemo(() => {
+    return CATEGORIES.find((c) => c.slug === category);
+  }, [category]);
+
+  const currentStockImages = useMemo(() => {
+    return currentCategoryMeta?.stockImages || [];
+  }, [currentCategoryMeta]);
+
+  const activeStockUrl = useMemo(() => {
+    if (selectedStockUrl && currentStockImages.includes(selectedStockUrl)) {
+      return selectedStockUrl;
+    }
+    return currentStockImages[0] || currentCategoryMeta?.defaultImage || "";
+  }, [selectedStockUrl, currentStockImages, currentCategoryMeta]);
   const [quota, setQuota] = useState<EventCreationQuota | null>(null);
   const [isQuotaLoading, setIsQuotaLoading] = useState(true);
   const [isBuyingCredits, setIsBuyingCredits] = useState(false);
@@ -212,8 +228,7 @@ export function CreateEventScreen() {
 
     setIsSaving(true);
     try {
-      const selectedMeta = CATEGORIES.find((c) => c.slug === category);
-      const imageUrlToSave = coverOption === "category" ? selectedMeta?.defaultImage : undefined;
+      const imageUrlToSave = coverOption === "category" ? activeStockUrl : undefined;
 
       await createEvent({
         title: title.trim(),
@@ -347,15 +362,32 @@ export function CreateEventScreen() {
         {coverOption === "category" ? (
           <View style={styles.coverPreviewCard}>
             <Image
-              source={{ uri: CATEGORIES.find((c) => c.slug === category)?.defaultImage }}
+              source={{ uri: activeStockUrl }}
               style={styles.coverPreviewImage}
               contentFit="cover"
             />
-            <Text style={styles.coverPreviewCaption}>
-              {language === "en"
-                ? "This category cover photo will be displayed on your event card."
-                : "Etkinlik kartında bu kategori kapak fotoğrafı görüntülenecektir."}
+            <Text style={styles.stockGalleryTitle}>
+              {language === "en" ? "Select Cover Photo:" : "Görsel Seçenekleri (Seçmek için dokun):"}
             </Text>
+            <View style={styles.stockGalleryGrid}>
+              {currentStockImages.map((imgUrl) => {
+                const isSelected = imgUrl === activeStockUrl;
+                return (
+                  <Pressable
+                    key={imgUrl}
+                    style={[styles.stockThumbWrapper, isSelected && styles.stockThumbSelected]}
+                    onPress={() => setSelectedStockUrl(imgUrl)}
+                  >
+                    <Image source={{ uri: imgUrl }} style={styles.stockThumbImage} contentFit="cover" />
+                    {isSelected ? (
+                      <View style={styles.stockThumbBadge}>
+                        <Feather name="check" size={12} color="#FFF" />
+                      </View>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         ) : null}
       </View>
@@ -960,5 +992,45 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     padding: spacing.xs,
     textAlign: "center",
+  },
+  stockGalleryTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+    marginHorizontal: spacing.sm,
+  },
+  stockGalleryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    padding: spacing.sm,
+  },
+  stockThumbWrapper: {
+    width: 76,
+    height: 54,
+    borderRadius: radius.sm,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "transparent",
+    position: "relative",
+  },
+  stockThumbSelected: {
+    borderColor: colors.primary,
+  },
+  stockThumbImage: {
+    width: "100%",
+    height: "100%",
+  },
+  stockThumbBadge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    width: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
