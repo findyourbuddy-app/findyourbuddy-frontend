@@ -127,7 +127,7 @@ export function CandidateProfileScreen({ route }: Props) {
   return (
     <Animated.View style={[{ flex: 1 }, pan.getLayout()]} {...panResponder.panHandlers}>
       <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
-      {eventTitle ? (
+      {eventTitle && onExitGroupSwipe ? (
         <View style={styles.groupSwipeHeader}>
           <View style={{ flex: 1 }}>
             <Text style={styles.groupSwipeTag}>Grup Etkinliği Eşleşmesi</Text>
