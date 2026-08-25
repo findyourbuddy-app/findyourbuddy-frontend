@@ -151,7 +151,7 @@ export function CandidateProfileScreen({ route }: Props) {
         </View>
       ) : null}
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, !(onSwipeLeft || onSwipeRight || onSwipeUp) && { paddingBottom: spacing.xl }]} showsVerticalScrollIndicator={false}>
         {/* SECTION 1: Main Photo 1 Hero with overlay */}
         <View style={styles.mainPhotoCard}>
           {photo1 ? (
@@ -434,33 +434,35 @@ export function CandidateProfileScreen({ route }: Props) {
         onClose={() => setTrustInfoVisible(false)}
       />
 
-      {/* Floating Bottom Action Bar */}
-      <View style={styles.actionRow}>
-        <Pressable
-          style={[styles.actionButton, styles.passButton]}
-          onPress={() => act(onSwipeLeft)}
-          accessibilityRole="button"
-          accessibilityLabel="Geç"
-        >
-          <Feather name="x" size={24} color={colors.textSecondary} />
-        </Pressable>
-        <Pressable
-          style={[styles.actionButton, styles.superButton]}
-          onPress={() => act(onSwipeUp)}
-          accessibilityRole="button"
-          accessibilityLabel="Süper beğen"
-        >
-          <Feather name="star" size={22} color={colors.surface} />
-        </Pressable>
-        <Pressable
-          style={[styles.actionButton, styles.likeButton]}
-          onPress={() => act(onSwipeRight)}
-          accessibilityRole="button"
-          accessibilityLabel="Beğen"
-        >
-          <Feather name="heart" size={24} color={colors.surface} />
-        </Pressable>
-      </View>
+      {/* Floating Bottom Action Bar (rendered ONLY during active candidate swiping mode) */}
+      {onSwipeLeft || onSwipeRight || onSwipeUp ? (
+        <View style={styles.actionRow}>
+          <Pressable
+            style={[styles.actionButton, styles.passButton]}
+            onPress={() => act(onSwipeLeft)}
+            accessibilityRole="button"
+            accessibilityLabel="Geç"
+          >
+            <Feather name="x" size={24} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            style={[styles.actionButton, styles.superButton]}
+            onPress={() => act(onSwipeUp)}
+            accessibilityRole="button"
+            accessibilityLabel="Süper beğen"
+          >
+            <Feather name="star" size={22} color={colors.surface} />
+          </Pressable>
+          <Pressable
+            style={[styles.actionButton, styles.likeButton]}
+            onPress={() => act(onSwipeRight)}
+            accessibilityRole="button"
+            accessibilityLabel="Beğen"
+          >
+            <Feather name="heart" size={24} color={colors.surface} />
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   </Animated.View>
   );
