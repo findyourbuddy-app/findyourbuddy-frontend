@@ -227,8 +227,9 @@ export function SwipeScreen() {
   );
 
   function switchEvent(event: Event): void {
-    setActiveEvent({ id: event.id, title: event.title });
+    setActiveEvent({ id: event.id, title: event.title, location_name: event.location_name });
     setCurrentIndex(0);
+    setCandidates([]);
     setIsLoading(true);
     attendEvent(event.id).catch(() => {
       // Non-critical; worst case the attendee count doesn't reflect this visit yet.

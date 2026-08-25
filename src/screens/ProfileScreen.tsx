@@ -24,6 +24,7 @@ import { formatEventDate, formatMemberSince, isNewMember } from "../utils/date";
 import { listMyAttendingEvents } from "../api/events";
 import * as ImagePicker from "expo-image-picker";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
+import { TrustScoreInfoModal } from "../components/overlays/TrustScoreInfoModal";
 import type { GeocodingResult } from "../api/geocoding";
 import { activateBoost, getCurrentUser, updateCurrentUser, uploadProfilePhoto } from "../api/users";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
@@ -67,6 +68,7 @@ export function ProfileScreen() {
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [trustInfoVisible, setTrustInfoVisible] = useState(false);
 
   async function handleLocationSelect(result: GeocodingResult) {
     try {
@@ -288,10 +290,11 @@ export function ProfileScreen() {
           ) : null}
         </View>
         <View style={styles.heroStatsRow}>
-          <View style={styles.heroStat}>
+          <Pressable style={styles.heroStat} onPress={() => setTrustInfoVisible(true)}>
             <Feather name="shield" size={14} color={colors.surface} />
             <Text style={styles.heroStatText}>{t("trustScore")} {user.trust_score}</Text>
-          </View>
+            <Feather name="info" size={12} color="rgba(255,255,255,0.8)" style={{ marginLeft: 3 }} />
+          </Pressable>
           <View style={styles.heroStatDivider} />
           <View style={styles.heroStat}>
             <Feather name="calendar" size={14} color={colors.surface} />
@@ -623,6 +626,12 @@ export function ProfileScreen() {
         onDismiss={() => setLocationPickerVisible(false)}
         initialLatitude={user?.latitude ?? undefined}
         initialLongitude={user?.longitude ?? undefined}
+      />
+
+      <TrustScoreInfoModal
+        visible={trustInfoVisible}
+        trustScore={user?.trust_score}
+        onClose={() => setTrustInfoVisible(false)}
       />
     </ScrollView>
   );

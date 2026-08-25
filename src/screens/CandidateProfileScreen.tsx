@@ -17,6 +17,7 @@ import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../them
 import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
 import { resolvePhotoUrl } from "../components/ui/Avatar";
 import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
+import { TrustScoreInfoModal } from "../components/overlays/TrustScoreInfoModal";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import { useAppTheme } from "../context/ThemeContext";
 
@@ -28,6 +29,7 @@ export function CandidateProfileScreen({ route }: Props) {
   const { bgGradient, language } = useAppTheme();
   const [profile, setProfile] = useState(candidate);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [trustInfoVisible, setTrustInfoVisible] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState<EventPublicSummary[]>([]);
 
   const pan = useRef(new Animated.ValueXY()).current;
@@ -162,14 +164,14 @@ export function CandidateProfileScreen({ route }: Props) {
             <View style={styles.nameRow}>
               <Text style={styles.heroName}>
                 {profile.display_name}
-                {profile.age ? `, ${profile.age}` : ""}
+                {!profile.hidden_fields?.includes("age") && profile.age ? `, ${profile.age}` : ""}
               </Text>
               {profile.is_verified || profile.verification_status === "verified" ? (
                 <Feather name="check-circle" size={20} color="#1DA1F2" style={{ marginLeft: 6 }} />
               ) : null}
             </View>
 
-            {locationName ? (
+            {!profile.hidden_fields?.includes("location") && locationName ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
                 <Feather name="map-pin" size={13} color="rgba(255,255,255,0.9)" />
                 <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
@@ -180,19 +182,20 @@ export function CandidateProfileScreen({ route }: Props) {
 
             <View style={styles.badgeRow}>
               {profile.trust_score > 0 ? (
-                <View style={styles.trustBadge}>
+                <Pressable style={styles.trustBadge} onPress={() => setTrustInfoVisible(true)}>
                   <Feather name="shield" size={12} color={colors.surface} />
                   <Text style={styles.trustText}>
                     {profile.trust_score} Onaylı Buluşma
                   </Text>
-                </View>
+                  <Feather name="info" size={10} color="rgba(255,255,255,0.8)" style={{ marginLeft: 2 }} />
+                </Pressable>
               ) : null}
               {isNewMember(profile.created_at) ? (
                 <View style={styles.trustBadge}>
                   <Text style={styles.trustText}>Yeni Üye</Text>
                 </View>
               ) : null}
-              {profile.zodiac_sign ? (
+              {!profile.hidden_fields?.includes("zodiac_sign") && profile.zodiac_sign ? (
                 <View style={styles.trustBadge}>
                   <Text style={styles.trustText}>{profile.zodiac_sign}</Text>
                 </View>
@@ -204,25 +207,27 @@ export function CandidateProfileScreen({ route }: Props) {
         </View>
 
         {/* SECTION 2: Verbal Card 1 - Bio & Prompts & Voice */}
-        {(profile.bio || profile.about_me_prompt || profile.voice_note_url) ? (
+        {((profile.bio && !profile.hidden_fields?.includes("bio")) ||
+          (profile.about_me_prompt && !profile.hidden_fields?.includes("about_me_prompt")) ||
+          (profile.voice_note_url && !profile.hidden_fields?.includes("voice_note"))) ? (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Feather name="user" size={18} color={colors.primary} />
               <Text style={styles.cardTitle}>Hakkında & Detaylar</Text>
             </View>
 
-            {profile.bio ? (
+            {profile.bio && !profile.hidden_fields?.includes("bio") ? (
               <Text style={styles.bioText}>{profile.bio}</Text>
             ) : null}
 
-            {profile.about_me_prompt ? (
+            {profile.about_me_prompt && !profile.hidden_fields?.includes("about_me_prompt") ? (
               <View style={styles.promptBox}>
                 <Text style={styles.promptQuestion}>Beni yakından tanımak istersen:</Text>
                 <Text style={styles.promptAnswer}>“{profile.about_me_prompt}”</Text>
               </View>
             ) : null}
 
-            {profile.voice_note_url ? (
+            {profile.voice_note_url && !profile.hidden_fields?.includes("voice_note") ? (
               <View style={{ marginTop: spacing.xs }}>
                 <Text style={[styles.promptQuestion, { marginBottom: spacing.xs }]}>
                   Ses Tanıtımı
@@ -411,6 +416,12 @@ export function CandidateProfileScreen({ route }: Props) {
         visible={lightboxPhoto !== null}
         photoUrl={lightboxPhoto}
         onClose={() => setLightboxPhoto(null)}
+      />
+
+      <TrustScoreInfoModal
+        visible={trustInfoVisible}
+        trustScore={profile.trust_score}
+        onClose={() => setTrustInfoVisible(false)}
       />
 
       {/* Floating Bottom Action Bar */}

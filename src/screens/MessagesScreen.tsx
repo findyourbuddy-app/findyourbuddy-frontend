@@ -162,7 +162,7 @@ export function MessagesScreen() {
     });
   }, [displayMatches, query]);
 
-  const newMatches = matches.filter((match) => isToday(match.created_at));
+  const newMatches = matches.filter((match) => !match.event_is_group && isToday(match.created_at));
 
   const unreadCount = useMemo(
     () =>
