@@ -32,6 +32,7 @@ import { hasValidCoordinates } from "../utils/location";
 import { useAuth } from "../context/AuthContext";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event, User } from "../types";
+import { resolvePhotoUrl } from "../components/ui/Avatar";
 
 import { useAppTheme } from "../context/ThemeContext";
 
@@ -339,8 +340,10 @@ export function EventDetailScreen({ route }: Props) {
     <>
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
       <View style={styles.banner}>
-        {event.image_url ? (
-          <Image source={{ uri: event.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        {event.creator_id && event.creator?.photo_url ? (
+          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : event.image_url ? (
+          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
           <LinearGradient colors={category.gradient} style={StyleSheet.absoluteFill}>
             <View style={styles.bannerIcon}>
