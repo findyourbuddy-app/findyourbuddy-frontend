@@ -337,7 +337,11 @@ export function DiscoverScreen() {
       return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
     });
 
-    if (originFilter === "my_created" && user) {
+    if (originFilter === "system") {
+      list = list.filter((e) => !e.creator_id);
+    } else if (originFilter === "user") {
+      list = list.filter((e) => Boolean(e.creator_id));
+    } else if (originFilter === "my_created" && user) {
       list = list.filter((e) => e.creator_id === user.id);
     }
 
@@ -436,7 +440,6 @@ export function DiscoverScreen() {
   function handleSelectOrigin(next: "system" | "user" | "my_created" | null): void {
     const target = originFilter === next ? null : next;
     setOriginFilter(target);
-    setIsRefreshing(true);
     loadEvents(selectedCategory, target);
   }
 

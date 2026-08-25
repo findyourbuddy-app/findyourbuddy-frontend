@@ -507,34 +507,36 @@ export function SwipeScreen() {
 
 
 
-      <View style={styles.metaRow}>
-        {activeTab === "system" && activeEvent ? (
-          <Pressable
-            style={styles.eventPill}
-            onPress={openEventPicker}
-            accessibilityRole="button"
-            accessibilityLabel="Etkinlik değiştir"
-          >
-            <Feather name="map-pin" size={14} color={colors.primary} />
-            <Text style={styles.eventPillText} numberOfLines={1}>
-              {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
-            </Text>
-            {tabEvents.length > 1 ? (
-              <Feather name="chevron-down" size={12} color={colors.textSecondary} />
-            ) : null}
-          </Pressable>
-        ) : null}
+      {!(activeTab === "user" && userSubTab === "group") ? (
+        <View style={styles.metaRow}>
+          {activeTab === "system" && activeEvent ? (
+            <Pressable
+              style={styles.eventPill}
+              onPress={openEventPicker}
+              accessibilityRole="button"
+              accessibilityLabel="Etkinlik değiştir"
+            >
+              <Feather name="map-pin" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText} numberOfLines={1}>
+                {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
+              </Text>
+              {tabEvents.length > 1 ? (
+                <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+              ) : null}
+            </Pressable>
+          ) : null}
 
-        {quota ? (
-          <Text style={[styles.quotaText, (activeTab !== "system" || !activeEvent) && { marginLeft: "auto" }]}>
-            {quota.is_premium
-              ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
-              : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}
-            {" · "}
-            {quota.super_likes_used_today}/{quota.super_like_limit} {language === "en" ? "super" : "süper"}
-          </Text>
-        ) : null}
-      </View>
+          {quota ? (
+            <Text style={[styles.quotaText, (activeTab !== "system" || !activeEvent) && { marginLeft: "auto" }]}>
+              {quota.is_premium
+                ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
+                : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}
+              {" · "}
+              {quota.super_likes_used_today}/{quota.super_like_limit} {language === "en" ? "super" : "süper"}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
 
       <View style={styles.cardArea}>
         {activeTab === "user" && userSubTab === "group" ? (
