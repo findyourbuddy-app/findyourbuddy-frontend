@@ -527,7 +527,7 @@ export function SwipeScreen() {
         ) : null}
       </View>
 
-      <View style={styles.cardArea}>
+      <View style={[styles.cardArea, (activeTab === "user" && userSubTab === "group") && { paddingBottom: 10 }]}>
         {activeTab === "user" && userSubTab === "group" ? (
           isLoadingGroups ? (
             <View style={styles.center}>
@@ -658,7 +658,7 @@ export function SwipeScreen() {
         )}
       </View>
 
-      {activeEvent && candidates[currentIndex] ? (
+      {activeEvent && candidates[currentIndex] && (activeTab !== "user" || userSubTab !== "group") ? (
         <View style={styles.actionRow}>
           <Pressable
             style={[styles.actionButton, styles.passButton]}
