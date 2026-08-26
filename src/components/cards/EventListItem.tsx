@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,7 +20,7 @@ interface EventListItemProps {
   distanceLabel?: string;
 }
 
-export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, distanceLabel }: EventListItemProps) {
+export const EventListItem = memo(function EventListItem({ event, bookmarked, onToggleBookmark, onPress, distanceLabel }: EventListItemProps) {
   const { language } = useAppTheme();
   const category = getCategoryMeta(event.category, language);
 
@@ -32,9 +33,9 @@ export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, di
     >
       <View style={styles.thumbnail}>
         {event.creator_id && event.creator?.photo_url ? (
-          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={150} />
         ) : event.image_url ? (
-          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={150} />
         ) : (
           <LinearGradient colors={category.gradient} style={styles.thumbnailIcon}>
             <Feather name={category.icon} size={22} color={colors.surface} />
@@ -72,7 +73,7 @@ export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, di
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

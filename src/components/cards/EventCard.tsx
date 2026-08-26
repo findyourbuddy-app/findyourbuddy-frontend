@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,7 +23,7 @@ interface EventCardProps {
   distanceLabel?: string;
 }
 
-export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, onPress, distanceLabel }: EventCardProps) {
+export const EventCard = memo(function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, onPress, distanceLabel }: EventCardProps) {
   const { language, t } = useAppTheme();
   const category = getCategoryMeta(event.category, language);
   const startLabel = formatEventDate(event.starts_at, language);
@@ -45,9 +45,9 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
     <Pressable style={styles.card} onPress={onPress} disabled={!onPress}>
       <View style={styles.banner}>
         {event.creator_id && event.creator?.photo_url ? (
-          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={150} />
         ) : event.image_url ? (
-          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={150} />
         ) : (
           <LinearGradient colors={category.gradient} style={StyleSheet.absoluteFill}>
             <View style={styles.bannerIcon}>
@@ -113,7 +113,7 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {
