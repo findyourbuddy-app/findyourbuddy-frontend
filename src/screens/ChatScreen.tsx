@@ -52,6 +52,15 @@ export function ChatScreen({ route }: Props) {
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 
   const openGroupMembersModal = useCallback(async () => {
+    if (!isOrganizer) {
+      Alert.alert(
+        language === "en" ? "Event Buddy Matching" : "Kanka Eşleşmesi",
+        language === "en"
+          ? "You can swipe through candidate cards in the Swipe tab to match 1-on-1 with event participants!"
+          : "Etkinlikteki diğer katılımcılarla eşleşmek için 'Eşleş' sekmesindeki kartları sağa/sola kaydırabilirsin!"
+      );
+      return;
+    }
     setShowMembersModal(true);
     setIsLoadingMembers(true);
     try {
@@ -71,7 +80,7 @@ export function ChatScreen({ route }: Props) {
     } finally {
       setIsLoadingMembers(false);
     }
-  }, [eventId, eventTitle]);
+  }, [isOrganizer, eventId, eventTitle, language]);
 
   const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
     { reason: "harassment", label: language === "en" ? "Harassment / Inappropriate Behavior" : "Taciz / Rahatsız Edici Davranış" },
@@ -435,7 +444,9 @@ export function ChatScreen({ route }: Props) {
                   {eventTitle || (language === "en" ? "Group Event Chat" : "Grup Etkinlik Sohbeti")}
                 </Text>
                 <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.primary }}>
-                  {language === "en" ? "Katılımcı Listesi" : "Katılımcı Listesi"}
+                  {isOrganizer
+                    ? (language === "en" ? "Manage Participants (Organizer)" : "Katılımcıları Yönet (Organizatör)")
+                    : (language === "en" ? "Group Announcement Channel" : "📢 Grup Duyuru Kanalı")}
                 </Text>
               </View>
             </Pressable>
