@@ -11,6 +11,7 @@ import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { listMyNotifications, markMyNotificationsRead } from "../api/notifications";
+import { EventRatingModal } from "../components/overlays/EventRatingModal";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import type { MainStackParamList } from "../navigation/RootNavigator";
@@ -26,6 +27,7 @@ export function NotificationsScreen() {
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [ratingModalData, setRatingModalData] = useState<{ eventId: number; title: string; creatorName?: string } | null>(null);
 
   const notificationsRef = useRef(notifications);
   notificationsRef.current = notifications;
@@ -155,9 +157,18 @@ export function NotificationsScreen() {
 
   function handlePressNotification(item: Notification) {
     const meta = getNotificationMeta(item.title, item.body);
-
     // Special handling for feedback notifications ("Etkinlik nasıldı?")
     if (meta.type === "feedback" || item.notification_type === "match_feedback") {
+      const eventId = item.event_id || (item.data && typeof item.data === "object" ? (item.data as any).event_id : null);
+      if (eventId) {
+        setRatingModalData({
+          eventId: Number(eventId),
+          title: item.title || "Etkinlik",
+          creatorName: (item.data as any)?.creator_name || (item.data as any)?.other_user_name,
+        });
+        return;
+      }
+
       const matchId = item.match_id || (item.data && typeof item.data === "object" ? (item.data as any).match_id : null);
       if (matchId) {
         const data = item.data as Record<string, any> | undefined;
@@ -244,7 +255,7 @@ export function NotificationsScreen() {
               onPress={() => handlePressNotification(item)}
             >
               <View style={[styles.iconContainer, { backgroundColor: `${meta.color}15` }]}>
-                <Feather name={meta.icon} size={18} color={meta.color} />
+                <Feather name={meta.icon as any} size={18} color={meta.color} />
               </View>
 
               <View style={styles.textColumn}>
@@ -257,6 +268,14 @@ export function NotificationsScreen() {
             </Pressable>
           );
         }}
+      />
+
+      <EventRatingModal
+        visible={ratingModalData !== null}
+        eventId={ratingModalData?.eventId || 0}
+        eventTitle={ratingModalData?.title || ""}
+        creatorName={ratingModalData?.creatorName}
+        onClose={() => setRatingModalData(null)}
       />
     </View>
   );

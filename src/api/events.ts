@@ -95,6 +95,19 @@ export function respondToJoinRequest(eventId: number, userId: number, approved: 
     .then((res) => res.data);
 }
 
+export function rateEvent(
+  eventId: number,
+  rating: number,
+  comment?: string
+): Promise<{ status: string; message: string; creator_trust_score?: number }> {
+  return apiClient
+    .post<{ status: string; message: string; creator_trust_score?: number }>(`/events/${eventId}/rate`, {
+      rating,
+      comment,
+    })
+    .then((res) => res.data);
+}
+
 export function recordEventImpression(eventId: number): Promise<void> {
   return apiClient.post(`/events/${eventId}/impressions`).then(() => undefined).catch(() => undefined);
 }

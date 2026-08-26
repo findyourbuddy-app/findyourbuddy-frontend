@@ -22,6 +22,7 @@ import {
 } from "../api/events";
 import { Avatar } from "../components/ui/Avatar";
 import { DoubleBuddyModal } from "../components/overlays/DoubleBuddyModal";
+import { EventRatingModal } from "../components/overlays/EventRatingModal";
 import { EventOrganizerApprovalModal } from "../components/overlays/EventOrganizerApprovalModal";
 import { FormattedHtmlText } from "../components/ui/FormattedHtmlText";
 import { getCategoryMeta } from "../constants/categories";
@@ -52,6 +53,7 @@ export function EventDetailScreen({ route }: Props) {
   const [respondingUserId, setRespondingUserId] = useState<number | null>(null);
   const [doubleBuddyVisible, setDoubleBuddyVisible] = useState(false);
   const [isApprovalModalVisible, setIsApprovalModalVisible] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
 
   const isOwnerOfGroupEvent = Boolean(
     event && user && event.creator_id === user.id
@@ -603,19 +605,26 @@ export function EventDetailScreen({ route }: Props) {
         )}
 
         {!isOwnerOfGroupEvent && event.is_attending ? (
-          event.is_checked_in ? (
-            <View style={styles.checkedInBadge}>
-              <Feather name="check-circle" size={16} color="#2ECC71" />
-              <Text style={styles.checkedInText}>Etkinlikte olduğun doğrulandı</Text>
-            </View>
-          ) : (
+          <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
+            {event.is_checked_in ? (
+              <View style={styles.checkedInBadge}>
+                <Feather name="check-circle" size={16} color="#2ECC71" />
+                <Text style={styles.checkedInText}>Etkinlikte olduğun doğrulandı</Text>
+              </View>
+            ) : (
+              <PrimaryButton
+                label="Etkinlikteyim, Katılımımı Onayla"
+                onPress={handleCheckIn}
+                loading={isCheckingIn}
+                variant="outline"
+              />
+            )}
             <PrimaryButton
-              label="Etkinlikteyim, Katılımımı Onayla"
-              onPress={handleCheckIn}
-              loading={isCheckingIn}
+              label={language === "en" ? "Rate Host & Event" : "Organizatörü & Etkinliği Değerlendir"}
+              onPress={() => setShowRatingModal(true)}
               variant="outline"
             />
-          )
+          </View>
         ) : null}
       </View>
     </ScrollView>
@@ -627,18 +636,27 @@ export function EventDetailScreen({ route }: Props) {
     />
 
     {event && (
-      <EventOrganizerApprovalModal
-        visible={isApprovalModalVisible}
-        eventId={event.id}
-        eventTitle={event.title}
-        onDismiss={() => setIsApprovalModalVisible(false)}
-        onUpdated={() => {
-          if (event) {
-            getEvent(event.id).then(setEvent);
-            listJoinRequests(event.id).then(setJoinRequests);
-          }
-        }}
-      />
+      <>
+        <EventOrganizerApprovalModal
+          visible={isApprovalModalVisible}
+          eventId={event.id}
+          eventTitle={event.title}
+          onDismiss={() => setIsApprovalModalVisible(false)}
+          onUpdated={() => {
+            if (event) {
+              getEvent(event.id).then(setEvent);
+              listJoinRequests(event.id).then(setJoinRequests);
+            }
+          }}
+        />
+        <EventRatingModal
+          visible={showRatingModal}
+          eventId={event.id}
+          eventTitle={event.title}
+          creatorName={event.creator?.display_name}
+          onClose={() => setShowRatingModal(false)}
+        />
+      </>
     )}
     </>
   );
