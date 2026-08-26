@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Animated, PanResponder, StyleSheet, Text, View } from "react-native";
+import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 import { getInterestLabel } from "../../constants/interests";
 import { hasValidCoordinates, resolveCityDistrict } from "../../utils/location";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 import type { User } from "../../types";
+import { PhotoLightboxModal } from "../overlays/PhotoLightboxModal";
 
 interface SwipeCandidateCardProps {
   candidate: User;
@@ -49,8 +50,8 @@ export function SwipeCandidateCard({
   const { language } = useAppTheme();
   const photoUrls = candidatePhotoUrls(candidate);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [lightboxVisible, setLightboxVisible] = useState(false);
   const [cardWidth, setCardWidth] = useState(0);
-  const [cardHeight, setCardHeight] = useState(0);
   const [locationName, setLocationName] = useState<string | null>(null);
   const position = useRef(new Animated.ValueXY()).current;
 
@@ -62,7 +63,6 @@ export function SwipeCandidateCard({
 
   function handleLayout(event: LayoutChangeEvent): void {
     setCardWidth(event.nativeEvent.layout.width);
-    setCardHeight(event.nativeEvent.layout.height);
   }
 
   function resetPosition(): void {
@@ -92,16 +92,15 @@ export function SwipeCandidateCard({
           Math.abs(gesture.dx) > TAP_MOVE_THRESHOLD || Math.abs(gesture.dy) > TAP_MOVE_THRESHOLD;
         if (!movedEnough) {
           const tapX = evt.nativeEvent.locationX;
-          const tapY = evt.nativeEvent.locationY;
-          // Tapping anywhere on the lower 50% or center of card opens candidate profile account
-          if ((cardHeight > 0 && tapY > cardHeight * 0.45) || (tapX >= cardWidth * 0.25 && tapX <= cardWidth * 0.75)) {
-            onPressProfile();
-          } else if (photoUrls.length > 1 && cardWidth > 0 && tapX < cardWidth * 0.25) {
+          // Left/right edges browse photos (when there's more than one); tapping
+          // the photo itself zooms it. Opening the full profile now goes through
+          // the dedicated info badge instead of eating most of the card's tap area.
+          if (photoUrls.length > 1 && cardWidth > 0 && tapX < cardWidth * 0.25) {
             goToPhoto(-1);
           } else if (photoUrls.length > 1 && cardWidth > 0 && tapX > cardWidth * 0.75) {
             goToPhoto(1);
-          } else {
-            onPressProfile();
+          } else if (photoUrls.length > 0) {
+            setLightboxVisible(true);
           }
           return;
         }
@@ -182,6 +181,7 @@ export function SwipeCandidateCard({
         </View>
       ) : null}
 
+
       <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]} pointerEvents="none">
         <Text style={styles.stampText}>{language === "en" ? "LIKE" : "BEĞEN"}</Text>
       </Animated.View>
@@ -195,7 +195,7 @@ export function SwipeCandidateCard({
       <LinearGradient
         colors={["transparent", "rgba(15,10,40,0.9)"]}
         style={styles.overlay}
-        pointerEvents="none"
+        pointerEvents="box-none"
       >
 
         <View style={styles.nameRow}>
@@ -214,9 +214,15 @@ export function SwipeCandidateCard({
               <Text style={styles.trustBadgeText}>Güvenilir Buddy</Text>
             </View>
           )}
-          <View style={styles.infoBadgeBtn}>
+          <Pressable
+            style={styles.infoBadgeBtn}
+            onPress={onPressProfile}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={language === "en" ? "View profile" : "Profili görüntüle"}
+          >
             <Feather name="info" size={14} color="#FFF" />
-          </View>
+          </Pressable>
         </View>
 
 
@@ -259,6 +265,13 @@ export function SwipeCandidateCard({
           </View>
         ) : null}
       </LinearGradient>
+
+      <PhotoLightboxModal
+        visible={lightboxVisible}
+        photos={photoUrls}
+        initialIndex={activeIndex}
+        onClose={() => setLightboxVisible(false)}
+      />
     </Animated.View>
   );
 }

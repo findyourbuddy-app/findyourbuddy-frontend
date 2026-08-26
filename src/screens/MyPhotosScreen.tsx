@@ -35,7 +35,7 @@ export function MyPhotosScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingMain, setIsUploadingMain] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
-  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [lightboxData, setLightboxData] = useState<{ url: string; photos: string[] } | null>(null);
 
   const loadPhotos = useCallback(async () => {
     try {
@@ -139,6 +139,11 @@ export function MyPhotosScreen() {
     ]);
   }
 
+  const allPhotos = [
+    user?.photo_url,
+    ...photos.map((p) => p.photo_url),
+  ].filter((u): u is string => Boolean(u));
+
   return (
     <ScrollView
       style={[styles.screen, { backgroundColor: bgGradient[0] }]}
@@ -149,12 +154,20 @@ export function MyPhotosScreen() {
         <Text style={typeScale.eyebrow}>Ana Profil Fotoğrafı</Text>
 
         <View style={styles.mainAvatarRow}>
-          <Avatar
-            name={user?.display_name ?? "?"}
-            photoUrl={user?.photo_url}
-            isVerified={user?.is_verified}
-            size={90}
-          />
+          <Pressable
+            onPress={() => {
+              if (user?.photo_url) {
+                setLightboxData({ url: user.photo_url, photos: allPhotos });
+              }
+            }}
+          >
+            <Avatar
+              name={user?.display_name ?? "?"}
+              photoUrl={user?.photo_url}
+              isVerified={user?.is_verified}
+              size={90}
+            />
+          </Pressable>
           <View style={{ flex: 1, gap: spacing.xs }}>
             <Text style={styles.mainPhotoTitle}>{user?.display_name}</Text>
             <Text style={styles.mainPhotoSub}>
@@ -203,7 +216,7 @@ export function MyPhotosScreen() {
                   <View key={photo.id} style={styles.photoBox}>
                     <Pressable
                       style={styles.photoPressable}
-                      onPress={() => setLightboxPhoto(photo.photo_url)}
+                      onPress={() => setLightboxData({ url: photo.photo_url, photos: allPhotos })}
                     >
                       {resolvedUri ? (
                         <Image source={{ uri: resolvedUri }} style={styles.photoImage} contentFit="cover" />
@@ -246,9 +259,10 @@ export function MyPhotosScreen() {
       </View>
 
       <PhotoLightboxModal
-        visible={lightboxPhoto !== null}
-        photoUrl={lightboxPhoto}
-        onClose={() => setLightboxPhoto(null)}
+        visible={lightboxData !== null}
+        photoUrl={lightboxData?.url}
+        photos={lightboxData?.photos}
+        onClose={() => setLightboxData(null)}
       />
     </ScrollView>
   );

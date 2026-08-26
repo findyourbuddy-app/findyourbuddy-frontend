@@ -66,12 +66,42 @@ export function NotificationsScreen() {
     const lowercaseBody = body.toLowerCase();
 
     if (
+      lowercaseTitle.includes("nasıldı") ||
+      lowercaseBody.includes("nasıldı") ||
+      lowercaseTitle.includes("buluştun mu") ||
+      lowercaseBody.includes("buluştun mu") ||
+      lowercaseTitle.includes("değerlendir") ||
+      lowercaseBody.includes("değerlendir")
+    ) {
+      return { icon: "star" as const, color: "#F1C40F", type: "feedback" };
+    }
+
+    if (
       lowercaseTitle.includes("beğeni") ||
       lowercaseBody.includes("beğendi") ||
       lowercaseBody.includes("like")
     ) {
       return { icon: "heart" as const, color: "#FF2E93", type: "like" };
     }
+
+    if (
+      lowercaseTitle.includes("doğrulama") ||
+      lowercaseTitle.includes("mavi tik") ||
+      lowercaseBody.includes("selfie") ||
+      lowercaseBody.includes("doğrulandı")
+    ) {
+      return { icon: "check-circle" as const, color: "#2ECC71", type: "verification" };
+    }
+
+    if (
+      lowercaseTitle.includes("etkinlik") ||
+      lowercaseTitle.includes("katılım") ||
+      lowercaseTitle.includes("grup") ||
+      lowercaseBody.includes("etkinlik")
+    ) {
+      return { icon: "calendar" as const, color: colors.primary, type: "event" };
+    }
+
     if (
       lowercaseTitle.includes("match") ||
       lowercaseTitle.includes("eşleşme") ||
@@ -79,6 +109,7 @@ export function NotificationsScreen() {
     ) {
       return { icon: "users" as const, color: "#9B7BFF", type: "match" };
     }
+
     if (
       lowercaseTitle.includes("mesaj") ||
       lowercaseTitle.includes("message") ||
@@ -86,78 +117,18 @@ export function NotificationsScreen() {
     ) {
       return { icon: "message-circle" as const, color: "#2ECC71", type: "message" };
     }
-    if (
-      lowercaseTitle.includes("etkinlik") ||
-      lowercaseBody.includes("buluştun mu") ||
-      lowercaseBody.includes("nasıldı")
-    ) {
-      return { icon: "check-square" as const, color: "#F1C40F", type: "feedback" };
-    }
+
     return { icon: "bell" as const, color: colors.primary, type: "general" };
   }
 
   function formatNotificationContent(title: string, body: string) {
-    const lowercaseTitle = title.toLowerCase();
-    const lowercaseBody = body.toLowerCase();
-
-    if (language === "en") {
-      if (lowercaseTitle.includes("beğeni") || lowercaseBody.includes("beğendi") || lowercaseTitle.includes("like")) {
-        return {
-          title: "New Like!",
-          body: "Someone liked you as a buddy!",
-        };
-      }
-      if (lowercaseTitle.includes("match") || lowercaseTitle.includes("eşleşme") || lowercaseBody.includes("eşleşti")) {
-        return {
-          title: "New Match!",
-          body: "You have a new match on FindYourBuddy!",
-        };
-      }
-      if (lowercaseTitle.includes("mesaj") || lowercaseTitle.includes("message")) {
-        return {
-          title: "New Message",
-          body: "You received a new message.",
-        };
-      }
-      if (lowercaseTitle.includes("etkinlik") || lowercaseBody.includes("nasıldı") || lowercaseBody.includes("buluştun")) {
-        return {
-          title: "How was the event?",
-          body: "Did you meet your buddy? Quickly rate your experience.",
-        };
-      }
-    } else {
-      if (lowercaseTitle.includes("like") || lowercaseTitle.includes("beğeni")) {
-        return {
-          title: "Yeni Beğeni!",
-          body: "Biri seni kanka olarak beğendi.",
-        };
-      }
-      if (lowercaseTitle.includes("match") || lowercaseTitle.includes("eşleşme")) {
-        return {
-          title: "Yeni Eşleşme!",
-          body: "FindYourBuddy'de yeni bir kanka eşleşmen var!",
-        };
-      }
-      if (lowercaseTitle.includes("message") || lowercaseTitle.includes("mesaj")) {
-        return {
-          title: "Yeni Mesaj",
-          body: "Sana yeni bir mesaj geldi.",
-        };
-      }
-      if (lowercaseTitle.includes("etkinlik") || lowercaseBody.includes("nasıldı") || lowercaseBody.includes("buluştun")) {
-        return {
-          title: "Etkinlik nasıldı?",
-          body: "Kankanla buluştun mu? Sohbet ekranından hızlıca belirtebilirsin.",
-        };
-      }
-    }
-
     return { title, body };
   }
 
   function handlePressNotification(item: Notification) {
     const meta = getNotificationMeta(item.title, item.body);
-    // Special handling for feedback notifications ("Etkinlik nasıldı?")
+
+    // 1. Feedback notifications ("Etkinlik nasıldı?")
     if (meta.type === "feedback" || item.notification_type === "match_feedback") {
       const eventId = item.event_id || (item.data && typeof item.data === "object" ? (item.data as any).event_id : null);
       if (eventId) {
@@ -184,42 +155,48 @@ export function NotificationsScreen() {
       return;
     }
 
-    if (item.event_id) {
-      navigation.navigate("EventDetail", { eventId: Number(item.event_id) });
+    // 2. Direct event notifications (join request, approval, event update)
+    if (meta.type === "event" || item.event_id || (item.data && (item.data as any).event_id)) {
+      const targetEventId = item.event_id || (item.data && (item.data as any).event_id);
+      if (targetEventId) {
+        navigation.navigate("EventDetail", { eventId: Number(targetEventId) });
+        return;
+      }
+      navigation.navigate("Tabs", { screen: "Discover" });
       return;
     }
-    if (item.match_id) {
+
+    // 3. Likes received
+    if (meta.type === "like" || item.notification_type === "like") {
+      navigation.navigate("LikesReceived");
+      return;
+    }
+
+    // 4. Verification result
+    if (meta.type === "verification") {
+      navigation.navigate("Profile");
+      return;
+    }
+
+    // 5. Match or Message notifications
+    const targetMatchId = item.match_id || (item.data && (item.data as any).match_id);
+    if (targetMatchId) {
+      const data = item.data as Record<string, any> | undefined;
       navigation.navigate("Chat", {
-        matchId: Number(item.match_id),
-        otherUserId: 0,
-        otherUserName: "Kanka",
+        matchId: Number(targetMatchId),
+        otherUserId: Number(data?.other_user_id || 0),
+        otherUserName: String(data?.other_user_name || "Kanka"),
       });
       return;
     }
 
-    if (item.data && typeof item.data === "object") {
-      const data = item.data as Record<string, any>;
-      if (data.event_id) {
-        navigation.navigate("EventDetail", { eventId: Number(data.event_id) });
-        return;
-      }
-      if (data.match_id) {
-        navigation.navigate("Chat", {
-          matchId: Number(data.match_id),
-          otherUserId: Number(data.other_user_id || 0),
-          otherUserName: String(data.other_user_name || "Kanka"),
-        });
-        return;
-      }
+    if (meta.type === "match" || meta.type === "message") {
+      navigation.navigate("Tabs", { screen: "Messages" });
+      return;
     }
 
-    if (meta.type === "like") {
-      navigation.navigate("LikesReceived");
-    } else if (meta.type === "match" || meta.type === "message") {
-      navigation.navigate("Tabs", { screen: "Messages" });
-    } else {
-      navigation.navigate("Tabs", { screen: "Discover" });
-    }
+    // Fallback
+    navigation.navigate("Tabs", { screen: "Discover" });
   }
 
   if (isLoading && notifications.length === 0) {

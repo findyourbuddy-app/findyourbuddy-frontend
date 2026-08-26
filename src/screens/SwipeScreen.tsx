@@ -561,7 +561,11 @@ export function SwipeScreen() {
           ) : (
             <ScrollView contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
               {userGroupEvents.map((event) => (
-                <View key={event.id} style={styles.groupCardItem}>
+                <Pressable
+                  key={event.id}
+                  style={styles.groupCardItem}
+                  onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
+                >
                   <View style={styles.groupCardHeader}>
                     <Text style={styles.groupCategoryPill}>{event.category}</Text>
                     <View style={styles.attendeesBadge}>
@@ -609,7 +613,7 @@ export function SwipeScreen() {
                       </Text>
                     </Pressable>
                   </View>
-                </View>
+                </Pressable>
               ))}
             </ScrollView>
           )
