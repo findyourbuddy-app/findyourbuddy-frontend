@@ -8,7 +8,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CompositeNavigationProp, RouteProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Avatar } from "../components/ui/Avatar";
+import { Image } from "expo-image";
+import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { SwipeCandidateCard } from "../components/cards/SwipeCandidateCard";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { MatchCelebrationModal } from "../components/overlays/MatchCelebrationModal";
@@ -68,6 +69,20 @@ export function SwipeScreen() {
   const [activeTab, setActiveTab] = useState<"system" | "user">("system");
   const [userSubTab, setUserSubTab] = useState<"birebir" | "group">("birebir");
   const [userGroupEvents, setUserGroupEvents] = useState<Event[]>([]);
+
+  useEffect(() => {
+    if (candidates.length > currentIndex + 1) {
+      const nextCandidate = candidates[currentIndex + 1];
+      if (nextCandidate) {
+        const primaryUrl = resolvePhotoUrl(nextCandidate.photo_url);
+        if (primaryUrl) Image.prefetch(primaryUrl);
+        nextCandidate.photos?.forEach((p) => {
+          const galleryUrl = resolvePhotoUrl(p.photo_url);
+          if (galleryUrl) Image.prefetch(galleryUrl);
+        });
+      }
+    }
+  }, [candidates, currentIndex]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isSwiping, setIsSwiping] = useState(false);
 
