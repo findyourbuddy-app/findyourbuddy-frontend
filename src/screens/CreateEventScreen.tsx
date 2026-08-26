@@ -303,8 +303,8 @@ export function CreateEventScreen() {
         <Feather name="camera" size={16} color={accentColor} />
         <Text style={styles.photoTipText}>
           {language === "en"
-            ? "Your profile photo will be highlighted as the cover image of this event to boost visibility!"
-            : "Profil fotoğrafın bu etkinliğin kapak görseli olarak öne çıkarılır ve görünürlüğünü artırır!"}
+            ? "Pick a cover photo below — your profile photo or a category photo — to boost this event's visibility!"
+            : "Aşağıdan bir kapak görseli seç — profil fotoğrafın ya da kategori görseli — etkinliğinin görünürlüğünü artır!"}
         </Text>
       </View>
 
