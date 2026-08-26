@@ -59,6 +59,12 @@ export function EventDetailScreen({ route }: Props) {
     event && user && event.creator_id === user.id
   );
 
+  useEffect(() => {
+    if (route.params?.autoOpenRating && event && !event.has_rated && !isOwnerOfGroupEvent) {
+      setShowRatingModal(true);
+    }
+  }, [route.params?.autoOpenRating, event, isOwnerOfGroupEvent]);
+
   const refreshJoinRequests = useCallback(async (eventIdToLoad: number) => {
     try {
       const requests = await listJoinRequests(eventIdToLoad);
@@ -619,11 +625,24 @@ export function EventDetailScreen({ route }: Props) {
                 variant="outline"
               />
             )}
-            <PrimaryButton
-              label={language === "en" ? "Rate Host & Event" : "Organizatörü & Etkinliği Değerlendir"}
-              onPress={() => setShowRatingModal(true)}
-              variant="outline"
-            />
+
+            {/* Rating button ONLY appears after check-in OR after event starts, and can only be used 1 time */}
+            {event.is_checked_in || new Date(event.starts_at) <= new Date() ? (
+              event.has_rated ? (
+                <View style={styles.alreadyRatedBadge}>
+                  <Feather name="check-circle" size={16} color={colors.primary} />
+                  <Text style={styles.alreadyRatedText}>
+                    {language === "en" ? "Event & Host Rated ⭐" : "Değerlendirildi ⭐"}
+                  </Text>
+                </View>
+              ) : (
+                <PrimaryButton
+                  label={language === "en" ? "Rate Host & Event" : "Organizatörü & Etkinliği Değerlendir"}
+                  onPress={() => setShowRatingModal(true)}
+                  variant="outline"
+                />
+              )
+            ) : null}
           </View>
         ) : null}
       </View>
@@ -655,6 +674,7 @@ export function EventDetailScreen({ route }: Props) {
           eventTitle={event.title}
           creatorName={event.creator?.display_name}
           onClose={() => setShowRatingModal(false)}
+          onSuccess={() => setEvent((prev) => (prev ? { ...prev, has_rated: true } : prev))}
         />
       </>
     )}
@@ -865,5 +885,22 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
+  },
+  alreadyRatedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    backgroundColor: `${colors.primary}15`,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+  },
+  alreadyRatedText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 14,
+    color: colors.primary,
   },
 });

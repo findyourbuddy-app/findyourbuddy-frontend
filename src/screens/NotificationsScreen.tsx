@@ -132,10 +132,9 @@ export function NotificationsScreen() {
     if (meta.type === "feedback" || item.notification_type === "match_feedback") {
       const eventId = item.event_id || (item.data && typeof item.data === "object" ? (item.data as any).event_id : null);
       if (eventId) {
-        setRatingModalData({
+        navigation.navigate("EventDetail", {
           eventId: Number(eventId),
-          title: item.title || "Etkinlik",
-          creatorName: (item.data as any)?.creator_name || (item.data as any)?.other_user_name,
+          autoOpenRating: true,
         });
         return;
       }

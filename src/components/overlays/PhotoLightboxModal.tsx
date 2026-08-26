@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Dimensions,
   FlatList,
   Modal,
@@ -10,7 +11,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { resolvePhotoUrl } from "../ui/Avatar";
@@ -25,6 +25,39 @@ interface PhotoLightboxModalProps {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const DOUBLE_TAP_DELAY_MS = 280;
+const ZOOMED_SCALE = 2.5;
+
+function ZoomableSlide({ uri }: { uri: string }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const isZoomedRef = useRef(false);
+  const lastTapRef = useRef(0);
+
+  function handlePress(): void {
+    const now = Date.now();
+    const isDoubleTap = now - lastTapRef.current < DOUBLE_TAP_DELAY_MS;
+    lastTapRef.current = now;
+    if (!isDoubleTap) return;
+
+    const next = isZoomedRef.current ? 1 : ZOOMED_SCALE;
+    isZoomedRef.current = !isZoomedRef.current;
+    Animated.spring(scale, { toValue: next, useNativeDriver: true, friction: 6 }).start();
+  }
+
+  return (
+    <View style={styles.slide}>
+      <Animated.Image
+        source={{ uri }}
+        style={[styles.fullScreenImage, { transform: [{ scale }] }]}
+        resizeMode="contain"
+      />
+      {/* Sibling overlay, not a wrapper -- expo-image/native Image views can
+          swallow touches meant for a parent Pressable, so the tap target
+          sits on top of the image instead of around it. */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={handlePress} />
+    </View>
+  );
+}
 
 export function PhotoLightboxModal({
   visible,
@@ -96,15 +129,7 @@ export function PhotoLightboxModal({
             const index = Math.round(evt.nativeEvent.contentOffset.x / SCREEN_WIDTH);
             setActiveIndex(index);
           }}
-          renderItem={({ item }) => (
-            <Pressable style={styles.slide} onPress={onClose}>
-              <Image
-                source={{ uri: item }}
-                style={styles.fullScreenImage}
-                contentFit="contain"
-              />
-            </Pressable>
-          )}
+          renderItem={({ item }) => <ZoomableSlide uri={item} />}
         />
 
         {/* Top Header: Indicator & Close Button */}

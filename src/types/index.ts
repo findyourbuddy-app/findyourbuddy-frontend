@@ -113,6 +113,7 @@ export interface Event {
   is_pending: boolean;
   is_checked_in: boolean;
   is_ticket_verified: boolean;
+  has_rated?: boolean;
 }
 
 export interface EventPublicSummary {
