@@ -6,6 +6,7 @@ import {
   Modal,
   PanResponder,
   Pressable,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -30,32 +31,81 @@ const ZOOMED_SCALE = 2.5;
 
 function ZoomableSlide({ uri }: { uri: string }) {
   const scale = useRef(new Animated.Value(1)).current;
-  const isZoomedRef = useRef(false);
+  const lastScale = useRef(1);
+  const initialDist = useRef<number | null>(null);
   const lastTapRef = useRef(0);
 
-  function handlePress(): void {
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: (evt) => evt.nativeEvent.touches.length === 2,
+      onMoveShouldSetPanResponder: (evt) => evt.nativeEvent.touches.length === 2,
+      onPanResponderGrant: (evt) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length === 2) {
+          const dx = touches[0].pageX - touches[1].pageX;
+          const dy = touches[0].pageY - touches[1].pageY;
+          initialDist.current = Math.sqrt(dx * dx + dy * dy);
+        }
+      },
+      onPanResponderMove: (evt) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length === 2 && initialDist.current) {
+          const dx = touches[0].pageX - touches[1].pageX;
+          const dy = touches[0].pageY - touches[1].pageY;
+          const currentDist = Math.sqrt(dx * dx + dy * dy);
+          const factor = currentDist / initialDist.current;
+          let newScale = lastScale.current * factor;
+          newScale = Math.max(1, Math.min(newScale, 4));
+          scale.setValue(newScale);
+        }
+      },
+      onPanResponderRelease: () => {
+        initialDist.current = null;
+        scale.stopAnimation((val) => {
+          lastScale.current = val;
+          if (val < 1) {
+            lastScale.current = 1;
+            Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
+          } else if (val > 4) {
+            lastScale.current = 4;
+            Animated.spring(scale, { toValue: 4, useNativeDriver: true }).start();
+          }
+        });
+      },
+    })
+  ).current;
+
+  function handleDoubleTap(): void {
     const now = Date.now();
     const isDoubleTap = now - lastTapRef.current < DOUBLE_TAP_DELAY_MS;
     lastTapRef.current = now;
     if (!isDoubleTap) return;
 
-    const next = isZoomedRef.current ? 1 : ZOOMED_SCALE;
-    isZoomedRef.current = !isZoomedRef.current;
+    const next = lastScale.current > 1.2 ? 1 : ZOOMED_SCALE;
+    lastScale.current = next;
     Animated.spring(scale, { toValue: next, useNativeDriver: true, friction: 6 }).start();
   }
 
   return (
-    <View style={styles.slide}>
-      <Animated.Image
-        source={{ uri }}
-        style={[styles.fullScreenImage, { transform: [{ scale }] }]}
-        resizeMode="contain"
-      />
-      {/* Sibling overlay, not a wrapper -- expo-image/native Image views can
-          swallow touches meant for a parent Pressable, so the tap target
-          sits on top of the image instead of around it. */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={handlePress} />
-    </View>
+    <ScrollView
+      style={styles.slide}
+      contentContainerStyle={styles.slideContent}
+      minimumZoomScale={1}
+      maximumZoomScale={4}
+      showsHorizontalScrollIndicator={false}
+      showsVerticalScrollIndicator={false}
+      centerContent
+    >
+      <View {...panResponder.panHandlers}>
+        <Pressable onPress={handleDoubleTap}>
+          <Animated.Image
+            source={{ uri }}
+            style={[styles.fullScreenImage, { transform: [{ scale }] }]}
+            resizeMode="contain"
+          />
+        </Pressable>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -162,6 +212,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000",
   },
   slide: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    backgroundColor: "#000000",
+  },
+  slideContent: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     justifyContent: "center",

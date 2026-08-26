@@ -232,7 +232,7 @@ export function ViewProfileScreen() {
       {/* Interspersed Photo 3 Card */}
       {photo3 ? (
         <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: photo3, photos: galleryPhotos })}>
-          <Image source={{ uri: resolvePhotoUrl(photo3) ?? undefined }} style={styles.fullImage} contentFit="cover" />
+          <Image source={{ uri: resolvePhotoUrl(photo3) ?? undefined }} style={styles.fullImage} contentFit="cover" pointerEvents="none" />
         </Pressable>
       ) : null}
 
@@ -321,7 +321,7 @@ export function ViewProfileScreen() {
       {/* Remaining Photos Interspersed */}
       {remainingPhotos.map((uri, idx) => (
         <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: uri, photos: galleryPhotos })}>
-          <Image source={{ uri: resolvePhotoUrl(uri) ?? undefined }} style={styles.fullImage} contentFit="cover" />
+          <Image source={{ uri: resolvePhotoUrl(uri) ?? undefined }} style={styles.fullImage} contentFit="cover" pointerEvents="none" />
         </Pressable>
       ))}
     </ScrollView>

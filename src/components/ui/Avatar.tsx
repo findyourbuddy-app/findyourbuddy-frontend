@@ -104,6 +104,7 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
             style={dimensionStyle}
             contentFit="cover"
             onError={() => setImageError(true)}
+            pointerEvents="none"
           />
           {blurRadius && blurRadius > 0 ? (
             // expo-image's own blurRadius prop is unreliable across

@@ -216,7 +216,7 @@ export function MyPhotosScreen() {
                       onPress={() => setLightboxData({ url: photo.photo_url, photos: galleryPhotos })}
                     >
                       {resolvedUri ? (
-                        <Image source={{ uri: resolvedUri }} style={styles.photoImage} contentFit="cover" />
+                        <Image source={{ uri: resolvedUri }} style={styles.photoImage} contentFit="cover" pointerEvents="none" />
                       ) : (
                         <View style={styles.emptyBox}>
                           <Feather name="image" size={24} color={colors.textSecondary} />

@@ -445,7 +445,7 @@ export function ProfileScreen() {
               const galleryPhotos = user.photos.map((p) => p.photo_url).filter((u): u is string => Boolean(u));
               return (
                 <Pressable onPress={() => setLightboxData({ url: item.photo_url, photos: galleryPhotos })}>
-                  <Image source={{ uri: resolvePhotoUrl(item.photo_url) ?? undefined }} style={styles.galleryImage} />
+                  <Image source={{ uri: resolvePhotoUrl(item.photo_url) ?? undefined }} style={styles.galleryImage} pointerEvents="none" />
                 </Pressable>
               );
             }}

@@ -37,8 +37,8 @@ export function NotificationsScreen() {
       setIsLoading(true);
     }
     try {
-      setNotifications(await listMyNotifications());
-      await markMyNotificationsRead();
+      const list = await listMyNotifications();
+      setNotifications(list);
     } catch {
       if (notificationsRef.current.length === 0) {
         Alert.alert(
@@ -54,6 +54,7 @@ export function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadNotifications();
+      markMyNotificationsRead().catch(() => {});
       const interval = setInterval(() => {
         loadNotifications();
       }, 5000);
@@ -61,9 +62,9 @@ export function NotificationsScreen() {
     }, [loadNotifications])
   );
 
-  function getNotificationMeta(title: string, body: string) {
-    const lowercaseTitle = title.toLowerCase();
-    const lowercaseBody = body.toLowerCase();
+  function getNotificationMeta(title?: string | null, body?: string | null) {
+    const lowercaseTitle = (title || "").toLowerCase();
+    const lowercaseBody = (body || "").toLowerCase();
 
     if (
       lowercaseTitle.includes("nasıldı") ||

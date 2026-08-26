@@ -161,6 +161,7 @@ export function SwipeCandidateCard({
           source={{ uri: photoUrls[activeIndex] }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          pointerEvents="none"
         />
       ) : (
         <LinearGradient colors={FALLBACK_GRADIENT} style={StyleSheet.absoluteFill}>

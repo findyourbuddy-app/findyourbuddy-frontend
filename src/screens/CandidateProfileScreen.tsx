@@ -156,7 +156,7 @@ export function CandidateProfileScreen({ route }: Props) {
         <View style={styles.mainPhotoCard}>
           {photo1 ? (
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxData({ url: photo1, photos: galleryPhotos })}>
-              <Image source={{ uri: resolvePhotoUrl(photo1) ?? undefined }} style={styles.fullImage} contentFit="cover" />
+              <Image source={{ uri: resolvePhotoUrl(photo1) ?? undefined }} style={styles.fullImage} contentFit="cover" pointerEvents="none" />
             </Pressable>
           ) : (
             <View style={styles.avatarPlaceholder}>
@@ -284,7 +284,7 @@ export function CandidateProfileScreen({ route }: Props) {
         {/* SECTION 3: Interspersed Photo 2 Card */}
         {photo2 ? (
           <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: photo2, photos: galleryPhotos })}>
-            <Image source={{ uri: resolvePhotoUrl(photo2) ?? undefined }} style={styles.fullImage} contentFit="cover" />
+            <Image source={{ uri: resolvePhotoUrl(photo2) ?? undefined }} style={styles.fullImage} contentFit="cover" pointerEvents="none" />
           </Pressable>
         ) : null}
 
@@ -328,7 +328,7 @@ export function CandidateProfileScreen({ route }: Props) {
         {/* SECTION 5: Interspersed Photo 3 Card */}
         {photo3 ? (
           <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: photo3, photos: galleryPhotos })}>
-            <Image source={{ uri: resolvePhotoUrl(photo3) ?? undefined }} style={styles.fullImage} contentFit="cover" />
+            <Image source={{ uri: resolvePhotoUrl(photo3) ?? undefined }} style={styles.fullImage} contentFit="cover" pointerEvents="none" />
           </Pressable>
         ) : null}
 
@@ -417,7 +417,7 @@ export function CandidateProfileScreen({ route }: Props) {
         {/* SECTION 7: Remaining Photos Interspersed */}
         {remainingPhotos.map((uri, idx) => (
           <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: uri, photos: galleryPhotos })}>
-            <Image source={{ uri: resolvePhotoUrl(uri) ?? undefined }} style={styles.fullImage} contentFit="cover" />
+            <Image source={{ uri: resolvePhotoUrl(uri) ?? undefined }} style={styles.fullImage} contentFit="cover" pointerEvents="none" />
           </Pressable>
         ))}
       </ScrollView>
