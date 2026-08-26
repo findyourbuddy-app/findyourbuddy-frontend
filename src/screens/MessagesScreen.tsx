@@ -313,6 +313,7 @@ export function MessagesScreen() {
             />
           </View>
         )}
+        removeClippedSubviews={true}
       />
     </View>
   );

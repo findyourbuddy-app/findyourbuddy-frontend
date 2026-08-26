@@ -862,6 +862,10 @@ export function DiscoverScreen() {
           </View>
         );
       }}
+      removeClippedSubviews={true}
+      maxToRenderPerBatch={8}
+      initialNumToRender={6}
+      windowSize={5}
     />
     <OptionPickerModal
       visible={sortPickerVisible}
