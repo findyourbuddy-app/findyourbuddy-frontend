@@ -56,9 +56,9 @@ export function getApiBaseUrl(): string {
   }
 
   if (Platform.OS === "android") {
-    return "http://192.168.0.27:8001";
+    return "http://10.0.2.2:8001";
   }
-  return "http://192.168.0.27:8001";
+  return "http://localhost:8001";
 }
 
 export const API_BASE_URL = getApiBaseUrl();
