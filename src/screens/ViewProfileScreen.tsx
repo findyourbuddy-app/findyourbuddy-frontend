@@ -90,7 +90,7 @@ export function ViewProfileScreen() {
       {/* Photo 1 Hero Header */}
       <View style={styles.mainPhotoCard}>
         {photo1 ? (
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxData({ url: photo1, photos: galleryPhotos })}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => { console.log("[DEBUG] photo1 pressed"); setLightboxData({ url: photo1, photos: galleryPhotos }); }}>
             <Image source={{ uri: resolvePhotoUrl(photo1) ?? undefined }} style={styles.fullImage} contentFit="cover" />
           </Pressable>
         ) : (

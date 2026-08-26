@@ -702,8 +702,8 @@ export function ChatScreen({ route }: Props) {
   return (
     <KeyboardAvoidingView
       style={[styles.background, { backgroundColor: bgGradient[0] }]}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
       {showFeedbackBanner ? (
         <View style={styles.feedbackBanner}>
@@ -868,7 +868,7 @@ export function ChatScreen({ route }: Props) {
           </Text>
         </View>
       ) : (
-        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={[styles.inputRow, { paddingBottom: insets.bottom > 0 ? insets.bottom : spacing.xs }]}>
           <Pressable style={styles.attachButton} onPress={handlePickPhoto} disabled={isSending}>
             <Feather name="plus" size={20} color={accentColor} />
           </Pressable>
