@@ -159,12 +159,28 @@ export function SwipeScreen() {
     }, [route.params])
   );
 
+  const availableEventsRef = useRef(availableEvents);
+  availableEventsRef.current = availableEvents;
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       const hasParamChange = route.params && "eventId" in route.params && route.params.eventId !== consumedEventIdRef.current;
 
-      if (hasInitialLoadedRef.current && candidatesRef.current.length > 0 && !hasParamChange) {
+      if (availableEventsRef.current.length > 0 && !hasParamChange) {
+        resolveActiveEvent(availableEventsRef.current).then(async ({ event, tab }) => {
+          if (cancelled) return;
+          setActiveTab(tab);
+          setActiveEvent(event);
+          setCurrentIndex(0);
+          if (event) {
+            const list = await getSwipeCandidates(event.id, filters);
+            if (!cancelled) setCandidates(list);
+          } else {
+            setCandidates([]);
+          }
+          if (!cancelled) setIsLoading(false);
+        });
         refreshQuota();
         return;
       }
