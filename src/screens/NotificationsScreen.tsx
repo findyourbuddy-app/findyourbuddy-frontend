@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -27,6 +28,7 @@ export function NotificationsScreen() {
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [ratingModalData, setRatingModalData] = useState<{ eventId: number; title: string; creatorName?: string } | null>(null);
 
   const notificationsRef = useRef(notifications);
@@ -50,6 +52,18 @@ export function NotificationsScreen() {
       setIsLoading(false);
     }
   }, [language]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const list = await listMyNotifications();
+      setNotifications(list);
+    } catch {
+      // transient failure ignore
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -209,18 +223,38 @@ export function NotificationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bgGradient[0] }]}>
-      <View style={styles.timelineLine} />
+      {notifications.length > 0 ? <View style={styles.timelineLine} /> : null}
       <FlatList
         style={[styles.background, { backgroundColor: bgGradient[0] }]}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={notifications.length === 0 ? styles.emptyListContent : styles.list}
         data={notifications}
         keyExtractor={(item) => String(item.id)}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[accentColor]}
+            tintColor={accentColor}
+          />
+        }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>{t("noNotificationsYet")}</Text>
+          <View style={styles.emptyContainer}>
+            <View style={[styles.emptyIconCircle, { backgroundColor: `${accentColor}15` }]}>
+              <Feather name="bell-off" size={32} color={accentColor} />
+            </View>
+            <Text style={styles.emptyTitle}>
+              {language === "en" ? "No Notifications Yet" : "Henüz Bildirimin Yok"}
+            </Text>
+            <Text style={styles.emptySub}>
+              {language === "en"
+                ? "When you receive likes, event updates, or new messages, they will show up right here."
+                : "Yeni bir beğeni, mesaj veya etkinlik güncellemesi aldığında hepsi burada görünecek."}
+            </Text>
+          </View>
         }
         renderItem={({ item }) => {
           const meta = getNotificationMeta(item.title, item.body);
-          const formatted = formatNotificationContent(item.title, item.body);
+          const formatted = formatNotificationContent(item.title || "Bildirim", item.body || "");
 
           return (
             <Pressable
@@ -278,6 +312,40 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingLeft: spacing.xl + 8,
   },
+  emptyListContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+    maxWidth: 320,
+  },
+  emptyIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    fontFamily: fontFamily.displaySemiBold,
+    fontSize: 18,
+    color: colors.textPrimary,
+    textAlign: "center",
+    marginBottom: spacing.xs,
+  },
+  emptySub: {
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 19,
+  },
   timelineLine: {
     position: "absolute",
     left: spacing.xl + 8,
@@ -328,12 +396,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  emptyText: {
-    fontFamily: fontFamily.body,
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginTop: spacing.xl,
   },
 });
