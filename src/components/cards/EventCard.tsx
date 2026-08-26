@@ -45,9 +45,9 @@ export const EventCard = memo(function EventCard({ event, bookmarked, onToggleBo
     <Pressable style={styles.card} onPress={onPress} disabled={!onPress}>
       <View style={styles.banner}>
         {event.creator_id && event.creator?.photo_url ? (
-          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={{ duration: 150 }} />
         ) : event.image_url ? (
-          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={{ duration: 150 }} />
         ) : (
           <LinearGradient colors={category.gradient} style={StyleSheet.absoluteFill}>
             <View style={styles.bannerIcon}>

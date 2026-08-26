@@ -162,7 +162,7 @@ export function SwipeCandidateCard({
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           cachePolicy="memory-disk"
-          transition={150}
+          transition={{ duration: 150 }}
           pointerEvents="none"
         />
       ) : (

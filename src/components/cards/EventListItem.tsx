@@ -33,9 +33,9 @@ export const EventListItem = memo(function EventListItem({ event, bookmarked, on
     >
       <View style={styles.thumbnail}>
         {event.creator_id && event.creator?.photo_url ? (
-          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={{ duration: 150 }} />
         ) : event.image_url ? (
-          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={{ duration: 150 }} />
         ) : (
           <LinearGradient colors={category.gradient} style={styles.thumbnailIcon}>
             <Feather name={category.icon} size={22} color={colors.surface} />
