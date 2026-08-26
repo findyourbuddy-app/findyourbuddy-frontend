@@ -23,7 +23,7 @@ interface EventCardProps {
   distanceLabel?: string;
 }
 
-export const EventCard = memo(function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, onPress, distanceLabel }: EventCardProps) {
+export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, onPress, distanceLabel }: EventCardProps) {
   const { language, t } = useAppTheme();
   const category = getCategoryMeta(event.category, language);
   const startLabel = formatEventDate(event.starts_at, language);
@@ -113,7 +113,7 @@ export const EventCard = memo(function EventCard({ event, bookmarked, onToggleBo
       </View>
     </Pressable>
   );
-});
+}
 
 const styles = StyleSheet.create({
   card: {

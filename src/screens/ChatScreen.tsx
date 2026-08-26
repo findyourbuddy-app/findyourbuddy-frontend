@@ -7,7 +7,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
 import axios from "axios";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, type IcebreakerItem } from "../api/messages";
 import { fetchTrendingGifs, searchGifs, type GifResult } from "../api/giphy";
@@ -606,23 +606,37 @@ export function ChatScreen({ route }: Props) {
     setLiveMessages((prev) => [...prev, tempMsg]);
 
     try {
+      let finalContent = activeText;
+      let finalMessageType: "text" | "image" | "gif" = "text";
+      let finalMediaUrl: string | undefined = undefined;
+
       if (activeImage) {
         const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
         const uploaded = await uploadGalleryPhoto(activeImage.uri, fileName);
         if (!uploaded?.photo_url) {
           throw new Error("Image upload did not return a URL");
         }
-
-        await sendMessage(matchId, {
-          content: activeText || "[Fotoğraf]",
-          message_type: "image",
-          media_url: uploaded.photo_url,
-        });
-      } else {
-        await sendMessage(matchId, { content: activeText, message_type: "text", media_url: undefined });
+        finalMediaUrl = uploaded.photo_url;
+        finalMessageType = "image";
+        finalContent = activeText || "[Fotoğraf]";
       }
+
+      const firestoreRef = collection(db, "matches", String(matchId), "messages");
+      addDoc(firestoreRef, {
+        sender_id: user.id,
+        content: finalContent,
+        message_type: finalMessageType,
+        media_url: finalMediaUrl || null,
+        created_at: serverTimestamp(),
+        is_read: false,
+      }).catch(() => {});
+
+      await sendMessage(matchId, {
+        content: finalContent,
+        message_type: finalMessageType,
+        media_url: finalMediaUrl,
+      });
     } catch (error) {
-      // Revert optimistic message if network fails
       setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
       if (activeText) setDraft(activeText);
       if (activeImage) setSelectedImage(activeImage);
@@ -658,6 +672,16 @@ export function ChatScreen({ route }: Props) {
     setLiveMessages((prev) => [...prev, tempGifMsg]);
 
     try {
+      const firestoreRef = collection(db, "matches", String(matchId), "messages");
+      addDoc(firestoreRef, {
+        sender_id: user.id,
+        content: "[GIF]",
+        message_type: "gif",
+        media_url: gifUrl,
+        created_at: serverTimestamp(),
+        is_read: false,
+      }).catch(() => {});
+
       await sendMessage(matchId, {
         content: "[GIF]",
         message_type: "gif",

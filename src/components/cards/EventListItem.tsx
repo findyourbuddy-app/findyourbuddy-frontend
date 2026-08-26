@@ -20,7 +20,7 @@ interface EventListItemProps {
   distanceLabel?: string;
 }
 
-export const EventListItem = memo(function EventListItem({ event, bookmarked, onToggleBookmark, onPress, distanceLabel }: EventListItemProps) {
+export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, distanceLabel }: EventListItemProps) {
   const { language } = useAppTheme();
   const category = getCategoryMeta(event.category, language);
 
@@ -73,7 +73,7 @@ export const EventListItem = memo(function EventListItem({ event, bookmarked, on
       </View>
     </Pressable>
   );
-});
+}
 
 const styles = StyleSheet.create({
   container: {
