@@ -31,7 +31,7 @@ type Props = NativeStackScreenProps<MainStackParamList, "Chat">;
 
 export function ChatScreen({ route }: Props) {
   const insets = useSafeAreaInsets();
-  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent, eventCreatorId, eventTitle } = route.params;
+  const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent, eventCreatorId, eventTitle, eventId } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
@@ -52,21 +52,26 @@ export function ChatScreen({ route }: Props) {
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 
   const openGroupMembersModal = useCallback(async () => {
-    if (!isOrganizer) return;
     setShowMembersModal(true);
     setIsLoadingMembers(true);
     try {
-      const { listMyMatches } = require("../api/matches");
-      const matches = await listMyMatches();
-      const eventMatches = matches.filter((m: any) => m.event_is_group && m.event_title === eventTitle);
-      const members = eventMatches.map((m: any) => m.other_user);
-      setGroupMembers(members);
+      if (eventId) {
+        const { getEventAttendees } = require("../api/events");
+        const attendees = await getEventAttendees(eventId);
+        setGroupMembers(attendees);
+      } else {
+        const { listMyMatches } = require("../api/matches");
+        const matches = await listMyMatches();
+        const eventMatches = matches.filter((m: any) => m.event_is_group && m.event_title === eventTitle);
+        const members = eventMatches.map((m: any) => m.other_user);
+        setGroupMembers(members);
+      }
     } catch {
       // Best effort
     } finally {
       setIsLoadingMembers(false);
     }
-  }, [isOrganizer, eventTitle]);
+  }, [eventId, eventTitle]);
 
   const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
     { reason: "harassment", label: language === "en" ? "Harassment / Inappropriate Behavior" : "Taciz / Rahatsız Edici Davranış" },
@@ -420,8 +425,7 @@ export function ChatScreen({ route }: Props) {
           {isGroupEvent ? (
             <Pressable
               style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}
-              onPress={isOrganizer ? openGroupMembersModal : undefined}
-              disabled={!isOrganizer}
+              onPress={openGroupMembersModal}
             >
               <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
                 <Feather name="users" size={18} color="#FFFFFF" />
@@ -431,7 +435,7 @@ export function ChatScreen({ route }: Props) {
                   {eventTitle || (language === "en" ? "Group Event Chat" : "Grup Etkinlik Sohbeti")}
                 </Text>
                 <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.primary }}>
-                  {isOrganizer ? (language === "en" ? "Katılımcılar (Organizatör)" : "Katılımcılar (Organizatör)") : (language === "en" ? "Group Chat Channel" : "Grup Sohbet Kanalı")}
+                  {language === "en" ? "Katılımcı Listesi" : "Katılımcı Listesi"}
                 </Text>
               </View>
             </Pressable>

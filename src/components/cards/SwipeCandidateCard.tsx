@@ -99,8 +99,8 @@ export function SwipeCandidateCard({
             goToPhoto(-1);
           } else if (photoUrls.length > 1 && cardWidth > 0 && tapX > cardWidth * 0.75) {
             goToPhoto(1);
-          } else if (photoUrls.length > 0) {
-            setLightboxVisible(true);
+          } else {
+            onPressProfile();
           }
           return;
         }

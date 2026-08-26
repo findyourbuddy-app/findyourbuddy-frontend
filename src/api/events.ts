@@ -65,6 +65,10 @@ export function createEventCreditsCheckoutSession(): Promise<{ checkout_url: str
     .then((res) => res.data);
 }
 
+export function getEventAttendees(eventId: number): Promise<User[]> {
+  return apiClient.get<User[]>(`/events/${eventId}/attendees`).then((res) => res.data);
+}
+
 export function getEventJoinRequests(eventId: number): Promise<User[]> {
   return apiClient.get<User[]>(`/events/${eventId}/join-requests`).then((res) => res.data);
 }
