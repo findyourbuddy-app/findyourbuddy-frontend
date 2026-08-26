@@ -737,6 +737,7 @@ export function ChatScreen({ route }: Props) {
         initialNumToRender={15}
         maxToRenderPerBatch={10}
         windowSize={5}
+        removeClippedSubviews={true}
         renderItem={({ item }) => {
           const isOwn = item.sender_id === user.id;
           const timeText = formatMessageTime(item.created_at, language);
