@@ -161,6 +161,8 @@ export function SwipeScreen() {
 
   const availableEventsRef = useRef(availableEvents);
   availableEventsRef.current = availableEvents;
+  const activeEventRef = useRef(activeEvent);
+  activeEventRef.current = activeEvent;
 
   useFocusEffect(
     useCallback(() => {
@@ -168,19 +170,14 @@ export function SwipeScreen() {
       const hasParamChange = route.params && "eventId" in route.params && route.params.eventId !== consumedEventIdRef.current;
 
       if (availableEventsRef.current.length > 0 && !hasParamChange) {
-        resolveActiveEvent(availableEventsRef.current).then(async ({ event, tab }) => {
-          if (cancelled) return;
-          setActiveTab(tab);
-          setActiveEvent(event);
-          setCurrentIndex(0);
-          if (event) {
-            const list = await getSwipeCandidates(event.id, filters);
+        const targetEvent = activeEventRef.current || availableEventsRef.current[0];
+        if (targetEvent) {
+          getSwipeCandidates(targetEvent.id, filters).then((list) => {
             if (!cancelled) setCandidates(list);
-          } else {
-            setCandidates([]);
-          }
-          if (!cancelled) setIsLoading(false);
-        });
+          }).finally(() => {
+            if (!cancelled) setIsLoading(false);
+          });
+        }
         refreshQuota();
         return;
       }

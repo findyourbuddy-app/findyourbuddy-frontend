@@ -515,7 +515,7 @@ export function ChatScreen({ route }: Props) {
       (snapshot) => {
         const list: Message[] = [];
         snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
+          const data = docSnap.data({ serverTimestamps: "estimate" });
           list.push({
             id: docSnap.id,
             match_id: matchId,
@@ -523,7 +523,7 @@ export function ChatScreen({ route }: Props) {
             content: data.content,
             message_type: data.message_type || "text",
             media_url: data.media_url || null,
-            created_at: data.created_at?.toDate()?.toISOString() || new Date().toISOString(),
+            created_at: data.created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
             is_read: data.is_read || false,
             reactions: data.reactions || {},
           });
