@@ -20,6 +20,7 @@ import { useMessagesContext } from "../context/MessagesContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { apiClient } from "../api/client";
 import { colors, fontFamily, radius, spacing, typeScale, shadows } from "../theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { formatMessageTime, formatRelativeTimestamp } from "../utils/date";
 import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
@@ -29,6 +30,7 @@ import type { Message, ReportReason } from "../types";
 type Props = NativeStackScreenProps<MainStackParamList, "Chat">;
 
 export function ChatScreen({ route }: Props) {
+  const insets = useSafeAreaInsets();
   const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent, eventCreatorId, eventTitle } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
@@ -700,8 +702,8 @@ export function ChatScreen({ route }: Props) {
   return (
     <KeyboardAvoidingView
       style={[styles.background, { backgroundColor: bgGradient[0] }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={80}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       {showFeedbackBanner ? (
         <View style={styles.feedbackBanner}>
@@ -866,7 +868,7 @@ export function ChatScreen({ route }: Props) {
           </Text>
         </View>
       ) : (
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <Pressable style={styles.attachButton} onPress={handlePickPhoto} disabled={isSending}>
             <Feather name="plus" size={20} color={accentColor} />
           </Pressable>
