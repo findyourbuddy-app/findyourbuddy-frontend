@@ -221,6 +221,7 @@ export interface Notification {
   is_read: boolean;
   event_id?: number | null;
   match_id?: number | null;
+  notification_type?: string | null;
   data?: Record<string, any> | null;
   created_at: string;
 }

@@ -90,7 +90,7 @@ export function ViewProfileScreen() {
       {/* Photo 1 Hero Header */}
       <View style={styles.mainPhotoCard}>
         {photo1 ? (
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxData({ url: photo1, photos: [photo1] })}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxData({ url: photo1, photos: galleryPhotos })}>
             <Image source={{ uri: resolvePhotoUrl(photo1) ?? undefined }} style={styles.fullImage} contentFit="cover" />
           </Pressable>
         ) : (
@@ -101,6 +101,7 @@ export function ViewProfileScreen() {
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.85)"]}
           style={styles.photoGradient}
+          pointerEvents="box-none"
         >
           <View style={styles.nameRow}>
             <Text style={styles.heroName}>

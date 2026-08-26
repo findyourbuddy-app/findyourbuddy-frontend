@@ -154,6 +154,25 @@ export function NotificationsScreen() {
   }
 
   function handlePressNotification(item: Notification) {
+    const meta = getNotificationMeta(item.title, item.body);
+
+    // Special handling for feedback notifications ("Etkinlik nasıldı?")
+    if (meta.type === "feedback" || item.notification_type === "match_feedback") {
+      const matchId = item.match_id || (item.data && typeof item.data === "object" ? (item.data as any).match_id : null);
+      if (matchId) {
+        const data = item.data as Record<string, any> | undefined;
+        navigation.navigate("Chat", {
+          matchId: Number(matchId),
+          otherUserId: Number(data?.other_user_id || 0),
+          otherUserName: String(data?.other_user_name || "Kanka"),
+          needsFeedback: true,
+        });
+        return;
+      }
+      navigation.navigate("Tabs", { screen: "Messages" });
+      return;
+    }
+
     if (item.event_id) {
       navigation.navigate("EventDetail", { eventId: Number(item.event_id) });
       return;
@@ -183,10 +202,9 @@ export function NotificationsScreen() {
       }
     }
 
-    const meta = getNotificationMeta(item.title, item.body);
     if (meta.type === "like") {
       navigation.navigate("LikesReceived");
-    } else if (meta.type === "match" || meta.type === "message" || meta.type === "feedback") {
+    } else if (meta.type === "match" || meta.type === "message") {
       navigation.navigate("Tabs", { screen: "Messages" });
     } else {
       navigation.navigate("Tabs", { screen: "Discover" });

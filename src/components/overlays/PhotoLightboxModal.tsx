@@ -97,13 +97,13 @@ export function PhotoLightboxModal({
             setActiveIndex(index);
           }}
           renderItem={({ item }) => (
-            <View style={styles.slide}>
+            <Pressable style={styles.slide} onPress={onClose}>
               <Image
                 source={{ uri: item }}
                 style={styles.fullScreenImage}
                 contentFit="contain"
               />
-            </View>
+            </Pressable>
           )}
         />
 
