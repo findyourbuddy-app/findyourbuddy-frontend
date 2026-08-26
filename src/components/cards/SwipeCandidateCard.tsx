@@ -161,6 +161,8 @@ export function SwipeCandidateCard({
           source={{ uri: photoUrls[activeIndex] }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={150}
           pointerEvents="none"
         />
       ) : (

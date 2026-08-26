@@ -99,10 +99,10 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
       {resolvedUrl && !imageError ? (
         <>
           <Image
-            key={resolvedUrl}
             source={{ uri: resolvedUrl }}
             style={dimensionStyle}
             contentFit="cover"
+            cachePolicy="memory-disk"
             onError={() => setImageError(true)}
             pointerEvents="none"
           />
