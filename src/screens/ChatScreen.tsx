@@ -531,18 +531,39 @@ export function ChatScreen({ route }: Props) {
     return () => unsubscribe();
   }, [matchId, user]);
 
-  // Postgres has the full history; Firestore only has messages sent since the
-  // real-time migration. Keep whatever Postgres history predates Firestore's
-  // earliest message, then let Firestore drive everything from there on.
+  // Deduplicate and merge Postgres historical messages + Firestore live messages + Optimistic temp messages
   const messages = useMemo(() => {
-    if (liveMessages.length === 0) {
-      return historicalMessages;
+    const map = new Map<string | number, Message>();
+
+    for (const msg of historicalMessages) {
+      map.set(msg.id, msg);
     }
-    const earliestLiveTime = new Date(liveMessages[0].created_at).getTime();
-    const olderHistory = historicalMessages.filter(
-      (message) => new Date(message.created_at).getTime() < earliestLiveTime
-    );
-    return [...olderHistory, ...liveMessages];
+
+    for (const msg of liveMessages) {
+      map.set(msg.id, msg);
+    }
+
+    const merged = Array.from(map.values());
+    const uniqueList: Message[] = [];
+    const seenSignatures = new Set<string>();
+
+    for (const msg of merged) {
+      const timeMin = Math.floor((new Date(msg.created_at).getTime() || 0) / 60000);
+      const signature = `${msg.sender_id}_${msg.message_type}_${msg.content}_${timeMin}`;
+
+      if (typeof msg.id === "string" && msg.id.startsWith("temp_")) {
+        if (seenSignatures.has(signature)) continue;
+      }
+
+      seenSignatures.add(signature);
+      uniqueList.push(msg);
+    }
+
+    return uniqueList.sort((a, b) => {
+      const timeA = new Date(a.created_at).getTime() || 0;
+      const timeB = new Date(b.created_at).getTime() || 0;
+      return timeA - timeB;
+    });
   }, [historicalMessages, liveMessages]);
 
   const messageListRef = useRef<FlatList<Message>>(null);
