@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
@@ -83,7 +83,7 @@ export function resolvePhotoUrl(url?: string | null): string | null {
   return `${base}${cleanPath}`;
 }
 
-export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: AvatarProps) {
+export const Avatar = memo(function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: AvatarProps) {
   const [imageError, setImageError] = useState(false);
   const resolvedUrl = resolvePhotoUrl(photoUrl);
 
@@ -148,7 +148,7 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   fallback: {
