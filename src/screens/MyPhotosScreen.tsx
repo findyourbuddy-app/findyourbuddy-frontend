@@ -139,10 +139,7 @@ export function MyPhotosScreen() {
     ]);
   }
 
-  const allPhotos = [
-    user?.photo_url,
-    ...photos.map((p) => p.photo_url),
-  ].filter((u): u is string => Boolean(u));
+  const galleryPhotos = photos.map((p) => p.photo_url).filter((u): u is string => Boolean(u));
 
   return (
     <ScrollView
@@ -157,7 +154,7 @@ export function MyPhotosScreen() {
           <Pressable
             onPress={() => {
               if (user?.photo_url) {
-                setLightboxData({ url: user.photo_url, photos: allPhotos });
+                setLightboxData({ url: user.photo_url, photos: [user.photo_url] });
               }
             }}
           >
@@ -216,7 +213,7 @@ export function MyPhotosScreen() {
                   <View key={photo.id} style={styles.photoBox}>
                     <Pressable
                       style={styles.photoPressable}
-                      onPress={() => setLightboxData({ url: photo.photo_url, photos: allPhotos })}
+                      onPress={() => setLightboxData({ url: photo.photo_url, photos: galleryPhotos })}
                     >
                       {resolvedUri ? (
                         <Image source={{ uri: resolvedUri }} style={styles.photoImage} contentFit="cover" />
