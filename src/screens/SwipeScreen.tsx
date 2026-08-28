@@ -71,6 +71,10 @@ export function SwipeScreen() {
   const [activeTab, setActiveTab] = useState<"system" | "user">("system");
   const [userSubTab, setUserSubTab] = useState<"birebir" | "group">("birebir");
   const [userGroupEvents, setUserGroupEvents] = useState<Event[]>([]);
+  // Set when the user opened a specific group event to swipe ("Kankaları Gör").
+  // While set, the "group" sub-tab shows the candidate deck instead of the
+  // browse list; cleared by the exit button or switching tabs.
+  const [groupSwipeEvent, setGroupSwipeEvent] = useState<ActiveEvent | null>(null);
 
   useEffect(() => {
     if (candidates.length > currentIndex + 1) {
@@ -174,6 +178,8 @@ export function SwipeScreen() {
   availableEventsRef.current = availableEvents;
   const activeEventRef = useRef(activeEvent);
   activeEventRef.current = activeEvent;
+  const groupSwipeEventRef = useRef(groupSwipeEvent);
+  groupSwipeEventRef.current = groupSwipeEvent;
 
   useFocusEffect(
     useCallback(() => {
@@ -201,6 +207,12 @@ export function SwipeScreen() {
             tab: matched?.creator_id ? "user" : "system",
             subTab: "birebir",
           };
+        }
+        // Keep an in-progress group swipe alive when this effect re-runs for
+        // an unrelated reason (screen re-focus, filters) rather than snapping
+        // activeEvent to some other event.
+        if (groupSwipeEventRef.current) {
+          return { event: groupSwipeEventRef.current, tab: "user", subTab: "group" };
         }
         // Group events have their own card list (userSubTab === "group") and are
         // never swiped via activeEvent -- excluding them here keeps this fallback
@@ -243,6 +255,11 @@ export function SwipeScreen() {
           setActiveTab(tab);
           if (subTab) {
             setUserSubTab(subTab);
+          }
+          if (subTab === "group" && event) {
+            setGroupSwipeEvent(event);
+          } else if (subTab === "birebir") {
+            setGroupSwipeEvent(null);
           }
           const isSameEvent = activeEventRef.current && event && activeEventRef.current.id === event.id;
           setActiveEvent(event);
@@ -300,6 +317,7 @@ export function SwipeScreen() {
     setActiveTab(nextTab);
     setCandidates([]);
     setCurrentIndex(0);
+    setGroupSwipeEvent(null);
     setIsLoading(true);
 
     const nowMs = Date.now();
@@ -535,7 +553,10 @@ export function SwipeScreen() {
           <>
             <Pressable
               style={[styles.subTabButton, userSubTab === "birebir" && styles.subTabButtonActive]}
-              onPress={() => setUserSubTab("birebir")}
+              onPress={() => {
+                setUserSubTab("birebir");
+                setGroupSwipeEvent(null);
+              }}
             >
               <Feather name="user" size={13} color={userSubTab === "birebir" ? colors.primary : colors.textSecondary} />
               <Text style={[styles.subTabButtonText, userSubTab === "birebir" && styles.subTabButtonTextActive]}>
@@ -544,7 +565,10 @@ export function SwipeScreen() {
             </Pressable>
             <Pressable
               style={[styles.subTabButton, userSubTab === "group" && styles.subTabButtonActive]}
-              onPress={() => setUserSubTab("group")}
+              onPress={() => {
+                setUserSubTab("group");
+                setGroupSwipeEvent(null);
+              }}
             >
               <Feather name="users" size={13} color={userSubTab === "group" ? colors.primary : colors.textSecondary} />
               <Text style={[styles.subTabButtonText, userSubTab === "group" && styles.subTabButtonTextActive]}>
@@ -564,7 +588,27 @@ export function SwipeScreen() {
 
 
 
-      {!(activeTab === "user" && userSubTab === "group") ? (
+      {groupSwipeEvent ? (
+        <View style={styles.groupSwipeBar}>
+          <Feather name="users" size={14} color={colors.primary} />
+          <Text style={styles.groupSwipeBarText} numberOfLines={1}>
+            {groupSwipeEvent.title}
+          </Text>
+          <Pressable
+            style={styles.groupSwipeExitBtn}
+            onPress={() => setGroupSwipeEvent(null)}
+            accessibilityRole="button"
+            accessibilityLabel={language === "en" ? "Exit group matching" : "Grup eşleşmesinden çık"}
+          >
+            <Feather name="log-out" size={12} color="#FFFFFF" />
+            <Text style={styles.groupSwipeExitBtnText}>
+              {language === "en" ? "Exit" : "Çık"}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {!(activeTab === "user" && userSubTab === "group" && !groupSwipeEvent) ? (
         <View style={styles.metaRow}>
           {activeTab === "system" && activeEvent ? (
             <Pressable
@@ -595,8 +639,8 @@ export function SwipeScreen() {
         </View>
       ) : null}
 
-      <View style={[styles.cardArea, (activeTab === "user" && userSubTab === "group") && { paddingBottom: 10 }]}>
-        {activeTab === "user" && userSubTab === "group" ? (
+      <View style={[styles.cardArea, (activeTab === "user" && userSubTab === "group" && !groupSwipeEvent) && { paddingBottom: 10 }]}>
+        {activeTab === "user" && userSubTab === "group" && !groupSwipeEvent ? (
           isLoadingGroups ? (
             <View style={styles.center}>
               <ActivityIndicator color={colors.primary} />
@@ -721,6 +765,13 @@ export function SwipeScreen() {
               if (!activeCandidate) return;
               navigation.navigate("CandidateProfile", {
                 candidate: activeCandidate,
+                eventTitle: groupSwipeEvent?.title,
+                onExitGroupSwipe: groupSwipeEvent
+                  ? () => {
+                      setGroupSwipeEvent(null);
+                      navigation.goBack();
+                    }
+                  : undefined,
                 onSwipeLeft: () => handleSwipe("pass"),
                 onSwipeRight: () => handleSwipe("like"),
                 onSwipeUp: () => handleSwipe("super_like"),
@@ -738,7 +789,7 @@ export function SwipeScreen() {
         )}
       </View>
 
-      {activeEvent && candidates[currentIndex] && (activeTab !== "user" || userSubTab !== "group") ? (
+      {activeEvent && candidates[currentIndex] && (activeTab !== "user" || userSubTab !== "group" || groupSwipeEvent) ? (
         <View style={styles.actionRow}>
           <Pressable
             style={[styles.actionButton, styles.passButton]}
@@ -1215,6 +1266,38 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
     marginBottom: spacing.sm,
+  },
+  groupSwipeBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.primaryMuted,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  groupSwipeBarText: {
+    flex: 1,
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
+  },
+  groupSwipeExitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.accentRed,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+  },
+  groupSwipeExitBtnText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 11,
+    color: "#FFFFFF",
   },
   subTabButton: {
     flex: 1,
