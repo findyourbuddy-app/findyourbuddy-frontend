@@ -66,6 +66,16 @@ export function CandidateProfileScreen({ route }: Props) {
     setProfile(candidate);
     let cancelled = false;
 
+    // Prefetch candidate primary photo & existing photos immediately so they render in 0ms
+    if (candidate.photo_url) {
+      const url = resolvePhotoUrl(candidate.photo_url);
+      if (url) Image.prefetch(url).catch(() => {});
+    }
+    candidate.photos?.forEach((p) => {
+      const url = resolvePhotoUrl(p.photo_url);
+      if (url) Image.prefetch(url).catch(() => {});
+    });
+
     Promise.all([
       getUserById(candidate.id).catch(() => null),
       getUserUpcomingEvents(candidate.id).catch(() => []),
@@ -73,6 +83,15 @@ export function CandidateProfileScreen({ route }: Props) {
       if (cancelled) return;
       if (fullUser) {
         setProfile((prev) => ({ ...prev, ...fullUser }));
+        // Prefetch fullUser gallery photos so they appear seamlessly at the exact same time
+        if (fullUser.photo_url) {
+          const url = resolvePhotoUrl(fullUser.photo_url);
+          if (url) Image.prefetch(url).catch(() => {});
+        }
+        fullUser.photos?.forEach((p: any) => {
+          const url = resolvePhotoUrl(p.photo_url);
+          if (url) Image.prefetch(url).catch(() => {});
+        });
       }
       setUpcomingEvents(events);
     });
