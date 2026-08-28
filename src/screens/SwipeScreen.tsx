@@ -92,8 +92,17 @@ export function SwipeScreen() {
   // picking used to double as an implicit "join", letting people swipe on any
   // nearby system event whether or not they said they were going.
   const systemEvents = useMemo(() => {
-    const list = availableEvents.filter((event) => !event.creator_id);
-    return [...list].sort((a, b) => (b.is_attending ? 1 : 0) - (a.is_attending ? 1 : 0));
+    const nowMs = Date.now();
+    return availableEvents.filter((event) => {
+      if (event.creator_id) return false;
+      if (!event.is_attending) return false;
+      if (event.starts_at) {
+        const eventMs = new Date(event.starts_at).getTime();
+        // Remove expired events (older than 4 hours after start time)
+        if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
+      }
+      return true;
+    });
   }, [availableEvents]);
   const userEvents = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id)), [availableEvents]);
   const tabEvents = activeTab === "system" ? systemEvents : userEvents;
@@ -171,18 +180,6 @@ export function SwipeScreen() {
       let cancelled = false;
       const hasParamChange = route.params && "eventId" in route.params && route.params.eventId !== consumedEventIdRef.current;
 
-      if (availableEventsRef.current.length > 0 && !hasParamChange) {
-        const targetEvent = activeEventRef.current || availableEventsRef.current[0];
-        if (targetEvent && candidatesRef.current.length === 0) {
-          getSwipeCandidates(targetEvent.id, filters).then((list) => {
-            if (!cancelled) setCandidates(list);
-          }).finally(() => {
-            if (!cancelled) setIsLoading(false);
-          });
-        }
-        refreshQuota();
-        return;
-      }
       hasInitialLoadedRef.current = true;
 
       async function resolveActiveEvent(
@@ -201,14 +198,18 @@ export function SwipeScreen() {
         // never swiped via activeEvent -- excluding them here keeps this fallback
         // in sync with `user1on1Events`/`tabEvents`, so the "Birebir" tab can never
         // silently auto-select a group event that isn't even in the event picker.
-        const currentTabEvents = upcoming.filter((event) =>
-          activeTab === "system"
-            ? !event.creator_id
-            : Boolean(event.creator_id) && !event.is_group_event
-        );
-        if (activeTab === "system") {
-          currentTabEvents.sort((a, b) => (b.is_attending ? 1 : 0) - (a.is_attending ? 1 : 0));
-        }
+        const nowMs = Date.now();
+        const currentTabEvents = upcoming.filter((event) => {
+          if (activeTab === "system") {
+            if (event.creator_id || !event.is_attending) return false;
+            if (event.starts_at) {
+              const eventMs = new Date(event.starts_at).getTime();
+              if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
+            }
+            return true;
+          }
+          return Boolean(event.creator_id) && !event.is_group_event;
+        });
         const fallback = currentTabEvents[0];
         return { event: fallback ? { id: fallback.id, title: fallback.title } : null, tab: activeTab };
       }
@@ -285,14 +286,18 @@ export function SwipeScreen() {
     setCurrentIndex(0);
     setIsLoading(true);
 
-    const matchingEvents = availableEvents.filter((event) =>
-      nextTab === "system"
-        ? !event.creator_id
-        : Boolean(event.creator_id) && !event.is_group_event
-    );
-    if (nextTab === "system") {
-      matchingEvents.sort((a, b) => (b.is_attending ? 1 : 0) - (a.is_attending ? 1 : 0));
-    }
+    const nowMs = Date.now();
+    const matchingEvents = availableEvents.filter((event) => {
+      if (nextTab === "system") {
+        if (event.creator_id || !event.is_attending) return false;
+        if (event.starts_at) {
+          const eventMs = new Date(event.starts_at).getTime();
+          if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
+        }
+        return true;
+      }
+      return Boolean(event.creator_id) && !event.is_group_event;
+    });
 
     const targetEvent = matchingEvents[0] || null;
     if (targetEvent) {
