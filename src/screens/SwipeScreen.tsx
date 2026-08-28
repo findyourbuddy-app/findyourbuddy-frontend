@@ -111,15 +111,20 @@ export function SwipeScreen() {
   const userEvents = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id)), [availableEvents]);
   const tabEvents = activeTab === "system" ? systemEvents : userEvents;
 
+  const userGroupEventsRef = useRef(userGroupEvents);
+  userGroupEventsRef.current = userGroupEvents;
+
   // useFocusEffect (not useEffect) so returning to this tab -- e.g. from
   // EventDetail after applying, or after the organizer approves a request --
   // always shows the current attendance status instead of a stale one from
-  // whenever the tab was first opened.
+  // whenever the tab was first opened. Runs silently in background if events exist.
   useFocusEffect(
     useCallback(() => {
       if (!(activeTab === "user" && userSubTab === "group")) return;
       let cancelled = false;
-      setIsLoadingGroups(true);
+      if (userGroupEventsRef.current.length === 0) {
+        setIsLoadingGroups(true);
+      }
       // origin="user" is required here -- without it, this shares its 50-item
       // budget with thousands of system events, which crowd out user/group
       // events almost entirely (the same pagination bug fixed earlier on Discover).
