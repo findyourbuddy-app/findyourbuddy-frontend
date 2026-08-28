@@ -452,16 +452,6 @@ export function SwipeScreen() {
         }
       });
 
-    if (nextIndex >= candidates.length) {
-      const currentIdx = tabEvents.findIndex((e) => e.id === activeEvent.id);
-      const nextEvent = tabEvents[currentIdx + 1];
-      if (nextEvent) {
-        setTimeout(() => {
-          switchEvent(nextEvent);
-        }, 300);
-      }
-    }
-
     return candidates[nextIndex] || null;
   }
 
@@ -912,22 +902,10 @@ export function SwipeScreen() {
             </Text>
             <View style={{ marginTop: spacing.md, width: "100%", gap: spacing.sm }}>
               {activeTab === "system" ? (
-                <>
-                  {tabEvents.length > 1 ? (
-                    <PrimaryButton
-                      label={language === "en" ? "Next Event Candidates" : "Diğer Etkinlikteki Adaylara Geç"}
-                      onPress={() => {
-                        const currentIdx = tabEvents.findIndex((e) => e.id === activeEvent?.id);
-                        const nextEvent = tabEvents[(currentIdx + 1) % tabEvents.length];
-                        if (nextEvent) switchEvent(nextEvent);
-                      }}
-                    />
-                  ) : null}
-                  <PrimaryButton
-                    label={language === "en" ? "Select New Event in Discover" : "Keşfet'ten Yeni Etkinlik Seç"}
-                    onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
-                  />
-                </>
+                <PrimaryButton
+                  label={language === "en" ? "Select New System Event in Discover" : "Keşfet'ten Yeni Sistem Etkinliği Seç"}
+                  onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
+                />
               ) : (
                 <>
                   <PrimaryButton
