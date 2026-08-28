@@ -620,20 +620,27 @@ export function ChatScreen({ route }: Props) {
     }
 
     const merged = Array.from(map.values());
-    const uniqueList: Message[] = [];
-    const seenTempIds = new Set<string>();
-    const seenSignatures = new Set<string>();
+    const fulfilledTempIds = new Set<string>();
 
     for (const msg of merged) {
       if (msg.client_temp_id) {
-        if (seenTempIds.has(msg.client_temp_id)) continue;
-        seenTempIds.add(msg.client_temp_id);
+        fulfilledTempIds.add(msg.client_temp_id);
+      }
+    }
+
+    const uniqueList: Message[] = [];
+    const seenSignatures = new Set<string>();
+
+    for (const msg of merged) {
+      if (typeof msg.id === "string" && msg.id.startsWith("temp_") && fulfilledTempIds.has(msg.id)) {
+        continue;
       }
 
       const timeMs = new Date(msg.created_at).getTime() || 0;
-      const timeMin = Math.floor(timeMs / 60000);
-      const mainContent = (msg.content || msg.media_url || "").trim();
-      const signature = `${msg.sender_id}_${msg.message_type || "text"}_${mainContent}_${timeMin}`;
+      const timeSlot = Math.floor(timeMs / 120000); // 2-minute window
+      const msgType = msg.message_type || "text";
+      const contentKey = msgType === "text" ? (msg.content || "").trim() : "media_item";
+      const signature = `${msg.sender_id}_${msgType}_${contentKey}_${timeSlot}`;
 
       if (seenSignatures.has(signature)) {
         continue;
