@@ -711,23 +711,17 @@ export function SwipeScreen() {
 
       {!(activeTab === "user" && userSubTab === "group" && !groupSwipeEvent) ? (
         <View style={styles.metaRow}>
-          <Pressable
-            style={styles.eventPill}
-            onPress={openEventPicker}
-            accessibilityRole="button"
-            accessibilityLabel="Etkinlik değiştir"
-          >
-            <Feather name={activeEvent ? "target" : "globe"} size={14} color={colors.primary} />
-            <Text style={styles.eventPillText} numberOfLines={1}>
-              {activeEvent
-                ? (activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title)
-                : (language === "en" ? "All Nearby Buddies (General)" : "Tüm Yakındaki Kankalar (Genel)")}
-            </Text>
-            <Feather name="chevron-down" size={12} color={colors.textSecondary} />
-          </Pressable>
+          {activeEvent ? (
+            <View style={styles.eventPill}>
+              <Feather name="target" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText} numberOfLines={1}>
+                {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
+              </Text>
+            </View>
+          ) : null}
 
           {quota ? (
-            <Text style={styles.quotaText}>
+            <Text style={[styles.quotaText, !activeEvent && { marginLeft: "auto" }]}>
               {quota.is_premium
                 ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
                 : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}
@@ -917,7 +911,11 @@ export function SwipeScreen() {
                 />
               ) : null}
               <PrimaryButton
-                label={language === "en" ? "Explore More Events in Discover" : "Keşfet'ten Yeni Etkinlik Seç"}
+                label={language === "en" ? "General Browse (All Nearby)" : "Etkinlik Seçmeden Genel Gezin (Tüm Çevre)"}
+                onPress={() => selectGeneralSwipe()}
+              />
+              <PrimaryButton
+                label={language === "en" ? "Select New Event in Discover" : "Keşfet'ten Yeni Etkinlik Seç"}
                 onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
               />
             </View>
