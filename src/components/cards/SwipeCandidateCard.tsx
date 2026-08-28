@@ -236,19 +236,13 @@ export function SwipeCandidateCard({
           </View>
         ) : null}
 
-        {candidate.looking_for ? (
-          <View style={styles.lookingForRow}>
-            <Feather name="compass" size={12} color="rgba(255,255,255,0.9)" />
-            <Text style={styles.lookingForText} numberOfLines={1}>{candidate.looking_for}</Text>
-          </View>
-        ) : null}
-
-        {candidate.event_title ? (
-          <View style={styles.eventPill}>
-            <Feather name="calendar" size={11} color={colors.surface} />
-            <Text style={styles.eventPillText} numberOfLines={1}>{candidate.event_title}</Text>
-          </View>
-        ) : null}
+        <View style={styles.lookingForRow}>
+          <Feather name="message-circle" size={12} color="#4DEEEA" />
+          <Text style={styles.lookingForText} numberOfLines={1}>
+            {language === "en" ? "Looking for: " : "Aradığı İletişim: "}
+            {candidate.looking_for || activeEventTitle || candidate.event_title || (language === "en" ? "Event Buddy & Chat" : "Etkinlik Arkadaşı & Sohbet")}
+          </Text>
+        </View>
 
         {candidate.bio || candidate.about_me_prompt ? (
           <View style={styles.bioBox}>

@@ -25,6 +25,7 @@ import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../them
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event, User, UserPublic } from "../types";
 import { formatEventDate } from "../utils/date";
+import { getCategoryMeta } from "../constants/categories";
 
 interface ActiveEvent {
   id: number;
@@ -90,10 +91,10 @@ export function SwipeScreen() {
   // Only events the user has actually joined belong in the swipe-deck picker --
   // picking used to double as an implicit "join", letting people swipe on any
   // nearby system event whether or not they said they were going.
-  const systemEvents = useMemo(
-    () => availableEvents.filter((event) => !event.creator_id && event.is_attending),
-    [availableEvents]
-  );
+  const systemEvents = useMemo(() => {
+    const list = availableEvents.filter((event) => !event.creator_id);
+    return [...list].sort((a, b) => (b.is_attending ? 1 : 0) - (a.is_attending ? 1 : 0));
+  }, [availableEvents]);
   const userEvents = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id)), [availableEvents]);
   const tabEvents = activeTab === "system" ? systemEvents : userEvents;
 
@@ -202,9 +203,12 @@ export function SwipeScreen() {
         // silently auto-select a group event that isn't even in the event picker.
         const currentTabEvents = upcoming.filter((event) =>
           activeTab === "system"
-            ? !event.creator_id && event.is_attending
+            ? !event.creator_id
             : Boolean(event.creator_id) && !event.is_group_event
         );
+        if (activeTab === "system") {
+          currentTabEvents.sort((a, b) => (b.is_attending ? 1 : 0) - (a.is_attending ? 1 : 0));
+        }
         const fallback = currentTabEvents[0];
         return { event: fallback ? { id: fallback.id, title: fallback.title } : null, tab: activeTab };
       }
@@ -283,9 +287,12 @@ export function SwipeScreen() {
 
     const matchingEvents = availableEvents.filter((event) =>
       nextTab === "system"
-        ? !event.creator_id && event.is_attending
+        ? !event.creator_id
         : Boolean(event.creator_id) && !event.is_group_event
     );
+    if (nextTab === "system") {
+      matchingEvents.sort((a, b) => (b.is_attending ? 1 : 0) - (a.is_attending ? 1 : 0));
+    }
 
     const targetEvent = matchingEvents[0] || null;
     if (targetEvent) {
@@ -311,12 +318,18 @@ export function SwipeScreen() {
     }
   }
 
-  const eventPickerOptions = tabEvents.map((event) => ({
-    key: String(event.id),
-    label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
-    icon: "map-pin" as const,
-    onPress: () => switchEvent(event),
-  }));
+  const eventPickerOptions = tabEvents.map((event) => {
+    const badge = event.is_attending
+      ? (language === "en" ? " ✓ Attending" : " ✓ Gidiyorum")
+      : "";
+    const titleWithLocation = event.location_name ? `${event.location_name} · ${event.title}` : event.title;
+    return {
+      key: String(event.id),
+      label: titleWithLocation + badge,
+      icon: (event.is_attending ? "check-circle" : "map-pin") as "check-circle" | "map-pin",
+      onPress: () => switchEvent(event),
+    };
+  });
 
   function handleApplyFilters(nextFilters: SwipeCandidateFilters): void {
     setFilters(nextFilters);
@@ -596,7 +609,7 @@ export function SwipeScreen() {
                   onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
                 >
                   <View style={styles.groupCardHeader}>
-                    <Text style={styles.groupCategoryPill}>{event.category}</Text>
+                    <Text style={styles.groupCategoryPill}>{getCategoryMeta(event.category, language).label}</Text>
                     <View style={styles.attendeesBadge}>
                       <Feather name="users" size={12} color={colors.primary} />
                       <Text style={styles.attendeesBadgeText}>
