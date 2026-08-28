@@ -740,7 +740,7 @@ export function ChatScreen({ route }: Props) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.7,
+      quality: 1.0,
       allowsEditing: false,
     });
     const asset = result.assets?.[0];
@@ -1332,9 +1332,10 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   bubbleImage: {
-    width: 220,
-    height: 160,
-    borderRadius: radius.sm,
+    width: 260,
+    maxWidth: "100%",
+    height: 240,
+    borderRadius: 16,
   },
   modalBackdrop: {
     flex: 1,
