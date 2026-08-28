@@ -750,7 +750,7 @@ export function ChatScreen({ route }: Props) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 1.0,
+      quality: 0.85,
       allowsEditing: false,
     });
     const asset = result.assets?.[0];
