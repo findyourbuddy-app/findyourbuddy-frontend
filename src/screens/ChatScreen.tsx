@@ -220,7 +220,7 @@ export function ChatScreen({ route }: Props) {
       setIncomingCall(null);
     });
     return () => unsubscribe();
-  }, [matchId, user]);
+  }, [matchId, user?.id]);
 
   // Listen for other user's typing status
   useEffect(() => {
@@ -239,7 +239,7 @@ export function ChatScreen({ route }: Props) {
       setOtherUserTyping(false);
     });
     return () => unsubscribe();
-  }, [matchId, otherUserId, user]);
+  }, [matchId, otherUserId, user?.id]);
 
   const reportTyping = useCallback(async (isTyping: boolean) => {
     if (!user) return;
@@ -247,7 +247,7 @@ export function ChatScreen({ route }: Props) {
     try {
       await setDoc(typingRef, { is_typing: isTyping, updated_at: serverTimestamp() });
     } catch {}
-  }, [matchId, user]);
+  }, [matchId, user?.id]);
 
   const handleDraftChange = useCallback((text: string) => {
     setDraft(text);
@@ -603,7 +603,9 @@ export function ChatScreen({ route }: Props) {
     );
 
     return () => unsubscribe();
-  }, [matchId, user]);
+    // user identity, not the object -- an unrelated user-object change must not
+    // tear down and rebuild the listener (that briefly clears the message list).
+  }, [matchId, user?.id]);
 
   // Deduplicate and merge Postgres historical messages + Firestore live messages + Optimistic temp messages
   const messages = useMemo(() => {
@@ -739,19 +741,9 @@ export function ChatScreen({ route }: Props) {
         media_height: activeImage?.height ?? null,
         client_temp_id: tempId,
       });
-
-      // Firestore relay isn't configured (or is down) if nothing replaced the
-      // placeholder shortly after the API confirmed the send -- keep it as a
-      // permanent local message pointing at the uploaded URL.
-      setTimeout(() => {
-        setLiveMessages((prev) =>
-          prev.map((m) =>
-            m.id === tempId
-              ? { ...m, media_url: finalMediaUrl ?? m.media_url, message_type: finalMessageType }
-              : m
-          )
-        );
-      }, 4000);
+      // The placeholder is left in place: the snapshot listener replaces it
+      // when the relay delivers the message, and if the relay never comes the
+      // placeholder keeps showing the local image (no swap, no flicker).
     } catch (error: any) {
       setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
       if (activeText) setDraft(activeText);
@@ -813,7 +805,9 @@ export function ChatScreen({ route }: Props) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 1,
+      // Full resolution (no crop); 0.9 keeps it visually lossless while roughly
+      // halving the upload size so the photo doesn't take seconds to send.
+      quality: 0.9,
       allowsEditing: false,
     });
     const asset = result.assets?.[0];

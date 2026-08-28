@@ -159,6 +159,7 @@ export function SwipeScreen() {
   const hasInitialLoadedRef = useRef<boolean>(false);
   const candidatesRef = useRef(candidates);
   candidatesRef.current = candidates;
+  const swipedCandidateIdsRef = useRef<Set<number>>(new Set());
 
   useFocusEffect(
     useCallback(() => {
@@ -272,7 +273,7 @@ export function SwipeScreen() {
           if (event) {
             if (!isSameEvent || candidatesRef.current.length === 0 || hasParamChange) {
               const list = await getSwipeCandidates(event.id, filters);
-              if (!cancelled) setCandidates(list);
+              if (!cancelled) setCandidates(list.filter((c) => !swipedCandidateIdsRef.current.has(c.id)));
             }
           } else {
             setCandidates([]);
@@ -379,6 +380,7 @@ export function SwipeScreen() {
     }
     const targetId = target.id;
     const eventId = activeEvent.id;
+    swipedCandidateIdsRef.current.add(targetId);
 
     // OPTIMISTIC UPDATE: Increment candidate index IMMEDIATELY for 0ms instant UI transition!
     const nextIndex = currentIndex + 1;
