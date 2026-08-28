@@ -411,23 +411,17 @@ export function SwipeScreen() {
   }
 
   function openEventPicker(): void {
-    setEventPickerVisible(true);
+    if (systemEvents.length > 1) {
+      setEventPickerVisible(true);
+    }
   }
 
-  const eventPickerOptions = [
-    {
-      key: "all_nearby",
-      label: language === "en" ? "🌐 All Nearby Buddies (General)" : "🌐 Tüm Yakındaki Kankalar (Genel)",
-      icon: "users" as const,
-      onPress: () => selectGeneralSwipe(),
-    },
-    ...tabEvents.map((event) => ({
-      key: String(event.id),
-      label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
-      icon: "map-pin" as const,
-      onPress: () => switchEvent(event),
-    })),
-  ];
+  const eventPickerOptions = systemEvents.map((event) => ({
+    key: String(event.id),
+    label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
+    icon: "map-pin" as const,
+    onPress: () => switchEvent(event),
+  }));
 
   function handleApplyFilters(nextFilters: SwipeCandidateFilters): void {
     setFilters(nextFilters);
@@ -737,12 +731,20 @@ export function SwipeScreen() {
       {!(activeTab === "user" && userSubTab === "group" && !groupSwipeEvent) ? (
         <View style={styles.metaRow}>
           {activeEvent ? (
-            <View style={styles.eventPill}>
+            <Pressable
+              style={styles.eventPill}
+              onPress={activeTab === "system" && systemEvents.length > 1 ? openEventPicker : undefined}
+              accessibilityRole="button"
+              accessibilityLabel="Etkinlik değiştir"
+            >
               <Feather name="target" size={14} color={colors.primary} />
               <Text style={styles.eventPillText} numberOfLines={1}>
                 {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
               </Text>
-            </View>
+              {activeTab === "system" && systemEvents.length > 1 ? (
+                <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+              ) : null}
+            </Pressable>
           ) : null}
 
           {quota ? (
