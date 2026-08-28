@@ -55,9 +55,13 @@ async function refreshAccessToken(): Promise<string | null> {
     ]);
     setAuthToken(access_token);
     return access_token;
-  } catch {
-    await Promise.all([deleteToken(AUTH_TOKEN_STORAGE_KEY), deleteToken(REFRESH_TOKEN_STORAGE_KEY)]);
-    setAuthToken(null);
+  } catch (error: any) {
+    const status = error?.response?.status;
+    // Only clear session if server explicitly rejects refresh token with 400 or 401
+    if (status === 400 || status === 401) {
+      await Promise.all([deleteToken(AUTH_TOKEN_STORAGE_KEY), deleteToken(REFRESH_TOKEN_STORAGE_KEY)]);
+      setAuthToken(null);
+    }
     return null;
   }
 }
@@ -103,7 +107,10 @@ apiClient.interceptors.response.use(
         original.headers = { ...original.headers, Authorization: `Bearer ${newAccessToken}` };
         return apiClient(original);
       }
-      onAuthFailure?.();
+      const activeToken = await getToken(AUTH_TOKEN_STORAGE_KEY);
+      if (!activeToken) {
+        onAuthFailure?.();
+      }
     }
 
     // Retry transient network errors and 5xx responses with exponential backoff
