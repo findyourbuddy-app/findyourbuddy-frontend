@@ -410,12 +410,17 @@ export function DiscoverScreen() {
     }
   }, []);
 
+  const hasInitialLoadedRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
-      loadEvents(selectedCategory, originFilter);
+      if (!hasInitialLoadedRef.current) {
+        hasInitialLoadedRef.current = true;
+        loadEvents(selectedCategory, originFilter);
+      }
       loadBookmarks();
       checkCreatedEvents();
-    }, [loadEvents, loadBookmarks, checkCreatedEvents])
+    }, [loadEvents, loadBookmarks, checkCreatedEvents, selectedCategory, originFilter])
   );
 
   function handleSelectCategory(slug: string): void {

@@ -172,7 +172,7 @@ export function SwipeScreen() {
 
       if (availableEventsRef.current.length > 0 && !hasParamChange) {
         const targetEvent = activeEventRef.current || availableEventsRef.current[0];
-        if (targetEvent) {
+        if (targetEvent && candidatesRef.current.length === 0) {
           getSwipeCandidates(targetEvent.id, filters).then((list) => {
             if (!cancelled) setCandidates(list);
           }).finally(() => {
