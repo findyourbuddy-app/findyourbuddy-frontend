@@ -360,18 +360,39 @@ export function SwipeScreen() {
     }
   }
 
-  function openEventPicker(): void {
-    if (tabEvents.length > 1) {
-      setEventPickerVisible(true);
-    }
+  function selectGeneralSwipe(): void {
+    setActiveEvent(null);
+    setCurrentIndex(0);
+    setCandidates([]);
+    setIsLoading(true);
+    getSwipeCandidates(0, filters)
+      .then((list) => {
+        setCandidates(list.filter((c) => !swipedCandidateIdsRef.current.has(c.id)));
+      })
+      .catch(() => {
+        setCandidates([]);
+      })
+      .finally(() => setIsLoading(false));
   }
 
-  const eventPickerOptions = tabEvents.map((event) => ({
-    key: String(event.id),
-    label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
-    icon: "map-pin" as const,
-    onPress: () => switchEvent(event),
-  }));
+  function openEventPicker(): void {
+    setEventPickerVisible(true);
+  }
+
+  const eventPickerOptions = [
+    {
+      key: "all_nearby",
+      label: language === "en" ? "🌐 All Nearby Buddies (General)" : "🌐 Tüm Yakındaki Kankalar (Genel)",
+      icon: "users" as const,
+      onPress: () => selectGeneralSwipe(),
+    },
+    ...tabEvents.map((event) => ({
+      key: String(event.id),
+      label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
+      icon: "map-pin" as const,
+      onPress: () => switchEvent(event),
+    })),
+  ];
 
   function handleApplyFilters(nextFilters: SwipeCandidateFilters): void {
     setFilters(nextFilters);
@@ -690,25 +711,23 @@ export function SwipeScreen() {
 
       {!(activeTab === "user" && userSubTab === "group" && !groupSwipeEvent) ? (
         <View style={styles.metaRow}>
-          {activeEvent ? (
-            <Pressable
-              style={styles.eventPill}
-              onPress={activeTab === "system" ? openEventPicker : undefined}
-              accessibilityRole="button"
-              accessibilityLabel="Etkinlik değiştir"
-            >
-              <Feather name="target" size={14} color={colors.primary} />
-              <Text style={styles.eventPillText} numberOfLines={1}>
-                {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
-              </Text>
-              {activeTab === "system" && tabEvents.length > 1 ? (
-                <Feather name="chevron-down" size={12} color={colors.textSecondary} />
-              ) : null}
-            </Pressable>
-          ) : null}
+          <Pressable
+            style={styles.eventPill}
+            onPress={openEventPicker}
+            accessibilityRole="button"
+            accessibilityLabel="Etkinlik değiştir"
+          >
+            <Feather name={activeEvent ? "target" : "globe"} size={14} color={colors.primary} />
+            <Text style={styles.eventPillText} numberOfLines={1}>
+              {activeEvent
+                ? (activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title)
+                : (language === "en" ? "All Nearby Buddies (General)" : "Tüm Yakındaki Kankalar (Genel)")}
+            </Text>
+            <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+          </Pressable>
 
           {quota ? (
-            <Text style={[styles.quotaText, !activeEvent && { marginLeft: "auto" }]}>
+            <Text style={styles.quotaText}>
               {quota.is_premium
                 ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
                 : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}
