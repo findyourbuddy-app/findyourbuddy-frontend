@@ -152,6 +152,26 @@ export function SwipeScreen() {
       });
   }, []);
 
+  // Silent auto-check for new attendees joining the active event
+  useEffect(() => {
+    if (!activeEvent) return;
+    const interval = setInterval(() => {
+      const eventIdToQuery = activeEvent.id;
+      getSwipeCandidates(eventIdToQuery, filters)
+        .then((list) => {
+          const fresh = list.filter((c) => !swipedCandidateIdsRef.current.has(c.id));
+          if (fresh.length > 0) {
+            setCandidates(fresh);
+            if (currentIndex >= candidatesRef.current.length) {
+              setCurrentIndex(0);
+            }
+          }
+        })
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [activeEvent, filters, currentIndex]);
+
   // Tracks which route.params.eventId has already been acted on. Without
   // this, route.params keeps referring to whatever event the screen was
   // originally opened with, and since this effect also reruns whenever
@@ -287,9 +307,13 @@ export function SwipeScreen() {
             setCurrentIndex(0);
           }
           if (event) {
-            if (!isSameEvent || candidatesRef.current.length === 0 || hasParamChange) {
-              const list = await getSwipeCandidates(event.id, filters);
-              if (!cancelled) setCandidates(list.filter((c) => !swipedCandidateIdsRef.current.has(c.id)));
+            const list = await getSwipeCandidates(event.id, filters);
+            if (!cancelled) {
+              const freshCandidates = list.filter((c) => !swipedCandidateIdsRef.current.has(c.id));
+              setCandidates(freshCandidates);
+              if (freshCandidates.length > 0 && (!isSameEvent || hasParamChange || currentIndex >= candidatesRef.current.length)) {
+                setCurrentIndex(0);
+              }
             }
           } else {
             setCandidates([]);
