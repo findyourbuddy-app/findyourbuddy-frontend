@@ -25,7 +25,7 @@ import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { formatMessageTime, formatRelativeTimestamp } from "../utils/date";
 import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { MainStackParamList } from "../navigation/RootNavigator";
-import type { Message, ReportReason } from "../types";
+import type { Message, ReportReason, UserPublic } from "../types";
 
 type Props = NativeStackScreenProps<MainStackParamList, "Chat">;
 
@@ -400,21 +400,19 @@ export function ChatScreen({ route }: Props) {
     ]);
   }, [user, otherUserId, otherUserName, language]);
 
-  async function openTargetUserProfile(): Promise<void> {
-    try {
-      const { getUserById } = require("../api/users");
-      const fetchedUser = await getUserById(otherUserId);
-      if (fetchedUser) {
-        navigation.navigate("CandidateProfile", {
-          candidate: fetchedUser,
-          onSwipeLeft: () => {},
-          onSwipeRight: () => {},
-          onSwipeUp: () => {},
-        });
-      }
-    } catch {
-      Alert.alert("Hata", "Kullanıcı profili açılırken bir sorun oluştu.");
-    }
+  function openTargetUserProfile(): void {
+    const initialCandidate: UserPublic = {
+      id: otherUserId,
+      display_name: otherUserName,
+      photo_url: otherUserPhoto,
+    } as any;
+
+    navigation.navigate("CandidateProfile", {
+      candidate: initialCandidate as any,
+      onSwipeLeft: () => {},
+      onSwipeRight: () => {},
+      onSwipeUp: () => {},
+    });
   }
 
   useEffect(() => {
