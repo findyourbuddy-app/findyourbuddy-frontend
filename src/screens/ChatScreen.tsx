@@ -9,7 +9,7 @@ import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-n
 import axios from "axios";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, type IcebreakerItem } from "../api/messages";
+import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, uploadChatMedia, type IcebreakerItem } from "../api/messages";
 import { fetchTrendingGifs, searchGifs, type GifResult } from "../api/giphy";
 import { IcebreakerStrip } from "../components/chat/IcebreakerStrip";
 import { uploadGalleryPhoto } from "../api/users";
@@ -646,11 +646,11 @@ export function ChatScreen({ route }: Props) {
 
       if (activeImage) {
         const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
-        const uploaded = await uploadGalleryPhoto(activeImage.uri, fileName);
-        if (!uploaded?.photo_url) {
+        const uploaded = await uploadChatMedia(activeImage.uri, fileName);
+        if (!uploaded?.url) {
           throw new Error("Image upload did not return a URL");
         }
-        finalMediaUrl = uploaded.photo_url;
+        finalMediaUrl = uploaded.url;
         finalMessageType = "image";
         finalContent = activeText || "[Fotoğraf]";
       }
@@ -824,7 +824,7 @@ export function ChatScreen({ route }: Props) {
                         <Image
                           source={{ uri: photoUri }}
                           style={styles.bubbleImage}
-                          contentFit={item.message_type === "gif" ? "contain" : "cover"}
+                          contentFit="contain"
                           cachePolicy="memory-disk"
                           autoplay={true}
                           transition={150}

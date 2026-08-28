@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { postMultipart, toUploadFile } from "./users";
 import type { Message, MessageCreate } from "../types";
 
 export function listMessages(matchId: number): Promise<Message[]> {
@@ -26,5 +27,11 @@ export function getIcebreakers(matchId: number): Promise<IcebreakerItem[]> {
   return apiClient
     .get<IcebreakerItem[]>(`/matches/${matchId}/messages/icebreakers`)
     .then((res) => res.data);
+}
+
+export async function uploadChatMedia(uri: string, fileName: string): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append("file", await toUploadFile(uri, fileName));
+  return postMultipart<{ url: string }>("/users/me/media", formData);
 }
 

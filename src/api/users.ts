@@ -57,7 +57,7 @@ export async function toUploadFile(
 }
 
 // Use XMLHttpRequest on native mobile for 100% reliable multipart FormData uploads
-async function postMultipart<T>(path: string, formData: FormData): Promise<T> {
+export async function postMultipart<T>(path: string, formData: FormData): Promise<T> {
   let auth = apiClient.defaults.headers.common?.Authorization;
   if (!auth) {
     const storedToken = await getToken(AUTH_TOKEN_STORAGE_KEY);
