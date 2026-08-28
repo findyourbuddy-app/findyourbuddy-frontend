@@ -47,7 +47,7 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
         setHasUnreadMessages(false);
         return [];
       }
-      if (!silent && matches.length === 0) {
+      if (!silent) {
         setIsLoading(true);
       }
       try {
@@ -56,12 +56,12 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
         updateUnreadState(fetched);
         return fetched;
       } catch {
-        return matches;
+        return [];
       } finally {
         setIsLoading(false);
       }
     },
-    [user, matches, updateUnreadState]
+    [user, updateUnreadState]
   );
 
   const refreshUnread = useCallback(async (): Promise<void> => {
