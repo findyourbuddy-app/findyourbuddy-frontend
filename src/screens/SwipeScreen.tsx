@@ -323,18 +323,12 @@ export function SwipeScreen() {
     }
   }
 
-  const eventPickerOptions = tabEvents.map((event) => {
-    const badge = event.is_attending
-      ? (language === "en" ? " ✓ Attending" : " ✓ Gidiyorum")
-      : "";
-    const titleWithLocation = event.location_name ? `${event.location_name} · ${event.title}` : event.title;
-    return {
-      key: String(event.id),
-      label: titleWithLocation + badge,
-      icon: (event.is_attending ? "check-circle" : "map-pin") as "check-circle" | "map-pin",
-      onPress: () => switchEvent(event),
-    };
-  });
+  const eventPickerOptions = tabEvents.map((event) => ({
+    key: String(event.id),
+    label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
+    icon: "map-pin" as const,
+    onPress: () => switchEvent(event),
+  }));
 
   function handleApplyFilters(nextFilters: SwipeCandidateFilters): void {
     setFilters(nextFilters);
