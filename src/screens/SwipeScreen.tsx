@@ -99,6 +99,7 @@ export function SwipeScreen() {
     const nowMs = Date.now();
     return availableEvents.filter((event) => {
       if (event.creator_id) return false;
+      if (!event.is_attending) return false;
       if (event.starts_at) {
         const eventMs = new Date(event.starts_at).getTime();
         // Remove expired events (older than 4 hours after start time)
@@ -249,7 +250,7 @@ export function SwipeScreen() {
         const nowMs = Date.now();
         const validEvents = upcoming.filter((event) => {
           if (activeTab === "system") {
-            if (event.creator_id) return false;
+            if (event.creator_id || !event.is_attending) return false;
             if (event.starts_at) {
               const eventMs = new Date(event.starts_at).getTime();
               if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
@@ -413,29 +414,30 @@ export function SwipeScreen() {
   }
 
   function openEventPicker(): void {
-    const validEvents = availableEvents.filter((e) => !e.creator_id);
-    if (validEvents.length > 0) {
+    if (systemEvents.length > 0) {
       setEventPickerVisible(true);
+    } else {
+      navigation.navigate("Discover");
     }
   }
 
   const eventPickerOptions = useMemo(() => {
-    const nowMs = Date.now();
-    const validEvents = availableEvents.filter((event) => {
-      if (event.creator_id) return false;
-      if (event.starts_at) {
-        const eventMs = new Date(event.starts_at).getTime();
-        if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
-      }
-      return true;
-    });
-    return validEvents.map((event) => ({
+    const list = systemEvents.map((event) => ({
       key: String(event.id),
       label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
       icon: "map-pin" as const,
       onPress: () => switchEvent(event),
     }));
-  }, [availableEvents]);
+
+    list.push({
+      key: "discover_new",
+      label: language === "en" ? "Explore & Join New Events 🎯" : "Keşfet'ten Yeni Etkinlik Seç 🎯",
+      icon: "map-pin" as const,
+      onPress: () => navigation.navigate("Discover"),
+    });
+
+    return list;
+  }, [systemEvents, language, navigation]);
 
   function handleApplyFilters(nextFilters: SwipeCandidateFilters): void {
     setFilters(nextFilters);
@@ -758,6 +760,19 @@ export function SwipeScreen() {
               {activeTab === "system" ? (
                 <Feather name="chevron-down" size={12} color={colors.textSecondary} />
               ) : null}
+            </Pressable>
+          ) : activeTab === "system" ? (
+            <Pressable
+              style={styles.eventPill}
+              onPress={() => navigation.navigate("Discover")}
+              accessibilityRole="button"
+              accessibilityLabel="Keşfet'ten Etkinlik Seç"
+            >
+              <Feather name="compass" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText} numberOfLines={1}>
+                {language === "en" ? "Select Event from Discover 🎯" : "Keşfet'ten Etkinlik Seç 🎯"}
+              </Text>
+              <Feather name="chevron-right" size={12} color={colors.textSecondary} />
             </Pressable>
           ) : null}
 
