@@ -494,7 +494,7 @@ export function ProfileScreen() {
             <Pressable
               key={event.id}
               style={styles.eventRow}
-              onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
+              onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
               accessibilityRole="button"
               accessibilityLabel={event.title}
             >
@@ -534,7 +534,13 @@ export function ProfileScreen() {
         <View style={[styles.card, styles.cardAccentBlue]}>
           <IconSectionHeader icon="clock" color="#2E7FC9" label={`${t("pastEvents")} (${pastEvents.length})`} />
           {(isPastExpanded ? pastEvents : pastEvents.slice(0, 2)).map((event) => (
-            <View key={event.id} style={styles.eventRow}>
+            <Pressable
+              key={event.id}
+              style={styles.eventRow}
+              onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
+              accessibilityRole="button"
+              accessibilityLabel={event.title}
+            >
               <View style={styles.eventRowLeft}>
                 <View style={[styles.eventIcon, styles.eventIconPast]}>
                   <Feather name="calendar" size={16} color={colors.textSecondary} />
@@ -544,7 +550,8 @@ export function ProfileScreen() {
                   <Text style={styles.eventDate}>{formatEventDate(event.starts_at, language)}</Text>
                 </View>
               </View>
-            </View>
+              <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+            </Pressable>
           ))}
           {pastEvents.length > 2 ? (
             <Pressable

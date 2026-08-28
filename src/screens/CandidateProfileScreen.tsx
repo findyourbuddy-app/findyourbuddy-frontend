@@ -263,7 +263,7 @@ export function CandidateProfileScreen({ route }: Props) {
                 <Pressable
                   key={event.id}
                   style={styles.eventRow}
-                  onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
+                  onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
                   accessibilityRole="button"
                   accessibilityLabel={event.title}
                 >
