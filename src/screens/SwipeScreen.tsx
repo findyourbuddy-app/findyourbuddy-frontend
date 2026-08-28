@@ -233,11 +233,16 @@ export function SwipeScreen() {
           const { event, tab } = await resolveActiveEvent(allEvents);
           if (cancelled) return;
           setActiveTab(tab);
+          const isSameEvent = activeEventRef.current && event && activeEventRef.current.id === event.id;
           setActiveEvent(event);
-          setCurrentIndex(0);
+          if (!isSameEvent || hasParamChange) {
+            setCurrentIndex(0);
+          }
           if (event) {
-            const list = await getSwipeCandidates(event.id, filters);
-            if (!cancelled) setCandidates(list);
+            if (!isSameEvent || candidatesRef.current.length === 0 || hasParamChange) {
+              const list = await getSwipeCandidates(event.id, filters);
+              if (!cancelled) setCandidates(list);
+            }
           } else {
             setCandidates([]);
           }
