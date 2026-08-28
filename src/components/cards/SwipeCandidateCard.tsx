@@ -229,7 +229,16 @@ export function SwipeCandidateCard({
         </View>
 
 
-        {locationName ? (
+        {activeEventTitle || (candidate as any).event_title ? (
+          <View style={styles.eventLocationPill}>
+            <Feather name="target" size={12} color="#FFC93C" />
+            <Text style={styles.eventLocationPillText} numberOfLines={1}>
+              {language === "en" ? "Event: " : "Başlattığı Etkinlik: "}
+              {locationName ? `${locationName} · ` : ""}
+              {activeEventTitle || (candidate as any).event_title}
+            </Text>
+          </View>
+        ) : locationName ? (
           <View style={styles.locationRow}>
             <Feather name="map-pin" size={12} color="rgba(255,255,255,0.9)" />
             <Text style={styles.locationText}>{locationName}</Text>
@@ -383,6 +392,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: "auto",
+  },
+  eventLocationPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255, 201, 60, 0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 201, 60, 0.4)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    marginTop: -2,
+    marginBottom: 4,
+  },
+  eventLocationPillText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: "#FFC93C",
+    flexShrink: 1,
   },
   locationRow: {
 
