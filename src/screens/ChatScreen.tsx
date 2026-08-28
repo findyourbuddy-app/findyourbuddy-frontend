@@ -549,13 +549,11 @@ export function ChatScreen({ route }: Props) {
             return list;
           }
 
-          // Does a delivered message correspond to this optimistic placeholder?
-          // Fast path: the backend echoed client_temp_id. Fallback (backend not
-          // yet relaying that): same sender + type within a 2-minute window.
           const isMatch = (real: Message, temp: Message): boolean => {
             if (real.sender_id !== temp.sender_id) return false;
             if ((real.message_type || "text") !== (temp.message_type || "text")) return false;
-            if (real.client_temp_id && real.client_temp_id === temp.id) return true;
+            if (real.client_temp_id && (real.client_temp_id === temp.id || real.client_temp_id === temp.client_temp_id)) return true;
+            if (temp.client_temp_id && (temp.client_temp_id === real.id || temp.client_temp_id === real.client_temp_id)) return true;
             if (
               Math.abs(
                 new Date(real.created_at).getTime() - new Date(temp.created_at).getTime()
@@ -571,9 +569,7 @@ export function ChatScreen({ route }: Props) {
           const isLocalUri = (u?: string | null) =>
             Boolean(u && /^(file:|content:|ph:|assets-library:)/.test(u));
 
-          // For a matched message: keep the sender's own local image URI (so
-          // expo-image doesn't reload a visually identical photo and blink) and
-          // carry over the placeholder's known dimensions.
+          // Map delivered real messages, preserving local media URI to avoid image flashing
           const merged = list.map((real) => {
             const src = temps.find((t) => isMatch(real, t));
             if (!src) return real;
@@ -588,11 +584,12 @@ export function ChatScreen({ route }: Props) {
             };
           });
 
-          const stillPending = temps.filter(
-            (t) => !merged.some((real) => isMatch(real, t))
+          // Purge all delivered temp placeholders completely
+          const unfulfilledTemps = temps.filter(
+            (t) => !list.some((real) => isMatch(real, t))
           );
 
-          return [...merged, ...stillPending];
+          return [...merged, ...unfulfilledTemps];
         });
         setIsInitialLoading(false);
       },
@@ -707,6 +704,7 @@ export function ChatScreen({ route }: Props) {
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const tempMsg: Message = {
       id: tempId,
+      client_temp_id: tempId,
       match_id: matchId,
       sender_id: user.id,
       content: activeText || (activeImage ? "[Fotoğraf]" : ""),
