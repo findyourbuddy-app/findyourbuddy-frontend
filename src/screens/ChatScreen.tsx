@@ -636,14 +636,21 @@ export function ChatScreen({ route }: Props) {
     const seenSignatures = new Set<string>();
 
     for (const msg of merged) {
-      if (typeof msg.id === "string" && msg.id.startsWith("temp_") && fulfilledTempIds.has(msg.id)) {
+      const isTemp = typeof msg.id === "string" && msg.id.startsWith("temp_");
+
+      if (isTemp && fulfilledTempIds.has(msg.id as string)) {
+        continue;
+      }
+
+      if (isTemp) {
+        uniqueList.push(msg);
         continue;
       }
 
       const timeMs = new Date(msg.created_at).getTime() || 0;
-      const timeSlot = Math.floor(timeMs / 120000); // 2-minute window
+      const timeSlot = Math.floor(timeMs / 60000);
       const msgType = msg.message_type || "text";
-      const contentKey = msgType === "text" ? (msg.content || "").trim() : "media_item";
+      const contentKey = msgType === "text" ? (msg.content || "").trim() : (msg.media_url || "").trim();
       const signature = `${msg.sender_id}_${msgType}_${contentKey}_${timeSlot}`;
 
       if (seenSignatures.has(signature)) {

@@ -410,17 +410,29 @@ export function SwipeScreen() {
   }
 
   function openEventPicker(): void {
-    if (systemEvents.length > 1) {
+    const validEvents = availableEvents.filter((e) => !e.creator_id);
+    if (validEvents.length > 0) {
       setEventPickerVisible(true);
     }
   }
 
-  const eventPickerOptions = systemEvents.map((event) => ({
-    key: String(event.id),
-    label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
-    icon: "map-pin" as const,
-    onPress: () => switchEvent(event),
-  }));
+  const eventPickerOptions = useMemo(() => {
+    const nowMs = Date.now();
+    const validEvents = availableEvents.filter((event) => {
+      if (event.creator_id) return false;
+      if (event.starts_at) {
+        const eventMs = new Date(event.starts_at).getTime();
+        if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
+      }
+      return true;
+    });
+    return validEvents.map((event) => ({
+      key: String(event.id),
+      label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
+      icon: "map-pin" as const,
+      onPress: () => switchEvent(event),
+    }));
+  }, [availableEvents]);
 
   function handleApplyFilters(nextFilters: SwipeCandidateFilters): void {
     setFilters(nextFilters);
@@ -732,7 +744,7 @@ export function SwipeScreen() {
           {activeEvent ? (
             <Pressable
               style={styles.eventPill}
-              onPress={activeTab === "system" && systemEvents.length > 1 ? openEventPicker : undefined}
+              onPress={activeTab === "system" ? openEventPicker : undefined}
               accessibilityRole="button"
               accessibilityLabel="Etkinlik değiştir"
             >
@@ -740,7 +752,7 @@ export function SwipeScreen() {
               <Text style={styles.eventPillText} numberOfLines={1}>
                 {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
               </Text>
-              {activeTab === "system" && systemEvents.length > 1 ? (
+              {activeTab === "system" ? (
                 <Feather name="chevron-down" size={12} color={colors.textSecondary} />
               ) : null}
             </Pressable>
