@@ -9,7 +9,7 @@ import { useAppTheme } from "../context/ThemeContext";
 import { AlertHost } from "../components/ui/AlertHost";
 import { AppSplashScreen } from "../components/ui/AppSplashScreen";
 import { FloatingTabBar } from "../components/navigation/FloatingTabBar";
-import { colors, spacing } from "../theme";
+import { colors, fontFamily, spacing } from "../theme";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
@@ -159,9 +159,49 @@ function MainNavigator() {
   return (
     <MainStack.Navigator
       initialRouteName={isNewOrIncomplete ? "Onboarding" : "Tabs"}
-      screenOptions={{
-        contentStyle: { backgroundColor: bgGradient[0] },
-        headerBackTitle: language === "en" ? "Home" : "Anasayfa",
+      screenOptions={({ route, navigation }) => {
+        const state = navigation.getState();
+        const routes = state?.routes || [];
+        const currentIndex = routes.findIndex((r) => r.key === route.key);
+        const prevRoute = currentIndex > 0 ? routes[currentIndex - 1] : null;
+
+        let dynamicBackTitle = language === "en" ? "Back" : "Geri";
+        if (prevRoute) {
+          if (prevRoute.name === "Tabs") {
+            const tabState = prevRoute.state;
+            const activeTabName = tabState?.routes?.[tabState.index || 0]?.name;
+            if (activeTabName === "Swipe") {
+              dynamicBackTitle = language === "en" ? "Match" : "Eşleş";
+            } else if (activeTabName === "Messages") {
+              dynamicBackTitle = language === "en" ? "Messages" : "Mesajlar";
+            } else {
+              dynamicBackTitle = language === "en" ? "Discover" : "Keşfet";
+            }
+          } else if (prevRoute.name === "Profile") {
+            dynamicBackTitle = language === "en" ? "Profile" : "Profil";
+          } else if (prevRoute.name === "EventDetail") {
+            dynamicBackTitle = language === "en" ? "Event" : "Etkinlik";
+          } else if (prevRoute.name === "Settings") {
+            dynamicBackTitle = language === "en" ? "Settings" : "Ayarlar";
+          } else if (prevRoute.name === "Chat") {
+            dynamicBackTitle = language === "en" ? "Chat" : "Sohbet";
+          } else if (prevRoute.name === "CandidateProfile") {
+            dynamicBackTitle = language === "en" ? "Profile" : "Profil";
+          }
+        }
+
+        return {
+          contentStyle: { backgroundColor: bgGradient[0] },
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.textPrimary,
+          headerTitleStyle: {
+            fontFamily: fontFamily.bodySemiBold,
+            color: colors.textPrimary,
+            fontSize: 17,
+          },
+          headerBackTitle: dynamicBackTitle,
+          headerShadowVisible: false,
+        };
       }}
     >
       <MainStack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
