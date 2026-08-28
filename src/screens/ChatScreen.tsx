@@ -675,8 +675,17 @@ export function ChatScreen({ route }: Props) {
       setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
       if (activeText) setDraft(activeText);
       if (activeImage) setSelectedImage(activeImage);
-      if (axios.isAxiosError(error) && error.response?.status === 422) {
-        setErrorText("Mesajın uygunsuz içerik nedeniyle gönderilemedi.");
+      if (axios.isAxiosError(error)) {
+        const detail = typeof error.response?.data?.detail === "string" ? error.response.data.detail : "";
+        if (error.response?.status === 422) {
+          setErrorText(detail || "Mesajın uygunsuz içerik nedeniyle gönderilemedi.");
+        } else if (error.response?.status === 403) {
+          setErrorText(detail || "Bu kullanıcı ile mesajlaşamazsınız.");
+        } else if (error.response?.status === 404) {
+          setErrorText(detail || "Eşleşme bulunamadı.");
+        } else {
+          setErrorText(detail || "Mesaj gönderilemedi. Lütfen tekrar dene.");
+        }
       } else {
         setErrorText("Mesaj gönderilemedi. Lütfen tekrar dene.");
       }
