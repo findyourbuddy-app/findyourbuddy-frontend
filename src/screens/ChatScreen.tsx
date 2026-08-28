@@ -541,20 +541,58 @@ export function ChatScreen({ route }: Props) {
             updateDoc(docRef, { is_read: true }).catch(() => {});
           }
         });
-        // Keep optimistic placeholders visible until THEIR OWN Firestore doc
-        // lands (matched by client_temp_id) -- an unrelated snapshot (e.g. a
-        // read receipt) firing mid-upload must not wipe a pending image.
         setLiveMessages((prev) => {
-          const supersededTempIds = new Set(
-            list.map((m) => m.client_temp_id).filter((id): id is string => Boolean(id))
+          const temps = prev.filter(
+            (m) => typeof m.id === "string" && m.id.startsWith("temp_")
           );
-          const stillPending = prev.filter(
-            (m) =>
-              typeof m.id === "string" &&
-              m.id.startsWith("temp_") &&
-              !supersededTempIds.has(m.id)
+          if (temps.length === 0) {
+            return list;
+          }
+
+          // Does a delivered message correspond to this optimistic placeholder?
+          // Fast path: the backend echoed client_temp_id. Fallback (backend not
+          // yet relaying that): same sender + type within a 2-minute window.
+          const isMatch = (real: Message, temp: Message): boolean => {
+            if (real.sender_id !== temp.sender_id) return false;
+            if ((real.message_type || "text") !== (temp.message_type || "text")) return false;
+            if (real.client_temp_id && real.client_temp_id === temp.id) return true;
+            if (
+              Math.abs(
+                new Date(real.created_at).getTime() - new Date(temp.created_at).getTime()
+              ) > 120000
+            ) {
+              return false;
+            }
+            return (temp.message_type || "text") === "text"
+              ? real.content === temp.content
+              : Boolean(real.media_url);
+          };
+
+          const isLocalUri = (u?: string | null) =>
+            Boolean(u && /^(file:|content:|ph:|assets-library:)/.test(u));
+
+          // For a matched message: keep the sender's own local image URI (so
+          // expo-image doesn't reload a visually identical photo and blink) and
+          // carry over the placeholder's known dimensions.
+          const merged = list.map((real) => {
+            const src = temps.find((t) => isMatch(real, t));
+            if (!src) return real;
+            return {
+              ...real,
+              media_url:
+                isLocalUri(src.media_url) && real.sender_id === user.id
+                  ? src.media_url
+                  : real.media_url,
+              media_width: real.media_width ?? src.media_width ?? null,
+              media_height: real.media_height ?? src.media_height ?? null,
+            };
+          });
+
+          const stillPending = temps.filter(
+            (t) => !merged.some((real) => isMatch(real, t))
           );
-          return [...list, ...stillPending];
+
+          return [...merged, ...stillPending];
         });
         setIsInitialLoading(false);
       },
@@ -848,10 +886,14 @@ export function ChatScreen({ route }: Props) {
           const photoUri = resolvePhotoUrl(rawUri);
           const explicitAspect =
             item.media_width && item.media_height ? item.media_width / item.media_height : undefined;
-          const mediaAspect = Math.min(
-            Math.max(explicitAspect ?? imageAspects[String(item.id)] ?? 4 / 3, 0.6),
-            2
-          );
+          const knownAspect = explicitAspect ?? imageAspects[String(item.id)];
+          // expo-image collapses with aspectRatio alone, so size the box in
+          // explicit pixels. 240 wide, height from the photo's real ratio
+          // (clamped so panoramas / very tall shots stay reasonable).
+          const mediaW = 240;
+          const mediaH = knownAspect
+            ? Math.round(mediaW / Math.min(Math.max(knownAspect, 0.55), 2.2))
+            : 180;
 
           return (
             <View style={{ marginBottom: spacing.xs }}>
@@ -870,8 +912,8 @@ export function ChatScreen({ route }: Props) {
                       >
                         <Image
                           source={{ uri: photoUri }}
-                          style={[styles.bubbleImage, { height: undefined, aspectRatio: mediaAspect }]}
-                          contentFit="contain"
+                          style={[styles.bubbleImage, { width: mediaW, height: mediaH }]}
+                          contentFit={knownAspect ? "cover" : "contain"}
                           cachePolicy="memory-disk"
                           autoplay={true}
                           transition={150}

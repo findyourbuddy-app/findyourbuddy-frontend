@@ -481,6 +481,66 @@ export function SwipeScreen() {
     }
   }
 
+  function startGroupEventCandidatesSwipe(event: Event): void {
+    setActiveEvent({ id: event.id, title: event.title, location_name: event.location_name });
+    setUserSubTab("birebir");
+    setCurrentIndex(0);
+    setCandidates([]);
+    setIsLoading(true);
+    getSwipeCandidates(event.id, filters)
+      .then(setCandidates)
+      .catch(() =>
+        Alert.alert(
+          language === "en" ? "Error" : "Bir sorun oluştu",
+          language === "en" ? "Candidates could not be loaded. Please try again." : "Adaylar yüklenemedi. Lütfen tekrar dene."
+        )
+      )
+      .finally(() => setIsLoading(false));
+  }
+
+  async function handleGroupJoin(event: Event): Promise<void> {
+    if (event.is_attending) {
+      startGroupEventCandidatesSwipe(event);
+      return;
+    }
+    if (event.is_pending) return;
+
+    const isApproval = Boolean(event.creator_id && event.is_group_event);
+
+    setUserGroupEvents((prev) =>
+      prev.map((item) =>
+        item.id === event.id
+          ? {
+              ...item,
+              is_attending: !isApproval,
+              is_pending: isApproval,
+              attendee_count: item.attendee_count + 1,
+            }
+          : item
+      )
+    );
+
+    try {
+      const updated = await attendEvent(event.id);
+      setUserGroupEvents((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item))
+      );
+      if (updated.is_pending) {
+        Alert.alert(
+          language === "en" ? "Request Sent" : "İstek Gönderildi",
+          language === "en"
+            ? "Your request was sent to the organizer. You'll be notified once it's approved."
+            : "İsteğin organizatöre gönderildi. Onaylanınca bilgilendirileceksin."
+        );
+      }
+    } catch {
+      setUserGroupEvents((prev) =>
+        prev.map((item) => (item.id === event.id ? event : item))
+      );
+      Alert.alert("Bir sorun oluştu", "Etkinliğe katılamadın. Lütfen tekrar dene.");
+    }
+  }
+
   return (
     <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
       <View style={[styles.headerRow, { marginTop: insets.top + spacing.md }]}>
@@ -712,18 +772,39 @@ export function SwipeScreen() {
                       </View>
                     </View>
 
-                    <Pressable
-                      style={[styles.groupCardActionBtn, event.is_pending && styles.groupCardActionBtnPending]}
-                      onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
-                    >
-                      <Text style={styles.groupCardActionText}>
-                        {event.is_attending
-                          ? (language === "en" ? "Details & Chat" : "Detaylar & Sohbet")
-                          : event.is_pending
-                          ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
-                          : (language === "en" ? "Apply / Join" : "Başvur / Katıl")}
-                      </Text>
-                    </Pressable>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      {event.is_attending ? (
+                        <>
+                          <Pressable
+                            style={styles.groupCardActionBtn}
+                            onPress={() => startGroupEventCandidatesSwipe(event)}
+                          >
+                            <Text style={styles.groupCardActionText}>
+                              {language === "en" ? "View Buddies 👥" : "Kankaları Gör 👥"}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            style={[styles.groupCardActionBtn, { backgroundColor: colors.primaryMuted }]}
+                            onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
+                          >
+                            <Text style={[styles.groupCardActionText, { color: colors.textPrimary }]}>
+                              {language === "en" ? "Chat 💬" : "Sohbet 💬"}
+                            </Text>
+                          </Pressable>
+                        </>
+                      ) : (
+                        <Pressable
+                          style={[styles.groupCardActionBtn, event.is_pending && styles.groupCardActionBtnPending]}
+                          onPress={() => handleGroupJoin(event)}
+                        >
+                          <Text style={styles.groupCardActionText}>
+                            {event.is_pending
+                              ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
+                              : (language === "en" ? "Apply / Join ➕" : "Başvur / Katıl ➕")}
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
                   </View>
                 </Pressable>
               ))}
