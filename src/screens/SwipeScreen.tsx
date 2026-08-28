@@ -881,8 +881,8 @@ export function SwipeScreen() {
                 ? "You've seen all interested candidates for this event! 🎉"
                 : "Bu etkinlik için tüm ilgilenen adayları gördün! 🎉"}
             </Text>
-            {tabEvents.length > 1 ? (
-              <View style={{ marginTop: spacing.md }}>
+            <View style={{ marginTop: spacing.md, width: "100%", gap: spacing.sm }}>
+              {tabEvents.length > 1 ? (
                 <PrimaryButton
                   label={language === "en" ? "Next Event Candidates" : "Diğer Etkinlikteki Adaylara Geç"}
                   onPress={() => {
@@ -891,15 +891,12 @@ export function SwipeScreen() {
                     if (nextEvent) switchEvent(nextEvent);
                   }}
                 />
-              </View>
-            ) : (
-              <View style={{ marginTop: spacing.md }}>
-                <PrimaryButton
-                  label={language === "en" ? "Explore More Events" : "Daha Fazla Etkinlik Keşfet"}
-                  onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
-                />
-              </View>
-            )}
+              ) : null}
+              <PrimaryButton
+                label={language === "en" ? "Explore More Events in Discover" : "Keşfet'ten Yeni Etkinlik Seç"}
+                onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
+              />
+            </View>
           </View>
         )}
       </View>
