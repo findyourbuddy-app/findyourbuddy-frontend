@@ -24,6 +24,7 @@ import { useAppTheme } from "../context/ThemeContext";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event, User, UserPublic } from "../types";
+import { formatEventDate } from "../utils/date";
 
 interface ActiveEvent {
   id: number;
@@ -592,7 +593,7 @@ export function SwipeScreen() {
                 <Pressable
                   key={event.id}
                   style={styles.groupCardItem}
-                  onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
+                  onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
                 >
                   <View style={styles.groupCardHeader}>
                     <Text style={styles.groupCategoryPill}>{event.category}</Text>
@@ -607,6 +608,14 @@ export function SwipeScreen() {
                   </View>
 
                   <Text style={styles.groupCardTitle}>{event.title}</Text>
+                  
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginVertical: 2 }}>
+                    <Feather name="clock" size={13} color={colors.primary} />
+                    <Text style={[styles.groupCardLocation, { color: colors.textPrimary, fontFamily: fontFamily.bodySemiBold }]}>
+                      {formatEventDate(event.starts_at, language)}
+                    </Text>
+                  </View>
+
                   <Text style={styles.groupCardLocation}>{event.location_name}</Text>
 
                   <View style={styles.groupCardFooter}>
@@ -630,7 +639,7 @@ export function SwipeScreen() {
 
                     <Pressable
                       style={[styles.groupCardActionBtn, event.is_pending && styles.groupCardActionBtnPending]}
-                      onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
+                      onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
                     >
                       <Text style={styles.groupCardActionText}>
                         {event.is_attending
