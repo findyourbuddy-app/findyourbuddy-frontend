@@ -240,14 +240,48 @@ export function EventDetailScreen({ route }: Props) {
     if (!event) return;
     setIsCheckingIn(true);
     try {
+      // 1. STRICT TIME WINDOW CHECK (1 hour before start time up to 3 hours after start time)
+      const nowMs = Date.now();
+      const eventStartMs = new Date(event.starts_at).getTime();
+      const oneHourBeforeMs = eventStartMs - 60 * 60 * 1000;
+      const threeHoursAfterMs = eventStartMs + 3 * 60 * 60 * 1000;
+
+      if (nowMs < oneHourBeforeMs) {
+        Alert.alert(
+          language === "en" ? "Not Check-in Time Yet" : "Henüz Etkinlik Saati Gelmedi",
+          language === "en"
+            ? `Check-in opens 1 hour before the event start time.\n\n📅 Event Time: ${formatEventDate(event.starts_at, language)}\n⏰ Check-in Window: Opens 1 hour before event.`
+            : `Katılımını onaylayabilmek için etkinlik saatine en az 1 saat kalmış olmalı.\n\n📅 Etkinlik Saati: ${formatEventDate(event.starts_at, language)}\n⏰ Katılım Onay Penceresi: Etkinlikten 1 saat önce başlar.`
+        );
+        setIsCheckingIn(false);
+        return;
+      }
+
+      if (nowMs > threeHoursAfterMs) {
+        Alert.alert(
+          language === "en" ? "Check-in Window Closed" : "Check-in Süresi Doldu",
+          language === "en"
+            ? "The check-in window for this event has expired."
+            : "Bu etkinliğin katılım onaylama süresi tamamlanmıştır."
+        );
+        setIsCheckingIn(false);
+        return;
+      }
+
+      // 2. STRICT GPS PROXIMITY LOCATION CHECK (< 500m)
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Konum İzni Gerekli", "Etkinlikte olduğunu doğrulamak için konum iznine ihtiyacımız var.");
+        Alert.alert(
+          language === "en" ? "Location Permission Required" : "Konum İzni Gerekli",
+          language === "en"
+            ? "We need your location permission to verify that you are at the event location."
+            : "Etkinlik alanında olduğunu doğrulamak için konum iznine ihtiyacımız var."
+        );
+        setIsCheckingIn(false);
         return;
       }
       const position = await Location.getCurrentPositionAsync({});
 
-      // Strict GPS Proximity Distance Check (< 500m)
       if (hasValidCoordinates(event.latitude, event.longitude)) {
         const R = 6371;
         const dLat = (event.latitude - position.coords.latitude) * (Math.PI / 180);
@@ -263,9 +297,12 @@ export function EventDetailScreen({ route }: Props) {
 
         if (distKm > 0.5) {
           const distMeters = Math.round(distKm * 1000);
+          const distanceFormatted = distKm >= 1 ? `${distKm.toFixed(1)} km` : `${distMeters} metre`;
           Alert.alert(
-            "Etkinlik Konumuna Uzaktasın",
-            `Katılımını onaylayabilmek için etkinlik alanına (en fazla 500m) yakın olmalısın. Şu anki mesafen: ${distMeters} metre.`
+            language === "en" ? "Too Far From Event Location" : "Etkinlik Konumuna Uzaktasın 📍",
+            language === "en"
+              ? `You must be within 500 meters of the event area to check in.\n\n📍 Location: ${event.location_name}\n📏 Your Distance: ${distanceFormatted}`
+              : `Katılımını onaylayabilmek için etkinlik alanına (en fazla 500m) yakın olmalısın.\n\n📍 Etkinlik Adresi: ${event.location_name}\n📏 Şu Anki Mesafen: ${distanceFormatted}`
           );
           setIsCheckingIn(false);
           return;
@@ -277,17 +314,35 @@ export function EventDetailScreen({ route }: Props) {
         longitude: position.coords.longitude,
       });
       setEvent(updated);
-      Alert.alert("Katılımın Onaylandı!", "Konumun doğrulandı ve etkinliğe katılımın onaylandı (+5 Güven Puanı!).");
+      Alert.alert(
+        language === "en" ? "🎉 Attendance Confirmed!" : "🎉 Katılımın Onaylandı!",
+        language === "en"
+          ? "Your location and event time have been verified (+5 Trust Score!)."
+          : "Hem konumun hem de etkinlik saatin doğrulandı! Katılımın başarıyla onaylandı (+5 Güven Puanı!)."
+      );
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
-        const detail = err.response.data?.detail as string | undefined;
-        if (detail?.toLowerCase().includes("far")) {
-          Alert.alert("Çok Uzaktasın", "Katılımını onaylamak için etkinlik alanında (en fazla 500m) olmalısın.");
+        const detail = String(err.response.data?.detail || "").toLowerCase();
+        if (detail.includes("far")) {
+          Alert.alert(
+            language === "en" ? "Too Far Away" : "Çok Uzaktasın",
+            language === "en"
+              ? "You must be at the event location (max 500m) to confirm attendance."
+              : "Katılımını onaylamak için etkinlik alanında (en fazla 500m) olmalısın."
+          );
         } else {
-          Alert.alert("Check-in Zamanı Değil", "Check-in sadece etkinlik saatine yakın zamanlarda yapılabilir.");
+          Alert.alert(
+            language === "en" ? "Not Check-in Time" : "Check-in Zamanı Değil",
+            language === "en"
+              ? "Check-in is only available around the event's start time."
+              : "Check-in sadece etkinlik saatine yakın zamanlarda yapılabilir."
+          );
         }
       } else {
-        Alert.alert("Bir sorun oluştu", "Konum doğrulanamadı. Lütfen tekrar dene.");
+        Alert.alert(
+          language === "en" ? "Error" : "Bir sorun oluştu",
+          language === "en" ? "Location could not be verified. Please try again." : "Konum doğrulanamadı. Lütfen tekrar dene."
+        );
       }
     } finally {
       setIsCheckingIn(false);
