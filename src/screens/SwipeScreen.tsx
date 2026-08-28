@@ -184,14 +184,22 @@ export function SwipeScreen() {
 
       async function resolveActiveEvent(
         upcoming: Event[]
-      ): Promise<{ event: ActiveEvent | null; tab: "system" | "user" }> {
+      ): Promise<{ event: ActiveEvent | null; tab: "system" | "user"; subTab?: "birebir" | "group" }> {
         if (route.params && "eventId" in route.params && route.params.eventId !== consumedEventIdRef.current) {
           const { eventId, eventTitle } = route.params;
           consumedEventIdRef.current = eventId;
           const matched = upcoming.find((event) => event.id === eventId);
+          if (matched?.is_group_event) {
+            return {
+              event: { id: eventId, title: eventTitle },
+              tab: "user",
+              subTab: "group",
+            };
+          }
           return {
             event: { id: eventId, title: eventTitle },
             tab: matched?.creator_id ? "user" : "system",
+            subTab: "birebir",
           };
         }
         // Group events have their own card list (userSubTab === "group") and are
@@ -230,9 +238,12 @@ export function SwipeScreen() {
           if (cancelled) return;
           const allEvents = mergeEvents(mergeEvents(systemEvts, userEvts), attending);
           setAvailableEvents(allEvents);
-          const { event, tab } = await resolveActiveEvent(allEvents);
+          const { event, tab, subTab } = await resolveActiveEvent(allEvents);
           if (cancelled) return;
           setActiveTab(tab);
+          if (subTab) {
+            setUserSubTab(subTab);
+          }
           const isSameEvent = activeEventRef.current && event && activeEventRef.current.id === event.id;
           setActiveEvent(event);
           if (!isSameEvent || hasParamChange) {

@@ -92,7 +92,7 @@ src/
   `refresh_token`. Firebase ile giriş: `POST /auth/firebase-login` (id_token).
   Sonraki isteklerde `Authorization: Bearer <access_token>`.
 - **Profil:** `GET/PATCH /users/me`, `POST /users/me/photo`, `/users/me/photos`
-- **Etkinlikler:** `GET /events/`, `GET/POST /events/`, `POST /events/{id}/rating`
+- **Etkinlikler:** `GET /events/`, `GET /events/{id}`, `POST /events/`, `POST /events/{id}/rate`
 - **Swipe/Eşleşme:** `GET /swipes/candidates?event_id=`, `POST /swipes/`, `GET /matches/`
 - **Mesajlar:** `GET/POST /matches/{id}/messages/`,
   `PATCH /matches/{id}/messages/read`. Gerçek zamanlı teslim Firestore üzerinden;
