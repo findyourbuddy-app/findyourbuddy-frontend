@@ -337,7 +337,10 @@ export function SwipeScreen() {
   );
 
   function switchEvent(event: Event): void {
-    setActiveEvent({ id: event.id, title: event.title, location_name: event.location_name });
+    const nextActive = { id: event.id, title: event.title, location_name: event.location_name };
+    consumedEventIdRef.current = event.id;
+    activeEventRef.current = nextActive;
+    setActiveEvent(nextActive);
     setCurrentIndex(0);
     setCandidates([]);
     setIsLoading(true);
@@ -366,7 +369,7 @@ export function SwipeScreen() {
     const nowMs = Date.now();
     const matchingEvents = availableEvents.filter((event) => {
       if (nextTab === "system") {
-        if (event.creator_id || !event.is_attending) return false;
+        if (event.creator_id) return false;
         if (event.starts_at) {
           const eventMs = new Date(event.starts_at).getTime();
           if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;

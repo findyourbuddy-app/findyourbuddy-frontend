@@ -190,6 +190,7 @@ export function ChatScreen({ route }: Props) {
 
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const localUriMapRef = useRef<Record<string, string>>({});
 
   const [incomingCall, setIncomingCall] = useState<{
     callerName: string;
@@ -729,6 +730,9 @@ export function ChatScreen({ route }: Props) {
       created_at: new Date().toISOString(),
       is_read: false,
     };
+    if (activeImage) {
+      localUriMapRef.current[tempId] = activeImage.uri;
+    }
     setLiveMessages((prev) => [...prev, tempMsg]);
     scrollToBottom(true);
 
@@ -749,6 +753,7 @@ export function ChatScreen({ route }: Props) {
           const cleanPath = url.replace(/^\/+/, "");
           url = `${cleanBase}/${cleanPath}`;
         }
+        localUriMapRef.current[url] = activeImage.uri;
         finalMediaUrl = url;
         finalMessageType = "image";
         if (!finalContent) finalContent = "[Fotoğraf]";
@@ -903,7 +908,8 @@ export function ChatScreen({ route }: Props) {
           const reactionEntries = Object.values(reactionsMap) as string[];
           const isMedia = item.message_type === "image" || item.message_type === "gif" || Boolean(item.media_url && item.media_url.length > 0) || Boolean(item.content && (item.content.startsWith("http") || item.content.includes("/media/")));
           const rawUri = item.media_url || (item.content?.startsWith("http") || item.content?.includes("/media/") ? item.content : null);
-          const photoUri = resolvePhotoUrl(rawUri);
+          const cachedLocalUri = (typeof item.id === "string" && localUriMapRef.current[item.id]) || (rawUri ? localUriMapRef.current[rawUri] : null);
+          const photoUri = cachedLocalUri || resolvePhotoUrl(rawUri);
           const explicitAspect =
             item.media_width && item.media_height ? item.media_width / item.media_height : undefined;
           const knownAspect = explicitAspect ?? imageAspects[String(item.id)];
