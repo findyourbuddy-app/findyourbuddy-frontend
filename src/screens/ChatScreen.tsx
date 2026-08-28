@@ -496,6 +496,12 @@ export function ChatScreen({ route }: Props) {
   // older conversation history lives in Postgres and needs a one-time fetch so
   // it doesn't appear to have "disappeared".
   useEffect(() => {
+    setHistoricalMessages([]);
+    setLiveMessages([]);
+    setSelectedImage(null);
+    setDraft("");
+    setIsInitialLoading(true);
+
     listMessages(matchId)
       .then((history) => {
         setHistoricalMessages(history);
@@ -510,6 +516,7 @@ export function ChatScreen({ route }: Props) {
   useEffect(() => {
     if (!user) return;
 
+    setLiveMessages([]);
     setErrorText(null);
     const messagesRef = collection(db, "matches", String(matchId), "messages");
     const q = query(messagesRef, orderBy("created_at", "asc"));
