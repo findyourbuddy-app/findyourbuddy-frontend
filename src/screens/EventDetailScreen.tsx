@@ -170,7 +170,11 @@ export function EventDetailScreen({ route }: Props) {
     // events; for a group event it shows the deck with an "exit" bar.
     navigation.navigate("Tabs", {
       screen: "Swipe",
-      params: { eventId: event.id, eventTitle: event.title },
+      params: {
+        eventId: event.id,
+        eventTitle: event.title,
+        isGroup: Boolean(event.is_group_event),
+      },
     });
   }
 

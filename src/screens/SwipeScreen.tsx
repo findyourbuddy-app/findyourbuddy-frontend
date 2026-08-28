@@ -193,9 +193,12 @@ export function SwipeScreen() {
       ): Promise<{ event: ActiveEvent | null; tab: "system" | "user"; subTab?: "birebir" | "group" }> {
         if (route.params && "eventId" in route.params && route.params.eventId !== consumedEventIdRef.current) {
           const { eventId, eventTitle } = route.params;
+          const isGroupParam = "isGroup" in route.params && route.params.isGroup;
           consumedEventIdRef.current = eventId;
           const matched = upcoming.find((event) => event.id === eventId);
-          if (matched?.is_group_event) {
+          // Trust the caller's isGroup flag first -- the event may be past the
+          // paginated list and so missing from `upcoming`.
+          if (isGroupParam || matched?.is_group_event) {
             return {
               event: { id: eventId, title: eventTitle },
               tab: "user",

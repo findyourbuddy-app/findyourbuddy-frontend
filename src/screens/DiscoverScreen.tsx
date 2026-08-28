@@ -471,10 +471,14 @@ export function DiscoverScreen() {
   }
 
   function goToSwipe(event: Event): void {
-    // Both 1-on-1 and group events land on the Swipe screen; SwipeScreen
-    // detects a group event from the route param and opens its candidate deck
-    // (with an "exit group matching" bar) instead of the 1-on-1 flow.
-    navigation.navigate("Swipe", { eventId: event.id, eventTitle: event.title });
+    // Both 1-on-1 and group events land on the Swipe screen; isGroup tells
+    // SwipeScreen to open the group candidate deck (only that event's
+    // attendees, with an "exit" bar) instead of the 1-on-1 flow.
+    navigation.navigate("Swipe", {
+      eventId: event.id,
+      eventTitle: event.title,
+      isGroup: Boolean(event.is_group_event),
+    });
   }
 
   async function handlePressJoin(event: Event): Promise<void> {

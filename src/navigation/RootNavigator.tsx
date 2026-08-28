@@ -48,7 +48,10 @@ export type AuthStackParamList = {
   PhoneVerification: { fromSocialSignIn: boolean };
 };
 
-export type SwipeParams = { eventId: number; eventTitle: string } | { openStore: true } | undefined;
+export type SwipeParams =
+  | { eventId: number; eventTitle: string; isGroup?: boolean }
+  | { openStore: true }
+  | undefined;
 
 export type MainTabParamList = {
   Discover: undefined;
