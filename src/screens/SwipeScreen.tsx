@@ -673,25 +673,25 @@ export function SwipeScreen() {
 
       {!(activeTab === "user" && userSubTab === "group" && !groupSwipeEvent) ? (
         <View style={styles.metaRow}>
-          {activeTab === "system" && activeEvent ? (
+          {activeEvent ? (
             <Pressable
               style={styles.eventPill}
-              onPress={openEventPicker}
+              onPress={activeTab === "system" ? openEventPicker : undefined}
               accessibilityRole="button"
               accessibilityLabel="Etkinlik değiştir"
             >
-              <Feather name="map-pin" size={14} color={colors.primary} />
+              <Feather name="target" size={14} color={colors.primary} />
               <Text style={styles.eventPillText} numberOfLines={1}>
                 {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
               </Text>
-              {tabEvents.length > 1 ? (
+              {activeTab === "system" && tabEvents.length > 1 ? (
                 <Feather name="chevron-down" size={12} color={colors.textSecondary} />
               ) : null}
             </Pressable>
           ) : null}
 
           {quota ? (
-            <Text style={[styles.quotaText, (activeTab !== "system" || !activeEvent) && { marginLeft: "auto" }]}>
+            <Text style={[styles.quotaText, !activeEvent && { marginLeft: "auto" }]}>
               {quota.is_premium
                 ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
                 : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}

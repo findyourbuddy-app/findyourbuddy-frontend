@@ -229,16 +229,7 @@ export function SwipeCandidateCard({
         </View>
 
 
-        {activeEventTitle || (candidate as any).event_title ? (
-          <View style={styles.eventLocationPill}>
-            <Feather name="target" size={12} color="#FFC93C" />
-            <Text style={styles.eventLocationPillText} numberOfLines={1}>
-              {language === "en" ? "Event: " : "Başlattığı Etkinlik: "}
-              {locationName ? `${locationName} · ` : ""}
-              {activeEventTitle || (candidate as any).event_title}
-            </Text>
-          </View>
-        ) : locationName ? (
+        {locationName ? (
           <View style={styles.locationRow}>
             <Feather name="map-pin" size={12} color="rgba(255,255,255,0.9)" />
             <Text style={styles.locationText}>{locationName}</Text>
