@@ -19,6 +19,7 @@ import { useAuth } from "../context/AuthContext";
 import { useMessagesContext } from "../context/MessagesContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { apiClient } from "../api/client";
+import { API_BASE_URL } from "../constants/config";
 import { colors, fontFamily, radius, spacing, typeScale, shadows } from "../theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
@@ -647,9 +648,14 @@ export function ChatScreen({ route }: Props) {
       if (activeImage) {
         const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
         const uploaded = await uploadChatMedia(activeImage.uri, fileName);
-        const url = uploaded?.url || (uploaded as any)?.photo_url;
+        let url = uploaded?.url || (uploaded as any)?.photo_url;
         if (!url) {
-          throw new Error("Image upload did not return a URL");
+          throw new Error("Görsel yüklenemedi, sunucudan yanıt alınamadı.");
+        }
+        if (!url.startsWith("http")) {
+          const cleanBase = API_BASE_URL.replace(/\/+$/, "");
+          const cleanPath = url.replace(/^\/+/, "");
+          url = `${cleanBase}/${cleanPath}`;
         }
         finalMediaUrl = url;
         finalMessageType = "image";
@@ -671,24 +677,15 @@ export function ChatScreen({ route }: Props) {
         message_type: finalMessageType,
         media_url: finalMediaUrl,
       });
-    } catch (error) {
+    } catch (error: any) {
       setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
       if (activeText) setDraft(activeText);
       if (activeImage) setSelectedImage(activeImage);
-      if (axios.isAxiosError(error)) {
-        const detail = typeof error.response?.data?.detail === "string" ? error.response.data.detail : "";
-        if (error.response?.status === 422) {
-          setErrorText(detail || "Mesajın uygunsuz içerik nedeniyle gönderilemedi.");
-        } else if (error.response?.status === 403) {
-          setErrorText(detail || "Bu kullanıcı ile mesajlaşamazsınız.");
-        } else if (error.response?.status === 404) {
-          setErrorText(detail || "Eşleşme bulunamadı.");
-        } else {
-          setErrorText(detail || "Mesaj gönderilemedi. Lütfen tekrar dene.");
-        }
-      } else {
-        setErrorText("Mesaj gönderilemedi. Lütfen tekrar dene.");
-      }
+      const errorMsg =
+        error?.response?.data?.detail ||
+        error?.message ||
+        "Mesaj gönderilemedi. Lütfen tekrar dene.";
+      Alert.alert(language === "en" ? "Send Failed" : "Mesaj Gönderilemedi", String(errorMsg));
     } finally {
       setIsSending(false);
       sendLockRef.current = false;
