@@ -640,19 +640,20 @@ export function ChatScreen({ route }: Props) {
     setLiveMessages((prev) => [...prev, tempMsg]);
 
     try {
-      let finalContent = activeText;
+      let finalContent = (activeText && activeText.trim().length > 0) ? activeText.trim() : (activeImage ? "[Fotoğraf]" : "");
       let finalMessageType: "text" | "image" | "gif" = "text";
       let finalMediaUrl: string | undefined = undefined;
 
       if (activeImage) {
         const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
         const uploaded = await uploadChatMedia(activeImage.uri, fileName);
-        if (!uploaded?.url) {
+        const url = uploaded?.url || (uploaded as any)?.photo_url;
+        if (!url) {
           throw new Error("Image upload did not return a URL");
         }
-        finalMediaUrl = uploaded.url;
+        finalMediaUrl = url;
         finalMessageType = "image";
-        finalContent = activeText || "[Fotoğraf]";
+        if (!finalContent) finalContent = "[Fotoğraf]";
       }
 
       const firestoreRef = collection(db, "matches", String(matchId), "messages");
@@ -824,7 +825,7 @@ export function ChatScreen({ route }: Props) {
                         <Image
                           source={{ uri: photoUri }}
                           style={styles.bubbleImage}
-                          contentFit="contain"
+                          contentFit="cover"
                           cachePolicy="memory-disk"
                           autoplay={true}
                           transition={150}
@@ -1332,10 +1333,10 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   bubbleImage: {
-    width: 260,
+    width: 240,
     maxWidth: "100%",
-    height: 240,
-    borderRadius: 16,
+    height: 180,
+    borderRadius: 14,
   },
   modalBackdrop: {
     flex: 1,
