@@ -249,7 +249,7 @@ export function SwipeScreen() {
         const nowMs = Date.now();
         const validEvents = upcoming.filter((event) => {
           if (activeTab === "system") {
-            if (event.creator_id || !event.is_attending) return false;
+            if (event.creator_id) return false;
             if (event.starts_at) {
               const eventMs = new Date(event.starts_at).getTime();
               if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;

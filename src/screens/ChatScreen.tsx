@@ -924,7 +924,7 @@ export function ChatScreen({ route }: Props) {
                   onLongPress={() => setSelectedMessageForReaction(item)}
                 >
                   {isMedia && photoUri ? (
-                    <View>
+                    <View style={{ position: "relative" }}>
                       <Pressable
                         onPress={() => setLightboxPhoto(photoUri)}
                         accessibilityRole="imagebutton"
@@ -949,6 +949,11 @@ export function ChatScreen({ route }: Props) {
                           }}
                         />
                       </Pressable>
+                      {typeof item.id === "string" && item.id.startsWith("temp_") ? (
+                        <View style={styles.imageUploadingOverlay}>
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        </View>
+                      ) : null}
                       {item.content && item.content !== "[Fotoğraf]" && item.content !== "[GIF]" && !item.content.startsWith("http") ? (
                         <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn, { marginTop: spacing.xs }]}>
                           {item.content}
@@ -1349,6 +1354,17 @@ const styles = StyleSheet.create({
   bubbleTextOwn: {
     color: colors.surface,
   },
+  bubbleImage: {
+    borderRadius: 14,
+    backgroundColor: "#15102A",
+  },
+  imageUploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   bubbleFooter: {
     flexDirection: "row",
     alignItems: "center",
@@ -1449,12 +1465,6 @@ const styles = StyleSheet.create({
   },
   removeAttachedBtn: {
     padding: spacing.xs,
-  },
-  bubbleImage: {
-    width: 240,
-    maxWidth: "100%",
-    height: 180,
-    borderRadius: 14,
   },
   modalBackdrop: {
     flex: 1,
