@@ -662,20 +662,24 @@ export function ChatScreen({ route }: Props) {
         if (!finalContent) finalContent = "[Fotoğraf]";
       }
 
-      const firestoreRef = collection(db, "matches", String(matchId), "messages");
-      addDoc(firestoreRef, {
-        sender_id: user.id,
-        content: finalContent,
-        message_type: finalMessageType,
-        media_url: finalMediaUrl || null,
-        created_at: serverTimestamp(),
-        is_read: false,
-      }).catch(() => {});
+      try {
+        const firestoreRef = collection(db, "matches", String(matchId), "messages");
+        await addDoc(firestoreRef, {
+          sender_id: user.id,
+          content: finalContent,
+          message_type: finalMessageType,
+          media_url: finalMediaUrl ?? null,
+          created_at: serverTimestamp(),
+          is_read: false,
+        });
+      } catch (fsErr) {
+        console.warn("[Firestore] Realtime sync skipped:", fsErr);
+      }
 
       await sendMessage(matchId, {
         content: finalContent,
         message_type: finalMessageType,
-        media_url: finalMediaUrl,
+        media_url: finalMediaUrl ?? null,
       });
     } catch (error: any) {
       setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
