@@ -415,6 +415,16 @@ export function SwipeScreen() {
         }
       });
 
+    if (nextIndex >= candidates.length) {
+      const currentIdx = tabEvents.findIndex((e) => e.id === activeEvent.id);
+      const nextEvent = tabEvents[currentIdx + 1];
+      if (nextEvent) {
+        setTimeout(() => {
+          switchEvent(nextEvent);
+        }, 300);
+      }
+    }
+
     return candidates[nextIndex] || null;
   }
 
@@ -868,9 +878,28 @@ export function SwipeScreen() {
           <View style={styles.center}>
             <Text style={styles.emptyText}>
               {language === "en"
-                ? "No more candidates left for this event."
-                : "Bu etkinlik için başka aday kalmadı."}
+                ? "You've seen all interested candidates for this event! 🎉"
+                : "Bu etkinlik için tüm ilgilenen adayları gördün! 🎉"}
             </Text>
+            {tabEvents.length > 1 ? (
+              <View style={{ marginTop: spacing.md }}>
+                <PrimaryButton
+                  label={language === "en" ? "Next Event Candidates" : "Diğer Etkinlikteki Adaylara Geç"}
+                  onPress={() => {
+                    const currentIdx = tabEvents.findIndex((e) => e.id === activeEvent?.id);
+                    const nextEvent = tabEvents[(currentIdx + 1) % tabEvents.length];
+                    if (nextEvent) switchEvent(nextEvent);
+                  }}
+                />
+              </View>
+            ) : (
+              <View style={{ marginTop: spacing.md }}>
+                <PrimaryButton
+                  label={language === "en" ? "Explore More Events" : "Daha Fazla Etkinlik Keşfet"}
+                  onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
+                />
+              </View>
+            )}
           </View>
         )}
       </View>
