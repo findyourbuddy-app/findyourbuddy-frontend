@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const GIPHY_API_KEY = process.env.EXPO_PUBLIC_GIPHY_API_KEY;
+const GIPHY_API_KEY = process.env.EXPO_PUBLIC_GIPHY_API_KEY || "glDed0O4pT1khDsy2yO44bMthFos41qW";
 const GIPHY_BASE_URL = "https://api.giphy.com/v1/gifs";
 
 export interface GifResult {

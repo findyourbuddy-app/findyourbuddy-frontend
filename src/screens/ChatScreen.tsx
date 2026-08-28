@@ -804,8 +804,8 @@ export function ChatScreen({ route }: Props) {
           const isTimeVisible = visibleTimestampId === item.id;
           const reactionsMap = item.reactions || {};
           const reactionEntries = Object.values(reactionsMap) as string[];
-          const isMedia = item.message_type === "image" || item.message_type === "gif" || (item.media_url && item.media_url.length > 0) || (item.content && item.content.startsWith("http"));
-          const rawUri = item.media_url || (item.content?.startsWith("http") ? item.content : null);
+          const isMedia = item.message_type === "image" || item.message_type === "gif" || Boolean(item.media_url && item.media_url.length > 0) || Boolean(item.content && (item.content.startsWith("http") || item.content.includes("/media/")));
+          const rawUri = item.media_url || (item.content?.startsWith("http") || item.content?.includes("/media/") ? item.content : null);
           const photoUri = resolvePhotoUrl(rawUri);
 
           return (
@@ -826,8 +826,10 @@ export function ChatScreen({ route }: Props) {
                         <Image
                           source={{ uri: photoUri }}
                           style={styles.bubbleImage}
-                          contentFit="cover"
+                          contentFit={item.message_type === "gif" ? "contain" : "cover"}
                           cachePolicy="memory-disk"
+                          autoplay={true}
+                          transition={150}
                         />
                       </Pressable>
                       {item.content && item.content !== "[Fotoğraf]" && item.content !== "[GIF]" && !item.content.startsWith("http") ? (
