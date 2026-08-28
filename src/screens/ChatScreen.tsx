@@ -527,6 +527,7 @@ export function ChatScreen({ route }: Props) {
             created_at: data.created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
             is_read: data.is_read || false,
             reactions: data.reactions || {},
+            client_temp_id: data.client_temp_id || null,
           });
 
           // Mark incoming unread messages as read in Firestore
@@ -535,7 +536,21 @@ export function ChatScreen({ route }: Props) {
             updateDoc(docRef, { is_read: true }).catch(() => {});
           }
         });
-        setLiveMessages(list);
+        // Keep optimistic placeholders visible until THEIR OWN Firestore doc
+        // lands (matched by client_temp_id) -- an unrelated snapshot (e.g. a
+        // read receipt) firing mid-upload must not wipe a pending image.
+        setLiveMessages((prev) => {
+          const supersededTempIds = new Set(
+            list.map((m) => m.client_temp_id).filter((id): id is string => Boolean(id))
+          );
+          const stillPending = prev.filter(
+            (m) =>
+              typeof m.id === "string" &&
+              m.id.startsWith("temp_") &&
+              !supersededTempIds.has(m.id)
+          );
+          return [...list, ...stillPending];
+        });
         setIsInitialLoading(false);
       },
       () => {
@@ -664,6 +679,7 @@ export function ChatScreen({ route }: Props) {
         if (!finalContent) finalContent = "[Fotoğraf]";
       }
 
+      let firestoreSynced = false;
       try {
         const firestoreRef = collection(db, "matches", String(matchId), "messages");
         await addDoc(firestoreRef, {
@@ -673,7 +689,9 @@ export function ChatScreen({ route }: Props) {
           media_url: finalMediaUrl ?? null,
           created_at: serverTimestamp(),
           is_read: false,
+          client_temp_id: tempId,
         });
+        firestoreSynced = true;
       } catch (fsErr) {
         console.warn("[Firestore] Realtime sync skipped:", fsErr);
       }
@@ -683,6 +701,18 @@ export function ChatScreen({ route }: Props) {
         message_type: finalMessageType,
         media_url: finalMediaUrl ?? null,
       });
+
+      // If Firestore is unreachable the snapshot listener will never replace
+      // the placeholder, so promote it to a permanent local message instead.
+      if (!firestoreSynced) {
+        setLiveMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempId
+              ? { ...m, media_url: finalMediaUrl ?? m.media_url, message_type: finalMessageType }
+              : m
+          )
+        );
+      }
     } catch (error: any) {
       setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
       if (activeText) setDraft(activeText);
@@ -727,6 +757,7 @@ export function ChatScreen({ route }: Props) {
         media_url: gifUrl,
         created_at: serverTimestamp(),
         is_read: false,
+        client_temp_id: tempId,
       }).catch(() => {});
 
       await sendMessage(matchId, {

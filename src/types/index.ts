@@ -186,6 +186,9 @@ export interface Message {
   is_read: boolean;
   created_at: string;
   reactions?: Record<string, string>;
+  // Optimistic-send bookkeeping: the local temp id echoed back through
+  // Firestore so the snapshot listener can drop the right placeholder.
+  client_temp_id?: string | null;
 }
 
 export interface MessageCreate {
