@@ -723,6 +723,7 @@ export function ChatScreen({ route }: Props) {
       is_read: false,
     };
     setLiveMessages((prev) => [...prev, tempMsg]);
+    scrollToBottom(true);
 
     try {
       let finalContent = (activeText && activeText.trim().length > 0) ? activeText.trim() : (activeImage ? "[Fotoğraf]" : "");

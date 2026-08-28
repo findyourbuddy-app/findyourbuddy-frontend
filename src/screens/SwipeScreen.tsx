@@ -99,7 +99,6 @@ export function SwipeScreen() {
     const nowMs = Date.now();
     return availableEvents.filter((event) => {
       if (event.creator_id) return false;
-      if (!event.is_attending) return false;
       if (event.starts_at) {
         const eventMs = new Date(event.starts_at).getTime();
         // Remove expired events (older than 4 hours after start time)
