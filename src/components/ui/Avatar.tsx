@@ -50,7 +50,15 @@ export function resolvePhotoUrl(url?: string | null): string | null {
 
   const base = API_BASE_URL.replace(/\/+$/, "");
 
-  // Absolute HTTP/HTTPS URLs (external services like Giphy, Google, etc.)
+  // If it's a backend media or upload file (whether absolute URL with old IP or relative path)
+  if (trimmed.includes("/media/") || trimmed.includes("/uploads/")) {
+    const mediaPath = trimmed.includes("/media/")
+      ? trimmed.substring(trimmed.indexOf("/media/"))
+      : trimmed.substring(trimmed.indexOf("/uploads/"));
+    return `${base}${mediaPath}`;
+  }
+
+  // Absolute HTTP/HTTPS URLs (external services like Giphy, Google, Cloudflare R2, etc.)
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     if (trimmed.includes("giphy.com") || trimmed.includes("giphy.org") || trimmed.includes("googleusercontent.com")) {
       return trimmed;
@@ -59,23 +67,7 @@ export function resolvePhotoUrl(url?: string | null): string | null {
       const fileName = trimmed.split("/").pop() || "";
       return `${base}/media/${fileName}`;
     }
-    if (
-      trimmed.includes("localhost") ||
-      trimmed.includes("127.0.0.1") ||
-      trimmed.includes("10.0.2.2") ||
-      /192\.168\.\d+\.\d+/.test(trimmed)
-    ) {
-      return trimmed.replace(/^https?:\/\/[^/]+/, base);
-    }
     return trimmed;
-  }
-
-  // If it contains /media/ or /uploads/ path
-  if (trimmed.includes("/media/") || trimmed.includes("/uploads/")) {
-    const mediaPath = trimmed.includes("/media/")
-      ? trimmed.substring(trimmed.indexOf("/media/"))
-      : trimmed.substring(trimmed.indexOf("/uploads/"));
-    return `${base}${mediaPath}`;
   }
 
   // Relative path fallback
