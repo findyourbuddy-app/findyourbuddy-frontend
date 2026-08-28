@@ -29,9 +29,13 @@ export function getIcebreakers(matchId: number): Promise<IcebreakerItem[]> {
     .then((res) => res.data);
 }
 
-export async function uploadChatMedia(uri: string, fileName: string): Promise<{ url: string }> {
+export async function uploadChatMedia(
+  uri: string,
+  fileName: string,
+  mimeType?: string
+): Promise<{ url: string }> {
   const formData = new FormData();
-  const fileData = await toUploadFile(uri, fileName);
+  const fileData = await toUploadFile(uri, fileName, mimeType);
   formData.append("file", fileData as any);
   return postMultipart<{ url: string }>("/users/me/media", formData);
 }

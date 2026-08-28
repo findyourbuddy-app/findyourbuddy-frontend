@@ -40,7 +40,9 @@ export function ChatScreen({ route }: Props) {
   const [historicalMessages, setHistoricalMessages] = useState<Message[]>([]);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
-  const [selectedImage, setSelectedImage] = useState<{ uri: string } | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{ uri: string; name?: string; type?: string } | null>(null);
+  // Natural aspect ratio (w/h) per message image, so photos render uncropped.
+  const [imageAspects, setImageAspects] = useState<Record<string, number>>({});
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const sendLockRef = useRef<boolean>(false);
@@ -646,8 +648,8 @@ export function ChatScreen({ route }: Props) {
       let finalMediaUrl: string | undefined = undefined;
 
       if (activeImage) {
-        const fileName = activeImage.uri.split("/").pop() ?? "photo.jpg";
-        const uploaded = await uploadChatMedia(activeImage.uri, fileName);
+        const fileName = activeImage.name ?? activeImage.uri.split("/").pop() ?? "photo.jpg";
+        const uploaded = await uploadChatMedia(activeImage.uri, fileName, activeImage.type);
         let url = uploaded?.url || (uploaded as any)?.photo_url;
         if (!url) {
           throw new Error("Görsel yüklenemedi, sunucudan yanıt alınamadı.");
@@ -751,7 +753,7 @@ export function ChatScreen({ route }: Props) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.85,
+      quality: 1,
       allowsEditing: false,
     });
     const asset = result.assets?.[0];
@@ -759,7 +761,11 @@ export function ChatScreen({ route }: Props) {
       return;
     }
 
-    setSelectedImage({ uri: asset.uri });
+    setSelectedImage({
+      uri: asset.uri,
+      name: asset.fileName ?? undefined,
+      type: asset.mimeType ?? undefined,
+    });
   }
 
   if (!user) {
@@ -834,11 +840,26 @@ export function ChatScreen({ route }: Props) {
                       >
                         <Image
                           source={{ uri: photoUri }}
-                          style={styles.bubbleImage}
-                          contentFit="cover"
+                          style={[
+                            styles.bubbleImage,
+                            {
+                              height: undefined,
+                              aspectRatio: Math.min(Math.max(imageAspects[String(item.id)] ?? 4 / 3, 0.6), 2),
+                            },
+                          ]}
+                          contentFit="contain"
                           cachePolicy="memory-disk"
                           autoplay={true}
                           transition={150}
+                          onLoad={(e) => {
+                            const w = e?.source?.width;
+                            const h = e?.source?.height;
+                            if (w && h) {
+                              setImageAspects((prev) =>
+                                prev[String(item.id)] ? prev : { ...prev, [String(item.id)]: w / h }
+                              );
+                            }
+                          }}
                         />
                       </Pressable>
                       {item.content && item.content !== "[Fotoğraf]" && item.content !== "[GIF]" && !item.content.startsWith("http") ? (
