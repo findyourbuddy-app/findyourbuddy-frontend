@@ -472,7 +472,11 @@ export function DiscoverScreen() {
 
   function goToSwipe(event: Event): void {
     if (event.is_group_event) {
-      navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any });
+      navigation.navigate("EventDetail", {
+        eventId: event.id,
+        initialEvent: event as any,
+        autoStartSwipe: true,
+      });
       return;
     }
     navigation.navigate("Swipe", { eventId: event.id, eventTitle: event.title });

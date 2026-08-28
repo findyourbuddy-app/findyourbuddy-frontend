@@ -65,6 +65,16 @@ export function EventDetailScreen({ route }: Props) {
     }
   }, [route.params?.autoOpenRating, event, isOwnerOfGroupEvent]);
 
+  // "Kankaları Gör" on a group event card lands here with autoStartSwipe so the
+  // candidate deck opens in one tap instead of making the user find the button.
+  const autoSwipeStartedRef = useRef(false);
+  useEffect(() => {
+    if (route.params?.autoStartSwipe && event?.is_attending && !autoSwipeStartedRef.current) {
+      autoSwipeStartedRef.current = true;
+      goToSwipe();
+    }
+  }, [route.params?.autoStartSwipe, event?.is_attending]);
+
   const refreshJoinRequests = useCallback(async (eventIdToLoad: number) => {
     try {
       const requests = await listJoinRequests(eventIdToLoad);
@@ -166,42 +176,37 @@ export function EventDetailScreen({ route }: Props) {
 
   async function goToSwipe(): Promise<void> {
     if (!event) return;
+    const currentEvent = event;
     try {
       const { getSwipeCandidates, createSwipe } = require("../api/swipes");
-      const candidates = await getSwipeCandidates(event.id);
-      if (candidates && candidates.length > 0) {
-        const openCandidate = (index: number) => {
-          if (index >= candidates.length) {
-            Alert.alert("Tebrikler!", "Bu etkinlik için tüm adayları gördün 🎉");
-            return;
-          }
-          const cand = candidates[index];
-          navigation.navigate("CandidateProfile", {
-            candidate: cand,
-            eventTitle: event.title,
-            onExitGroupSwipe: () => {
-              navigation.popToTop();
-            },
-            onSwipeLeft: async () => {
-              try { await createSwipe({ target_id: cand.id, event_id: event.id, direction: "pass" }); } catch {}
-              openCandidate(index + 1);
-            },
-            onSwipeRight: async () => {
-              try { await createSwipe({ target_id: cand.id, event_id: event.id, direction: "like" }); } catch {}
-              openCandidate(index + 1);
-            },
-            onSwipeUp: async () => {
-              try { await createSwipe({ target_id: cand.id, event_id: event.id, direction: "super_like" }); } catch {}
-              openCandidate(index + 1);
-            },
-          });
-        };
-        openCandidate(0);
-        return;
-      } else {
+      const candidates: User[] = await getSwipeCandidates(currentEvent.id);
+      if (!candidates || candidates.length === 0) {
         Alert.alert("Henüz Aday Yok", "Bu etkinliğe katılan henüz başka aday bulunmuyor.");
         return;
       }
+
+      // CandidateProfileScreen advances in place: each swipe handler returns the
+      // NEXT candidate (or null when the deck is done), and the screen calls
+      // setProfile with it -- so there is a single navigate() here, not one per card.
+      let index = 0;
+      const swipeAndAdvance = (direction: "pass" | "like" | "super_like"): User | null => {
+        const swiped = candidates[index];
+        if (swiped) {
+          // Fire-and-forget so the next card shows instantly (same as SwipeScreen).
+          createSwipe({ target_id: swiped.id, event_id: currentEvent.id, direction }).catch(() => {});
+        }
+        index += 1;
+        return candidates[index] ?? null;
+      };
+
+      navigation.navigate("CandidateProfile", {
+        candidate: candidates[0],
+        eventTitle: currentEvent.title,
+        onExitGroupSwipe: () => navigation.popToTop(),
+        onSwipeLeft: () => swipeAndAdvance("pass"),
+        onSwipeRight: () => swipeAndAdvance("like"),
+        onSwipeUp: () => swipeAndAdvance("super_like"),
+      });
     } catch {
       Alert.alert("Bilgi", "Adaylar yüklenirken bir sorun oluştu.");
     }
