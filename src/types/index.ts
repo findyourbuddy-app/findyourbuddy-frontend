@@ -183,6 +183,10 @@ export interface Message {
   content: string;
   message_type?: "text" | "image" | "gif";
   media_url?: string | null;
+  // Natural pixel dimensions of media_url, so the bubble can size to the
+  // photo's aspect ratio without waiting for it to download.
+  media_width?: number | null;
+  media_height?: number | null;
   is_read: boolean;
   created_at: string;
   reactions?: Record<string, string>;
@@ -195,6 +199,9 @@ export interface MessageCreate {
   content: string;
   message_type?: "text" | "image" | "gif";
   media_url?: string | null;
+  media_width?: number | null;
+  media_height?: number | null;
+  client_temp_id?: string | null;
 }
 
 export type ReportReason = "harassment" | "spam" | "fake_profile" | "inappropriate_content" | "other";

@@ -7,7 +7,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
 import axios from "axios";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, uploadChatMedia, type IcebreakerItem } from "../api/messages";
 import { fetchTrendingGifs, searchGifs, type GifResult } from "../api/giphy";
@@ -40,8 +40,11 @@ export function ChatScreen({ route }: Props) {
   const [historicalMessages, setHistoricalMessages] = useState<Message[]>([]);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
-  const [selectedImage, setSelectedImage] = useState<{ uri: string; name?: string; type?: string } | null>(null);
-  // Natural aspect ratio (w/h) per message image, so photos render uncropped.
+  const [selectedImage, setSelectedImage] = useState<
+    { uri: string; name?: string; type?: string; width?: number; height?: number } | null
+  >(null);
+  // Natural aspect ratio (w/h) per message image, filled from expo-image's
+  // onLoad for messages that don't carry explicit media_width/media_height.
   const [imageAspects, setImageAspects] = useState<Record<string, number>>({});
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -524,6 +527,8 @@ export function ChatScreen({ route }: Props) {
             content: data.content,
             message_type: data.message_type || "text",
             media_url: data.media_url || null,
+            media_width: data.media_width ?? null,
+            media_height: data.media_height ?? null,
             created_at: data.created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
             is_read: data.is_read || false,
             reactions: data.reactions || {},
@@ -652,6 +657,8 @@ export function ChatScreen({ route }: Props) {
       content: activeText || (activeImage ? "[Fotoğraf]" : ""),
       message_type: activeImage ? "image" : "text",
       media_url: activeImage ? activeImage.uri : null,
+      media_width: activeImage?.width ?? null,
+      media_height: activeImage?.height ?? null,
       created_at: new Date().toISOString(),
       is_read: false,
     };
@@ -677,34 +684,28 @@ export function ChatScreen({ route }: Props) {
         finalMediaUrl = url;
         finalMessageType = "image";
         if (!finalContent) finalContent = "[Fotoğraf]";
+        // Warm the cache so the swap from the local placeholder to the
+        // server URL is seamless instead of a blank re-download.
+        Image.prefetch(url).catch(() => {});
       }
 
-      let firestoreSynced = false;
-      try {
-        const firestoreRef = collection(db, "matches", String(matchId), "messages");
-        await addDoc(firestoreRef, {
-          sender_id: user.id,
-          content: finalContent,
-          message_type: finalMessageType,
-          media_url: finalMediaUrl ?? null,
-          created_at: serverTimestamp(),
-          is_read: false,
-          client_temp_id: tempId,
-        });
-        firestoreSynced = true;
-      } catch (fsErr) {
-        console.warn("[Firestore] Realtime sync skipped:", fsErr);
-      }
-
+      // Firestore rules only let the backend's Admin SDK write messages, so
+      // the send goes through the API; the backend relays it to Firestore
+      // (echoing client_temp_id + dimensions) and the snapshot listener swaps
+      // the placeholder for the delivered message.
       await sendMessage(matchId, {
         content: finalContent,
         message_type: finalMessageType,
         media_url: finalMediaUrl ?? null,
+        media_width: activeImage?.width ?? null,
+        media_height: activeImage?.height ?? null,
+        client_temp_id: tempId,
       });
 
-      // If Firestore is unreachable the snapshot listener will never replace
-      // the placeholder, so promote it to a permanent local message instead.
-      if (!firestoreSynced) {
+      // Firestore relay isn't configured (or is down) if nothing replaced the
+      // placeholder shortly after the API confirmed the send -- keep it as a
+      // permanent local message pointing at the uploaded URL.
+      setTimeout(() => {
         setLiveMessages((prev) =>
           prev.map((m) =>
             m.id === tempId
@@ -712,7 +713,7 @@ export function ChatScreen({ route }: Props) {
               : m
           )
         );
-      }
+      }, 4000);
     } catch (error: any) {
       setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
       if (activeText) setDraft(activeText);
@@ -749,21 +750,11 @@ export function ChatScreen({ route }: Props) {
     setLiveMessages((prev) => [...prev, tempGifMsg]);
 
     try {
-      const firestoreRef = collection(db, "matches", String(matchId), "messages");
-      addDoc(firestoreRef, {
-        sender_id: user.id,
-        content: "[GIF]",
-        message_type: "gif",
-        media_url: gifUrl,
-        created_at: serverTimestamp(),
-        is_read: false,
-        client_temp_id: tempId,
-      }).catch(() => {});
-
       await sendMessage(matchId, {
         content: "[GIF]",
         message_type: "gif",
         media_url: gifUrl,
+        client_temp_id: tempId,
       });
     } catch {
       setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
@@ -796,6 +787,8 @@ export function ChatScreen({ route }: Props) {
       uri: asset.uri,
       name: asset.fileName ?? undefined,
       type: asset.mimeType ?? undefined,
+      width: asset.width,
+      height: asset.height,
     });
   }
 
@@ -853,6 +846,12 @@ export function ChatScreen({ route }: Props) {
           const isMedia = item.message_type === "image" || item.message_type === "gif" || Boolean(item.media_url && item.media_url.length > 0) || Boolean(item.content && (item.content.startsWith("http") || item.content.includes("/media/")));
           const rawUri = item.media_url || (item.content?.startsWith("http") || item.content?.includes("/media/") ? item.content : null);
           const photoUri = resolvePhotoUrl(rawUri);
+          const explicitAspect =
+            item.media_width && item.media_height ? item.media_width / item.media_height : undefined;
+          const mediaAspect = Math.min(
+            Math.max(explicitAspect ?? imageAspects[String(item.id)] ?? 4 / 3, 0.6),
+            2
+          );
 
           return (
             <View style={{ marginBottom: spacing.xs }}>
@@ -871,18 +870,13 @@ export function ChatScreen({ route }: Props) {
                       >
                         <Image
                           source={{ uri: photoUri }}
-                          style={[
-                            styles.bubbleImage,
-                            {
-                              height: undefined,
-                              aspectRatio: Math.min(Math.max(imageAspects[String(item.id)] ?? 4 / 3, 0.6), 2),
-                            },
-                          ]}
+                          style={[styles.bubbleImage, { height: undefined, aspectRatio: mediaAspect }]}
                           contentFit="contain"
                           cachePolicy="memory-disk"
                           autoplay={true}
                           transition={150}
                           onLoad={(e) => {
+                            if (explicitAspect) return;
                             const w = e?.source?.width;
                             const h = e?.source?.height;
                             if (w && h) {
