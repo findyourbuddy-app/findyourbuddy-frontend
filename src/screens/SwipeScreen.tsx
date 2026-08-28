@@ -228,7 +228,7 @@ export function SwipeScreen() {
         // in sync with `user1on1Events`/`tabEvents`, so the "Birebir" tab can never
         // silently auto-select a group event that isn't even in the event picker.
         const nowMs = Date.now();
-        const currentTabEvents = upcoming.filter((event) => {
+        const validEvents = upcoming.filter((event) => {
           if (activeTab === "system") {
             if (event.creator_id || !event.is_attending) return false;
             if (event.starts_at) {
@@ -239,8 +239,19 @@ export function SwipeScreen() {
           }
           return Boolean(event.creator_id) && !event.is_group_event;
         });
-        const fallback = currentTabEvents[0];
-        return { event: fallback ? { id: fallback.id, title: fallback.title } : null, tab: activeTab };
+
+        let chosen = activeEventRef.current
+          ? validEvents.find((e) => e.id === activeEventRef.current?.id)
+          : null;
+
+        if (!chosen && validEvents.length > 0) {
+          chosen = validEvents[0];
+        }
+
+        return {
+          event: chosen ? { id: chosen.id, title: chosen.title, location_name: chosen.location_name } : null,
+          tab: activeTab,
+        };
       }
 
       if (candidates.length === 0) {
@@ -900,24 +911,35 @@ export function SwipeScreen() {
                 : "Bu etkinlik için tüm ilgilenen adayları gördün! 🎉"}
             </Text>
             <View style={{ marginTop: spacing.md, width: "100%", gap: spacing.sm }}>
-              {tabEvents.length > 1 ? (
-                <PrimaryButton
-                  label={language === "en" ? "Next Event Candidates" : "Diğer Etkinlikteki Adaylara Geç"}
-                  onPress={() => {
-                    const currentIdx = tabEvents.findIndex((e) => e.id === activeEvent?.id);
-                    const nextEvent = tabEvents[(currentIdx + 1) % tabEvents.length];
-                    if (nextEvent) switchEvent(nextEvent);
-                  }}
-                />
-              ) : null}
-              <PrimaryButton
-                label={language === "en" ? "General Browse (All Nearby)" : "Etkinlik Seçmeden Genel Gezin (Tüm Çevre)"}
-                onPress={() => selectGeneralSwipe()}
-              />
-              <PrimaryButton
-                label={language === "en" ? "Select New Event in Discover" : "Keşfet'ten Yeni Etkinlik Seç"}
-                onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
-              />
+              {activeTab === "system" ? (
+                <>
+                  {tabEvents.length > 1 ? (
+                    <PrimaryButton
+                      label={language === "en" ? "Next Event Candidates" : "Diğer Etkinlikteki Adaylara Geç"}
+                      onPress={() => {
+                        const currentIdx = tabEvents.findIndex((e) => e.id === activeEvent?.id);
+                        const nextEvent = tabEvents[(currentIdx + 1) % tabEvents.length];
+                        if (nextEvent) switchEvent(nextEvent);
+                      }}
+                    />
+                  ) : null}
+                  <PrimaryButton
+                    label={language === "en" ? "Select New Event in Discover" : "Keşfet'ten Yeni Etkinlik Seç"}
+                    onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
+                  />
+                </>
+              ) : (
+                <>
+                  <PrimaryButton
+                    label={language === "en" ? "General Browse (All Nearby)" : "Etkinlik Seçmeden Genel Gezin (Tüm Çevre)"}
+                    onPress={() => selectGeneralSwipe()}
+                  />
+                  <PrimaryButton
+                    label={language === "en" ? "Select New Event in Discover" : "Keşfet'ten Yeni Etkinlik Seç"}
+                    onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
+                  />
+                </>
+              )}
             </View>
           </View>
         )}
