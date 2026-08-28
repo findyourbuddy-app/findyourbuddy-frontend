@@ -825,9 +825,7 @@ export function ChatScreen({ route }: Props) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      // Full resolution (no crop); 0.9 keeps it visually lossless while roughly
-      // halving the upload size so the photo doesn't take seconds to send.
-      quality: 0.9,
+      quality: 0.75,
       allowsEditing: false,
     });
     const asset = result.assets?.[0];
