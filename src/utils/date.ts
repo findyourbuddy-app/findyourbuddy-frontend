@@ -1,6 +1,6 @@
 import type { LanguageKey } from "../context/ThemeContext";
 
-function parseApiDate(iso: string): Date {
+export function parseApiDate(iso: string): Date {
   const hasTimezone = /Z$|[+-]\d{2}:\d{2}$/.test(iso);
   return new Date(hasTimezone ? iso : `${iso}Z`);
 }

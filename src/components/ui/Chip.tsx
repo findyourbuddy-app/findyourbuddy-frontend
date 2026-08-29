@@ -17,10 +17,10 @@ export function Chip({ label, active = false, onPress }: ChipProps) {
 
 const styles = StyleSheet.create({
   base: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: radius.pill,
-    marginRight: spacing.xs,
+    marginRight: 6,
   },
   inactive: {
     backgroundColor: colors.surface,
@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: 13,
+    fontSize: 13.5,
     color: colors.textPrimary,
   },
   activeLabel: {

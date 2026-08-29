@@ -687,7 +687,8 @@ export function DiscoverScreen() {
                 directionalLockEnabled={true}
                 nestedScrollEnabled={true}
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ flexDirection: "row", gap: spacing.xs, paddingVertical: 4 }}
+                style={{ marginVertical: 6 }}
+                contentContainerStyle={{ flexDirection: "row", paddingVertical: 2, paddingHorizontal: 2 }}
               >
                 <Chip
                   label={t("systemEvents")}
@@ -713,8 +714,8 @@ export function DiscoverScreen() {
                 directionalLockEnabled={true}
                 nestedScrollEnabled={true}
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ flexDirection: "row", gap: spacing.xs, paddingVertical: 4 }}
-                style={styles.chipList}
+                style={{ marginBottom: 6 }}
+                contentContainerStyle={{ flexDirection: "row", paddingVertical: 2, paddingHorizontal: 2 }}
               >
                 {CATEGORIES.map((item) => (
                   <Chip
