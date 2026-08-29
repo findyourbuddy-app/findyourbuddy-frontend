@@ -53,8 +53,16 @@ function parseLocalDateTime(dateText: string, timeText: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function PannableCoverImage({ uri }: { uri: string }) {
+function InteractiveRectangleCropFrame({
+  uri,
+  title,
+}: {
+  uri: string;
+  title?: string;
+}) {
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const [scale, setScale] = useState(1);
+  const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
 
   const panResponder = useRef(
     PanResponder.create({
@@ -76,24 +84,93 @@ function PannableCoverImage({ uri }: { uri: string }) {
     })
   ).current;
 
+  const handleReset = () => {
+    pan.setValue({ x: 0, y: 0 });
+    pan.setOffset({ x: 0, y: 0 });
+    setScale(1);
+    setFitMode("cover");
+  };
+
+  const handleToggleFit = () => {
+    setFitMode((prev) => (prev === "cover" ? "contain" : "cover"));
+    pan.setValue({ x: 0, y: 0 });
+    pan.setOffset({ x: 0, y: 0 });
+    setScale(1);
+  };
+
+  const handleZoomIn = () => {
+    setScale((prev) => Math.min(prev + 0.2, 2.5));
+  };
+
+  const handleZoomOut = () => {
+    setScale((prev) => Math.max(prev - 0.2, 0.6));
+  };
+
   return (
-    <View style={styles.coverPreviewCard}>
-      <View style={{ height: 160, overflow: "hidden", backgroundColor: "#15102A" }}>
+    <View style={styles.cropEditorCard}>
+      {title ? <Text style={styles.cropEditorHeader}>{title}</Text> : null}
+      
+      {/* Rectangular Framing Container */}
+      <View style={styles.cropFrameViewport}>
         <Animated.View
-          style={{
-            width: "100%",
-            height: "100%",
-            transform: [{ translateX: pan.x }, { translateY: pan.y }],
-          }}
+          style={[
+            styles.cropImageWrapper,
+            {
+              transform: [
+                { translateX: pan.x },
+                { translateY: pan.y },
+                { scale: scale },
+              ],
+            },
+          ]}
           {...panResponder.panHandlers}
         >
-          <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+          <Image source={{ uri }} style={styles.cropImage} contentFit={fitMode} />
         </Animated.View>
+
+        {/* Rectangle Bounding Grid Overlay */}
+        <View style={styles.cropOverlayGrid} pointerEvents="none">
+          <View style={[styles.cornerHandle, styles.topLeft]} />
+          <View style={[styles.cornerHandle, styles.topRight]} />
+          <View style={[styles.cornerHandle, styles.bottomLeft]} />
+          <View style={[styles.cornerHandle, styles.bottomRight]} />
+        </View>
       </View>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 6, backgroundColor: colors.background }}>
+
+      {/* Control Buttons Bar */}
+      <View style={styles.cropToolbar}>
+        <View style={styles.zoomControls}>
+          <Pressable style={styles.toolBtn} onPress={handleZoomOut}>
+            <Feather name="zoom-out" size={14} color={colors.textPrimary} />
+          </Pressable>
+          <Text style={styles.scaleText}>{Math.round(scale * 100)}%</Text>
+          <Pressable style={styles.toolBtn} onPress={handleZoomIn}>
+            <Feather name="zoom-in" size={14} color={colors.textPrimary} />
+          </Pressable>
+        </View>
+
+        <View style={styles.actionControls}>
+          <Pressable
+            style={[styles.modeBtn, fitMode === "contain" && styles.modeBtnActive]}
+            onPress={handleToggleFit}
+          >
+            <Feather name="maximize-2" size={13} color={fitMode === "contain" ? colors.primary : colors.textSecondary} />
+            <Text style={[styles.modeBtnText, fitMode === "contain" && styles.modeBtnTextActive]}>
+              {fitMode === "contain" ? "Tam Sığdırıldı 📐" : "Tam Sığdır 📐"}
+            </Text>
+          </Pressable>
+
+          <Pressable style={styles.resetBtn} onPress={handleReset}>
+            <Feather name="rotate-ccw" size={13} color={colors.textSecondary} />
+            <Text style={styles.resetBtnText}>Sıfırla</Text>
+          </Pressable>
+        </View>
+      </View>
+      
+      <View style={styles.cropHintBar}>
         <Feather name="move" size={12} color={colors.primary} />
-        <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.textSecondary }}>
-          Görseli parmağınla sürükleyerek hizalayabilirsin 🖐️
+        <Text style={styles.cropHintText}>
+          Dikdörtgen alan içinde parmağınla kaydır ve ölçekle 🖐️
         </Text>
       </View>
     </View>
@@ -411,7 +488,10 @@ export function CreateEventScreen() {
 
         {coverOption === "profile" ? (
           user?.photo_url ? (
-            <PannableCoverImage uri={resolvePhotoUrl(user.photo_url) || ""} />
+            <InteractiveRectangleCropFrame
+              uri={resolvePhotoUrl(user.photo_url) || ""}
+              title="Profil Fotoğrafını Dikdörtgen Çerçeveye Ayarla"
+            />
           ) : (
             <View style={styles.coverPreviewCard}>
               <LinearGradient colors={currentCategoryMeta?.gradient || ["#B8AEE8", "#6C4CF1"]} style={styles.coverPreviewImage}>
@@ -422,11 +502,10 @@ export function CreateEventScreen() {
             </View>
           )
         ) : (
-          <View style={styles.coverPreviewCard}>
-            <Image
-              source={{ uri: activeStockUrl }}
-              style={styles.coverPreviewImage}
-              contentFit="cover"
+          <View>
+            <InteractiveRectangleCropFrame
+              uri={activeStockUrl}
+              title="Kategori Görselini Dikdörtgen Çerçeveye Ayarla"
             />
             <Text style={styles.stockGalleryTitle}>
               {language === "en" ? "Select Cover Photo:" : "Görsel Seçenekleri (Seçmek için dokun):"}
@@ -1135,5 +1214,165 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  cropEditorCard: {
+    marginTop: spacing.xs,
+    borderRadius: radius.card,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+  },
+  cropEditorHeader: {
+    fontFamily: fontFamily.displayBold,
+    fontSize: 12,
+    color: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: 4,
+  },
+  cropFrameViewport: {
+    height: 180,
+    overflow: "hidden",
+    backgroundColor: "#110D23",
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cropImageWrapper: {
+    width: "100%",
+    height: "100%",
+  },
+  cropImage: {
+    width: "100%",
+    height: "100%",
+  },
+  cropOverlayGrid: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 2,
+    borderColor: `${colors.primary}70`,
+    margin: spacing.xs,
+    borderRadius: radius.sm,
+  },
+  cornerHandle: {
+    position: "absolute",
+    width: 14,
+    height: 14,
+    borderColor: colors.primary,
+  },
+  topLeft: {
+    top: -2,
+    left: -2,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+  },
+  topRight: {
+    top: -2,
+    right: -2,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+  },
+  bottomLeft: {
+    bottom: -2,
+    left: -2,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+  },
+  bottomRight: {
+    bottom: -2,
+    right: -2,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+  },
+  cropToolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  zoomControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  toolBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scaleText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.textSecondary,
+    minWidth: 34,
+    textAlign: "center",
+  },
+  actionControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  modeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modeBtnActive: {
+    backgroundColor: `${colors.primary}15`,
+    borderColor: colors.primary,
+  },
+  modeBtnText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  modeBtnTextActive: {
+    fontFamily: fontFamily.displayBold,
+    color: colors.primary,
+  },
+  resetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  resetBtnText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  cropHintBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 6,
+    backgroundColor: colors.surface,
+  },
+  cropHintText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.textSecondary,
   },
 });

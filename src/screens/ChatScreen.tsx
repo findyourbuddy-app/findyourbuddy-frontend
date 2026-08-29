@@ -12,6 +12,7 @@ import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, uploadChatMedia, type IcebreakerItem } from "../api/messages";
 import { fetchTrendingGifs, searchGifs, type GifResult } from "../api/giphy";
 import { IcebreakerStrip } from "../components/chat/IcebreakerStrip";
+import { MessageBubble } from "../components/chat/MessageBubble";
 import { uploadGalleryPhoto } from "../api/users";
 import { submitMatchFeedback } from "../api/matches";
 import { blockUser, reportUser } from "../api/safety";
@@ -22,8 +23,7 @@ import { apiClient } from "../api/client";
 import { API_BASE_URL } from "../constants/config";
 import { colors, fontFamily, radius, spacing, typeScale, shadows } from "../theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
-import { formatMessageTime } from "../utils/date";
+import { Avatar } from "../components/ui/Avatar";
 import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Message, ReportReason, UserPublic } from "../types";
@@ -190,6 +190,9 @@ export function ChatScreen({ route }: Props) {
 
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Throttles the "still typing" Firestore writes to at most one per interval
+  // instead of one per keystroke.
+  const lastTypingWriteRef = useRef<number>(0);
   const localUriMapRef = useRef<Record<string, string>>({});
 
   const [incomingCall, setIncomingCall] = useState<{
@@ -252,11 +255,23 @@ export function ChatScreen({ route }: Props) {
 
   const handleDraftChange = useCallback((text: string) => {
     setDraft(text);
-    reportTyping(text.length > 0);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    if (text.length > 0) {
-      typingTimeoutRef.current = setTimeout(() => reportTyping(false), 4000);
+
+    if (text.length === 0) {
+      lastTypingWriteRef.current = 0;
+      reportTyping(false);
+      return;
     }
+
+    const now = Date.now();
+    if (now - lastTypingWriteRef.current > 2500) {
+      lastTypingWriteRef.current = now;
+      reportTyping(true);
+    }
+    typingTimeoutRef.current = setTimeout(() => {
+      lastTypingWriteRef.current = 0;
+      reportTyping(false);
+    }, 4000);
   }, [reportTyping]);
 
   // Clear the typing flag when leaving the chat (or switching match/user) so it
@@ -686,6 +701,64 @@ export function ChatScreen({ route }: Props) {
 
   const messageListRef = useRef<FlatList<Message>>(null);
 
+  const currentUserId = user?.id;
+
+  const keyExtractor = useCallback((message: Message) => String(message.id), []);
+
+  const handleToggleTimestamp = useCallback((messageId: Message["id"]) => {
+    setVisibleTimestampId((prev) => (prev === messageId ? null : messageId));
+  }, []);
+
+  const handleLongPressMessage = useCallback((message: Message) => {
+    setSelectedMessageForReaction(message);
+  }, []);
+
+  const handlePressMessageImage = useCallback((uri: string) => {
+    setLightboxPhoto(uri);
+  }, []);
+
+  const handleResolveImageAspect = useCallback((messageId: Message["id"], aspect: number) => {
+    setImageAspects((prev) =>
+      prev[String(messageId)] ? prev : { ...prev, [String(messageId)]: aspect }
+    );
+  }, []);
+
+  const renderMessage = useCallback(
+    ({ item }: { item: Message }) => {
+      const rawUri =
+        item.media_url ||
+        (item.content?.startsWith("http") || item.content?.includes("/media/") ? item.content : null);
+      const localUri =
+        (typeof item.id === "string" && localUriMapRef.current[item.id]) ||
+        (rawUri ? localUriMapRef.current[rawUri] : null) ||
+        null;
+      return (
+        <MessageBubble
+          message={item}
+          isOwn={item.sender_id === currentUserId}
+          language={language}
+          showTimestamp={visibleTimestampId === item.id}
+          localUri={localUri}
+          storedAspect={imageAspects[String(item.id)]}
+          onToggleTimestamp={handleToggleTimestamp}
+          onLongPress={handleLongPressMessage}
+          onPressImage={handlePressMessageImage}
+          onResolveAspect={handleResolveImageAspect}
+        />
+      );
+    },
+    [
+      currentUserId,
+      language,
+      visibleTimestampId,
+      imageAspects,
+      handleToggleTimestamp,
+      handleLongPressMessage,
+      handlePressMessageImage,
+      handleResolveImageAspect,
+    ]
+  );
+
   function scrollToBottom(animated = true) {
     setTimeout(() => {
       messageListRef.current?.scrollToOffset({ offset: 0, animated });
@@ -728,6 +801,7 @@ export function ChatScreen({ route }: Props) {
     setDraft("");
     setSelectedImage(null);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    lastTypingWriteRef.current = 0;
     reportTyping(false);
 
     // Optimistic local update (0ms UI latency)
@@ -908,110 +982,14 @@ export function ChatScreen({ route }: Props) {
         inverted
         contentContainerStyle={styles.messageList}
         data={reversedMessages}
-        keyExtractor={(message) => String(message.id)}
+        keyExtractor={keyExtractor}
         initialNumToRender={15}
         maxToRenderPerBatch={10}
-        windowSize={5}
+        windowSize={7}
         removeClippedSubviews={true}
-        renderItem={({ item }) => {
-          const isOwn = item.sender_id === user.id;
-          const timeText = formatMessageTime(item.created_at, language);
-          const isTimeVisible = visibleTimestampId === item.id;
-          const reactionsMap = item.reactions || {};
-          const reactionEntries = Object.values(reactionsMap) as string[];
-          const isMedia = item.message_type === "image" || item.message_type === "gif" || Boolean(item.media_url && item.media_url.length > 0) || Boolean(item.content && (item.content.startsWith("http") || item.content.includes("/media/")));
-          const rawUri = item.media_url || (item.content?.startsWith("http") || item.content?.includes("/media/") ? item.content : null);
-          const cachedLocalUri = (typeof item.id === "string" && localUriMapRef.current[item.id]) || (rawUri ? localUriMapRef.current[rawUri] : null);
-          const photoUri = cachedLocalUri || resolvePhotoUrl(rawUri);
-          const explicitAspect =
-            item.media_width && item.media_height ? item.media_width / item.media_height : undefined;
-          const knownAspect = explicitAspect ?? imageAspects[String(item.id)];
-          // expo-image collapses with aspectRatio alone, so size the box in
-          // explicit pixels. 240 wide, height from the photo's real ratio
-          // (clamped so panoramas / very tall shots stay reasonable).
-          const mediaW = 240;
-          const mediaH = knownAspect
-            ? Math.round(mediaW / Math.min(Math.max(knownAspect, 0.55), 2.2))
-            : 180;
-
-          return (
-            <View style={{ marginBottom: spacing.xs }}>
-              <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
-                <Pressable
-                  style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}
-                  onPress={() => setVisibleTimestampId((prev) => (prev === item.id ? null : item.id))}
-                  onLongPress={() => setSelectedMessageForReaction(item)}
-                >
-                  {isMedia && photoUri ? (
-                    <View style={{ position: "relative" }}>
-                      <Pressable
-                        onPress={() => setLightboxPhoto(photoUri)}
-                        accessibilityRole="imagebutton"
-                        accessibilityLabel="Resmi Büyüt"
-                      >
-                        <Image
-                          source={{ uri: photoUri }}
-                          style={[styles.bubbleImage, { width: mediaW, height: mediaH }]}
-                          contentFit={knownAspect ? "cover" : "contain"}
-                          cachePolicy="memory-disk"
-                          autoplay={true}
-                          transition={150}
-                          onLoad={(e) => {
-                            if (explicitAspect) return;
-                            const w = e?.source?.width;
-                            const h = e?.source?.height;
-                            if (w && h) {
-                              setImageAspects((prev) =>
-                                prev[String(item.id)] ? prev : { ...prev, [String(item.id)]: w / h }
-                              );
-                            }
-                          }}
-                        />
-                      </Pressable>
-                      {typeof item.id === "string" && item.id.startsWith("temp_") ? (
-                        <View style={styles.imageUploadingOverlay}>
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        </View>
-                      ) : null}
-                      {item.content && item.content !== "[Fotoğraf]" && item.content !== "[GIF]" && !item.content.startsWith("http") ? (
-                        <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn, { marginTop: spacing.xs }]}>
-                          {item.content}
-                        </Text>
-                      ) : null}
-                    </View>
-                  ) : (
-                    <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{item.content}</Text>
-                  )}
-
-                  {isTimeVisible ? (
-                    <View style={styles.bubbleFooter}>
-                      <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>{timeText}</Text>
-                      {isOwn ? (
-                        <Feather
-                          name={item.is_read ? "check-circle" : "check"}
-                          size={12}
-                          color="rgba(255,255,255,0.75)"
-                        />
-                      ) : null}
-                    </View>
-                  ) : null}
-                </Pressable>
-              </View>
-
-              {reactionEntries.length > 0 ? (
-                <View style={[styles.reactionPillsRow, isOwn ? { alignSelf: "flex-end" } : { alignSelf: "flex-start" }]}>
-                  {Array.from(new Set(reactionEntries)).map((emoji) => (
-                    <View key={emoji} style={styles.reactionPill}>
-                      <Text style={styles.reactionEmojiText}>
-                        {emoji} {reactionEntries.filter((e) => e === emoji).length}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          );
-        }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        renderItem={renderMessage}
       />
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
@@ -1341,64 +1319,6 @@ const styles = StyleSheet.create({
   feedbackDismiss: {
     padding: spacing.xs,
   },
-  bubbleRow: {
-    flexDirection: "row",
-  },
-  bubbleRowOwn: {
-    justifyContent: "flex-end",
-  },
-  bubbleRowOther: {
-    justifyContent: "flex-start",
-  },
-  bubble: {
-    maxWidth: "78%",
-    borderRadius: radius.card,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: 4,
-  },
-  bubbleOwn: {
-    backgroundColor: colors.primary,
-    borderBottomRightRadius: 4,
-  },
-  bubbleOther: {
-    backgroundColor: colors.surface,
-    borderBottomLeftRadius: 4,
-  },
-  bubbleText: {
-    fontFamily: fontFamily.body,
-    fontSize: 15,
-    color: colors.textPrimary,
-  },
-  bubbleTextOwn: {
-    color: colors.surface,
-  },
-  bubbleImage: {
-    borderRadius: 14,
-    backgroundColor: "#15102A",
-  },
-  imageUploadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bubbleFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-end",
-    gap: 4,
-    marginTop: 4,
-  },
-  bubbleTime: {
-    fontFamily: fontFamily.body,
-    fontSize: 10,
-    color: colors.textSecondary,
-  },
-  bubbleTimeOwn: {
-    color: "rgba(255,255,255,0.75)",
-  },
   errorText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
@@ -1669,24 +1589,6 @@ const styles = StyleSheet.create({
   reactionEmojiBtn: {
     padding: spacing.xs,
     borderRadius: radius.pill,
-  },
-  reactionPillsRow: {
-    flexDirection: "row",
-    gap: 4,
-    marginTop: 2,
-  },
-  reactionPill: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  reactionEmojiText: {
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 12,
-    color: colors.textPrimary,
   },
   readOnlyBanner: {
     flexDirection: "row",
