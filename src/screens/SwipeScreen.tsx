@@ -367,25 +367,26 @@ export function SwipeScreen() {
     setGroupSwipeEvent(null);
     setIsLoading(true);
 
-    const nowMs = Date.now();
-    const matchingEvents = availableEvents.filter((event) => {
-      if (nextTab === "system") {
-        if (event.creator_id) return false;
-        if (event.starts_at) {
-          const eventMs = new Date(event.starts_at).getTime();
-          if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
-        }
-        return true;
+    if (nextTab === "user") {
+      // Default 1-on-1 mode to General User Browsing (activeEvent = null)
+      setActiveEvent(null);
+      try {
+        const list = await getSwipeCandidates(0, filters);
+        setCandidates(list.filter((c) => !swipedCandidateIdsRef.current.has(c.id)));
+      } catch {
+        setCandidates([]);
+      } finally {
+        setIsLoading(false);
       }
-      return Boolean(event.creator_id) && !event.is_group_event;
-    });
+      return;
+    }
 
-    const targetEvent = matchingEvents[0] || null;
+    const targetEvent = systemEvents[0] || null;
     if (targetEvent) {
       setActiveEvent({ id: targetEvent.id, title: targetEvent.title, location_name: targetEvent.location_name });
       try {
         const list = await getSwipeCandidates(targetEvent.id, filters);
-        setCandidates(list);
+        setCandidates(list.filter((c) => !swipedCandidateIdsRef.current.has(c.id)));
       } catch {
         setCandidates([]);
       } finally {
@@ -749,7 +750,7 @@ export function SwipeScreen() {
           {activeEvent ? (
             <Pressable
               style={styles.eventPill}
-              onPress={activeTab === "system" ? openEventPicker : undefined}
+              onPress={activeTab === "system" ? openEventPicker : () => selectGeneralSwipe()}
               accessibilityRole="button"
               accessibilityLabel="Etkinlik değiştir"
             >
@@ -759,7 +760,9 @@ export function SwipeScreen() {
               </Text>
               {activeTab === "system" ? (
                 <Feather name="chevron-down" size={12} color={colors.textSecondary} />
-              ) : null}
+              ) : (
+                <Feather name="x" size={12} color={colors.textSecondary} />
+              )}
             </Pressable>
           ) : activeTab === "system" ? (
             <Pressable
@@ -774,7 +777,20 @@ export function SwipeScreen() {
               </Text>
               <Feather name="chevron-right" size={12} color={colors.textSecondary} />
             </Pressable>
-          ) : null}
+          ) : (
+            <Pressable
+              style={styles.eventPill}
+              onPress={() => navigation.navigate("Discover")}
+              accessibilityRole="button"
+              accessibilityLabel="Genel Kullanıcılarda Geziniyorsun"
+            >
+              <Feather name="globe" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText} numberOfLines={1}>
+                {language === "en" ? "Browsing General Users 🌍" : "Genel Kullanıcılarda Geziniyorsun 🌍"}
+              </Text>
+              <Feather name="chevron-right" size={12} color={colors.textSecondary} />
+            </Pressable>
+          )}
 
           {quota ? (
             <Text style={[styles.quotaText, !activeEvent && { marginLeft: "auto" }]}>
