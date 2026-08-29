@@ -167,25 +167,28 @@ export function SwipeScreen() {
       });
   }, []);
 
-  // Silent auto-check for new attendees joining the active event
+  // Silently top up the deck with newly-joined attendees -- only when the user
+  // is near the end, and only by APPENDING. The list ahead of the current card
+  // is never reordered or replaced, so the card never changes on its own.
   useEffect(() => {
     if (!activeEvent) return;
+    const eventId = activeEvent.id;
     const interval = setInterval(() => {
-      const eventIdToQuery = activeEvent.id;
-      getSwipeCandidates(eventIdToQuery, filters)
+      if (candidatesRef.current.length - currentIndexRef.current > 3) return;
+      getSwipeCandidates(eventId, filters)
         .then((list) => {
-          const fresh = list.filter((c) => !swipedCandidateIdsRef.current.has(c.id));
-          if (fresh.length > 0) {
-            setCandidates(fresh);
-            if (currentIndex >= candidatesRef.current.length) {
-              setCurrentIndex(0);
-            }
-          }
+          setCandidates((prev) => {
+            const known = new Set(prev.map((c) => c.id));
+            const additions = list.filter(
+              (c) => !known.has(c.id) && !swipedCandidateIdsRef.current.has(c.id)
+            );
+            return additions.length > 0 ? [...prev, ...additions] : prev;
+          });
         })
         .catch(() => {});
     }, 15000);
     return () => clearInterval(interval);
-  }, [activeEvent, filters, currentIndex]);
+  }, [activeEvent, filters]);
 
   // Tracks which route.params.eventId has already been acted on. Without
   // this, route.params keeps referring to whatever event the screen was
@@ -203,6 +206,8 @@ export function SwipeScreen() {
   const loadedDeckKeyRef = useRef<string>("");
   const candidatesRef = useRef(candidates);
   candidatesRef.current = candidates;
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
   const swipedCandidateIdsRef = useRef<Set<number>>(new Set());
 
   useFocusEffect(
@@ -552,7 +557,6 @@ export function SwipeScreen() {
         if (result.match_id !== null && result.matched_user !== null) {
           setMatch({ id: result.match_id, user: result.matched_user });
         }
-        refreshQuota();
       })
       .catch((error) => {
         if (axios.isAxiosError(error)) {
@@ -574,7 +578,8 @@ export function SwipeScreen() {
             }
           }
         }
-      });
+      })
+      .finally(() => refreshQuota());
 
     return candidates[nextIndex] || null;
   }
@@ -1020,6 +1025,7 @@ export function SwipeScreen() {
             onSwipeLeft={() => handleSwipe("pass")}
             onSwipeRight={() => handleSwipe("like")}
             onSwipeUp={() => handleSwipe("super_like")}
+            onShowHelp={() => setHelpVisible(true)}
             onPressProfile={() => {
               const activeCandidate = candidates[currentIndex];
               if (!activeCandidate) return;
@@ -1051,18 +1057,6 @@ export function SwipeScreen() {
             </View>
           </View>
         )}
-
-        {candidates[currentIndex] && (activeTab !== "user" || userSubTab !== "group" || groupSwipeEvent) ? (
-          <Pressable
-            style={styles.helpButton}
-            onPress={() => setHelpVisible(true)}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={language === "en" ? "How to swipe" : "Nasıl kaydırılır"}
-          >
-            <Feather name="info" size={16} color="#FFFFFF" />
-          </Pressable>
-        ) : null}
       </View>
 
       <MatchCelebrationModal
@@ -1313,17 +1307,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginVertical: 2,
     paddingBottom: spacing.xs,
-  },
-  helpButton: {
-    position: "absolute",
-    top: spacing.md,
-    right: spacing.md,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(0, 0, 0, 0.42)",
-    alignItems: "center",
-    justifyContent: "center",
   },
   helpCard: {
     backgroundColor: colors.surface,

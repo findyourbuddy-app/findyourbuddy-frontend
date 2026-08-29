@@ -15,6 +15,7 @@ interface SwipeCandidateCardProps {
   onSwipeRight: () => void;
   onSwipeUp: () => void;
   onPressProfile: () => void;
+  onShowHelp: () => void;
 }
 
 const FALLBACK_GRADIENT: [string, string] = ["#9385D8", "#5B41CE"];
@@ -43,6 +44,7 @@ export function SwipeCandidateCard({
   onSwipeRight,
   onSwipeUp,
   onPressProfile,
+  onShowHelp,
 }: SwipeCandidateCardProps) {
   const { language } = useAppTheme();
   const photoUrls = candidatePhotoUrls(candidate);
@@ -51,6 +53,30 @@ export function SwipeCandidateCard({
   const [locationName, setLocationName] = useState<string | null>(null);
   const position = useRef(new Animated.ValueXY()).current;
 
+  // The PanResponder is created once, so its handlers must read live values
+  // (measured size, latest callbacks) through this ref instead of the stale
+  // first-render closure.
+  const liveRef = useRef({
+    cardWidth: 0,
+    cardHeight: 0,
+    photoCount: photoUrls.length,
+    onSwipeLeft,
+    onSwipeRight,
+    onSwipeUp,
+    onPressProfile,
+    onShowHelp,
+  });
+  liveRef.current = {
+    cardWidth: liveRef.current.cardWidth,
+    cardHeight: liveRef.current.cardHeight,
+    photoCount: photoUrls.length,
+    onSwipeLeft,
+    onSwipeRight,
+    onSwipeUp,
+    onPressProfile,
+    onShowHelp,
+  };
+
   useEffect(() => {
     if (hasValidCoordinates(candidate.latitude, candidate.longitude)) {
       resolveCityDistrict(candidate.latitude, candidate.longitude).then(setLocationName);
@@ -58,7 +84,10 @@ export function SwipeCandidateCard({
   }, [candidate.latitude, candidate.longitude]);
 
   function handleLayout(event: LayoutChangeEvent): void {
-    setCardWidth(event.nativeEvent.layout.width);
+    const { width, height } = event.nativeEvent.layout;
+    setCardWidth(width);
+    liveRef.current.cardWidth = width;
+    liveRef.current.cardHeight = height;
   }
 
   function resetPosition(): void {
@@ -84,27 +113,31 @@ export function SwipeCandidateCard({
         position.setValue({ x: gesture.dx, y: gesture.dy });
       },
       onPanResponderRelease: (evt, gesture) => {
+        const live = liveRef.current;
         const movedEnough =
           Math.abs(gesture.dx) > TAP_MOVE_THRESHOLD || Math.abs(gesture.dy) > TAP_MOVE_THRESHOLD;
         if (!movedEnough) {
           const tapX = evt.nativeEvent.locationX;
-          // Left/right edges browse photos (when there's more than one); a tap
-          // anywhere else opens the full profile.
-          if (photoUrls.length > 1 && cardWidth > 0 && tapX < cardWidth * 0.25) {
+          const tapY = evt.nativeEvent.locationY;
+          const w = live.cardWidth;
+          // Top-right corner opens the "how to swipe" help.
+          if (w > 0 && tapX > w - 56 && tapY < 56) {
+            live.onShowHelp();
+          } else if (live.photoCount > 1 && w > 0 && tapX < w * 0.25) {
             goToPhoto(-1);
-          } else if (photoUrls.length > 1 && cardWidth > 0 && tapX > cardWidth * 0.75) {
+          } else if (live.photoCount > 1 && w > 0 && tapX > w * 0.75) {
             goToPhoto(1);
           } else {
-            onPressProfile();
+            live.onPressProfile();
           }
           return;
         }
         if (gesture.dy < -DRAG_THRESHOLD_Y && Math.abs(gesture.dy) > Math.abs(gesture.dx)) {
-          flingOut("up", onSwipeUp);
+          flingOut("up", live.onSwipeUp);
         } else if (gesture.dx > DRAG_THRESHOLD_X) {
-          flingOut("right", onSwipeRight);
+          flingOut("right", live.onSwipeRight);
         } else if (gesture.dx < -DRAG_THRESHOLD_X) {
-          flingOut("left", onSwipeLeft);
+          flingOut("left", live.onSwipeLeft);
         } else {
           resetPosition();
         }
@@ -178,6 +211,12 @@ export function SwipeCandidateCard({
           ))}
         </View>
       ) : null}
+
+      {/* Visual only -- the tap is handled by the card's PanResponder (top-right
+          corner), so this moves and rotates with the card. */}
+      <View style={styles.helpBadge} pointerEvents="none">
+        <Feather name="info" size={15} color="#FFFFFF" />
+      </View>
 
       <LinearGradient
         colors={["transparent", "rgba(10,5,30,0.85)"]}
@@ -268,6 +307,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: spacing.xs,
+  },
+  helpBadge: {
+    position: "absolute",
+    top: spacing.md,
+    right: spacing.md,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0, 0, 0, 0.42)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   dot: {
     width: 6,
