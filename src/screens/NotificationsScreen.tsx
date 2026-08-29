@@ -140,43 +140,57 @@ export function NotificationsScreen() {
     return { title, body };
   }
 
+  function extractEventId(item: Notification): number | null {
+    if (item.event_id) {
+      const parsed = Number(item.event_id);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    let dataObj: any = item.data;
+    if (typeof dataObj === "string") {
+      try {
+        dataObj = JSON.parse(dataObj);
+      } catch {
+        dataObj = null;
+      }
+    }
+    if (dataObj && typeof dataObj === "object") {
+      const raw = dataObj.event_id || dataObj.eventId || dataObj.id;
+      if (raw) {
+        const parsed = Number(raw);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    }
+    return null;
+  }
+
   function handlePressNotification(item: Notification) {
     const meta = getNotificationMeta(item.title, item.body);
+    const targetEventId = extractEventId(item);
 
-    // 1. Feedback notifications ("Etkinlik nasıldı?")
-    if (meta.type === "feedback" || item.notification_type === "match_feedback") {
-      const eventId = item.event_id || (item.data && typeof item.data === "object" ? (item.data as any).event_id : null);
-      if (eventId) {
-        navigation.navigate("EventDetail", {
-          eventId: Number(eventId),
-          autoOpenRating: true,
-        });
-        return;
-      }
+    // 1. Event notifications (join request, approval, event update, feedback)
+    if (targetEventId) {
+      const isJoinRequest =
+        item.notification_type === "event_join_request" ||
+        item.title.toLowerCase().includes("katılım isteği") ||
+        item.body.toLowerCase().includes("katılmak istiyor");
 
-      const matchId = item.match_id || (item.data && typeof item.data === "object" ? (item.data as any).match_id : null);
-      if (matchId) {
-        const data = item.data as Record<string, any> | undefined;
-        navigation.navigate("Chat", {
-          matchId: Number(matchId),
-          otherUserId: Number(data?.other_user_id || 0),
-          otherUserName: String(data?.other_user_name || "Kanka"),
-          needsFeedback: true,
-        });
-        return;
-      }
-      navigation.navigate("Tabs", { screen: "Messages" });
+      navigation.navigate("EventDetail", {
+        eventId: targetEventId,
+        autoOpenRating: meta.type === "feedback" || item.notification_type === "match_feedback",
+        autoOpenRequests: isJoinRequest,
+      });
       return;
     }
 
-    // 2. Direct event notifications (join request, approval, event update)
-    if (meta.type === "event" || item.event_id || (item.data && (item.data as any).event_id)) {
-      const targetEventId = item.event_id || (item.data && (item.data as any).event_id);
-      if (targetEventId) {
-        navigation.navigate("EventDetail", { eventId: Number(targetEventId) });
-        return;
-      }
-      navigation.navigate("Tabs", { screen: "Discover" });
+    // 2. Match or Message notifications
+    const targetMatchId = item.match_id || (item.data && (item.data as any).match_id);
+    if (targetMatchId) {
+      const data = item.data as Record<string, any> | undefined;
+      navigation.navigate("Chat", {
+        matchId: Number(targetMatchId),
+        otherUserId: Number(data?.other_user_id || 0),
+        otherUserName: String(data?.other_user_name || "Kanka"),
+      });
       return;
     }
 
@@ -189,18 +203,6 @@ export function NotificationsScreen() {
     // 4. Verification result
     if (meta.type === "verification") {
       navigation.navigate("Profile");
-      return;
-    }
-
-    // 5. Match or Message notifications
-    const targetMatchId = item.match_id || (item.data && (item.data as any).match_id);
-    if (targetMatchId) {
-      const data = item.data as Record<string, any> | undefined;
-      navigation.navigate("Chat", {
-        matchId: Number(targetMatchId),
-        otherUserId: Number(data?.other_user_id || 0),
-        otherUserName: String(data?.other_user_name || "Kanka"),
-      });
       return;
     }
 

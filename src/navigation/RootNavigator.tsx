@@ -91,7 +91,7 @@ export type MainStackParamList = {
   SavedEvents: undefined;
   BlockedUsers: undefined;
   CreateEvent: undefined;
-  EventDetail: { eventId: number; initialEvent?: AppEvent; autoOpenRating?: boolean };
+  EventDetail: { eventId: number; initialEvent?: AppEvent; autoOpenRating?: boolean; autoOpenRequests?: boolean };
   Notifications: undefined;
   LikesReceived: undefined;
   CandidateProfile: {

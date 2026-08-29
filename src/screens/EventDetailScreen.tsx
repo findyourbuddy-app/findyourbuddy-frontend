@@ -63,7 +63,10 @@ export function EventDetailScreen({ route }: Props) {
     if (route.params?.autoOpenRating && event && !event.has_rated && !isOwnerOfGroupEvent) {
       setShowRatingModal(true);
     }
-  }, [route.params?.autoOpenRating, event, isOwnerOfGroupEvent]);
+    if (route.params?.autoOpenRequests && isOwnerOfGroupEvent && joinRequests.length > 0) {
+      setIsApprovalModalVisible(true);
+    }
+  }, [route.params?.autoOpenRating, route.params?.autoOpenRequests, event, isOwnerOfGroupEvent, joinRequests.length]);
 
   const refreshJoinRequests = useCallback(async (eventIdToLoad: number) => {
     try {
