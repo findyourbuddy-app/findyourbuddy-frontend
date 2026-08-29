@@ -453,7 +453,7 @@ export function SwipeScreen() {
 
       list.push({
         key: "discover_new_user_event",
-        label: language === "en" ? "Explore & Join New Events 🎯" : "Keşfet'ten Yeni Bire Bir Etkinlik Seç 🎯",
+        label: language === "en" ? "Explore & Join New Events" : "Keşfet'ten Yeni Bire Bir Etkinlik Seç",
         icon: "map-pin",
         onPress: () => navigation.navigate("Discover"),
       });
@@ -469,7 +469,7 @@ export function SwipeScreen() {
 
       list.push({
         key: "discover_new_system_event",
-        label: language === "en" ? "Explore & Join New Events 🎯" : "Keşfet'ten Yeni Resmi Etkinlik Seç 🎯",
+        label: language === "en" ? "Explore & Join New Events" : "Keşfet'ten Yeni Resmi Etkinlik Seç",
         icon: "map-pin",
         onPress: () => navigation.navigate("Discover"),
       });
@@ -807,7 +807,7 @@ export function SwipeScreen() {
             >
               <Feather name="compass" size={14} color={colors.primary} />
               <Text style={styles.eventPillText} numberOfLines={1}>
-                {language === "en" ? "Select Event 🎯" : "Etkinlik Seç 🎯"}
+                {language === "en" ? "Select Event" : "Etkinlik Seç"}
               </Text>
               <Feather name="chevron-down" size={12} color={colors.textSecondary} />
             </Pressable>
@@ -820,7 +820,7 @@ export function SwipeScreen() {
             >
               <Feather name="globe" size={14} color={colors.primary} />
               <Text style={styles.eventPillText} numberOfLines={1}>
-                {language === "en" ? "Browsing General Users 🌍" : "Genel Kullanıcılarda Geziniyorsun 🌍"}
+                {language === "en" ? "Browsing General Users" : "Genel Kullanıcılarda Geziniyorsun"}
               </Text>
               <Feather name="chevron-down" size={12} color={colors.textSecondary} />
             </Pressable>
@@ -916,7 +916,7 @@ export function SwipeScreen() {
                             onPress={() => startGroupEventCandidatesSwipe(event)}
                           >
                             <Text style={styles.groupCardActionText}>
-                              {language === "en" ? "View Buddies 👥" : "Kankaları Gör 👥"}
+                              {language === "en" ? "View Buddies" : "Kankaları Gör"}
                             </Text>
                           </Pressable>
                           <Pressable
@@ -924,7 +924,7 @@ export function SwipeScreen() {
                             onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
                           >
                             <Text style={[styles.groupCardActionText, { color: colors.textPrimary }]}>
-                              {language === "en" ? "Chat 💬" : "Sohbet 💬"}
+                              {language === "en" ? "Chat" : "Sohbet"}
                             </Text>
                           </Pressable>
                         </>
@@ -936,7 +936,7 @@ export function SwipeScreen() {
                           <Text style={styles.groupCardActionText}>
                             {event.is_pending
                               ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
-                              : (language === "en" ? "Apply / Join ➕" : "Başvur / Katıl ➕")}
+                              : (language === "en" ? "Join" : "Katıl")}
                           </Text>
                         </Pressable>
                       )}

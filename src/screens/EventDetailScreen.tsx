@@ -332,39 +332,45 @@ export function EventDetailScreen({ route }: Props) {
     if (!event) return;
     try {
       const { listMyMatches } = require("../api/matches");
-      const matches = await listMyMatches();
-      const existingGroupMatch = matches.find((m: any) => m.event_id === event.id);
-      if (existingGroupMatch) {
+      const matches = await listMyMatches().catch(() => []);
+      let targetMatch = matches.find((m: any) => m.event_id === event.id);
+
+      if (!targetMatch) {
+        if (user && event.creator_id === user.id) {
+          try {
+            const { approveAllEventJoinRequests } = require("../api/events");
+            await approveAllEventJoinRequests(event.id);
+            const freshMatches = await listMyMatches().catch(() => []);
+            targetMatch = freshMatches.find((m: any) => m.event_id === event.id);
+          } catch {}
+        }
+      }
+
+      if (targetMatch) {
         navigation.navigate("Chat", {
-          matchId: existingGroupMatch.id,
-          otherUserId: existingGroupMatch.other_user.id,
-          otherUserName: existingGroupMatch.other_user.display_name,
-          otherUserPhoto: existingGroupMatch.other_user.photo_url,
+          matchId: targetMatch.id,
+          otherUserId: targetMatch.other_user.id,
+          otherUserName: targetMatch.other_user.display_name,
+          otherUserPhoto: targetMatch.other_user.photo_url,
           eventTitle: event.title,
           isGroupEvent: true,
           eventCreatorId: event.creator_id || undefined,
         });
       } else {
-        const { approveAllEventJoinRequests } = require("../api/events");
-        await approveAllEventJoinRequests(event.id);
-        const freshMatches = await listMyMatches();
-        const createdGroupMatch = freshMatches.find((m: any) => m.event_id === event.id);
-        if (createdGroupMatch) {
-          navigation.navigate("Chat", {
-            matchId: createdGroupMatch.id,
-            otherUserId: createdGroupMatch.other_user.id,
-            otherUserName: createdGroupMatch.other_user.display_name,
-            otherUserPhoto: createdGroupMatch.other_user.photo_url,
-            eventTitle: event.title,
-            isGroupEvent: true,
-            eventCreatorId: event.creator_id || undefined,
-          });
-        } else {
-          Alert.alert("Bilgi", "Grup sohbeti başlatmak için en az bir katılımcı isteği onaylanmalıdır.");
-        }
+        Alert.alert(
+          language === "en" ? "No Attendees Yet" : "Henüz Katılımcı Yok",
+          language === "en"
+            ? "Group chat will be available once at least one attendee is approved."
+            : "Grup sohbetinin açılması için en az 1 katılımcı isteğinin onaylanması gerekmektedir."
+        );
       }
     } catch {
-      Alert.alert("Hata", "Grup sohbeti açılırken bir sorun oluştu.");
+      Alert.alert(
+        language === "en" ? "Info" : "Bilgi",
+        language === "en"
+          ? "Group chat will be available once at least one attendee is approved."
+          : "Grup sohbetinin açılması için en az 1 katılımcı isteğinin onaylanması gerekmektedir."
+      );
     }
   }
 
