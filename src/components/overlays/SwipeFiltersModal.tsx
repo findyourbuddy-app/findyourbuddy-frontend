@@ -60,10 +60,21 @@ export function SwipeFiltersModal({
   const [hasVoiceNote, setHasVoiceNote] = useState(Boolean(initialFilters.hasVoiceNote));
   const [minTrustScore, setMinTrustScore] = useState<number | undefined>(initialFilters.minTrustScore);
 
+  const [lookingFor, setLookingFor] = useState(initialFilters.lookingFor || "Tümü");
+
   const GENDER_PREFERENCES = [
     { id: "all", label: language === "en" ? "Everyone" : "Herkes" },
     { id: "female", label: language === "en" ? "Female" : "Kadın" },
     { id: "male", label: language === "en" ? "Male" : "Erkek" },
+  ];
+
+  const INTENTION_OPTIONS = [
+    { id: "Tümü", label: language === "en" ? "All" : "Tümü" },
+    { id: "Etkinlik Arkadaşı", label: language === "en" ? "Event Buddy" : "Etkinlik Arkadaşı" },
+    { id: "Kahve & Sohbet", label: language === "en" ? "Coffee & Chat" : "Kahve & Sohbet" },
+    { id: "Sadece Eğlence", label: language === "en" ? "Just Fun" : "Sadece Eğlence" },
+    { id: "Spor & Aktivite Partneri", label: language === "en" ? "Sport & Activity" : "Spor & Aktivite" },
+    { id: "Uzun Vadeli Dostluk", label: language === "en" ? "Long-term Friendship" : "Uzun Vadeli Dostluk" },
   ];
 
   const TRUST_SCORE_PRESETS = [
@@ -100,6 +111,7 @@ export function SwipeFiltersModal({
       setIsVerifiedOnly(Boolean(initialFilters.isVerifiedOnly));
       setHasVoiceNote(Boolean(initialFilters.hasVoiceNote));
       setMinTrustScore(initialFilters.minTrustScore);
+      setLookingFor(initialFilters.lookingFor || "Tümü");
     }
   }, [visible, initialFilters]);
 
@@ -131,6 +143,7 @@ export function SwipeFiltersModal({
       isVerifiedOnly,
       hasVoiceNote,
       minTrustScore,
+      lookingFor: lookingFor !== "Tümü" ? lookingFor : undefined,
     });
   }
 
@@ -146,6 +159,7 @@ export function SwipeFiltersModal({
     setIsVerifiedOnly(false);
     setHasVoiceNote(false);
     setMinTrustScore(undefined);
+    setLookingFor("Tümü");
     onApply({});
   }
 
@@ -265,6 +279,27 @@ export function SwipeFiltersModal({
                   );
                 })}
               </View>
+            </View>
+
+            {/* Relationship Intention Filter */}
+            <View style={styles.field}>
+              <Text style={styles.label}>{language === "en" ? "Relationship Goal / Intention" : "Aradığı Arkadaşlık İlişkisi"}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
+                {INTENTION_OPTIONS.map((item) => {
+                  const isSelected = lookingFor === item.id;
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={[styles.presetChip, isSelected && styles.presetChipSelected]}
+                      onPress={() => setLookingFor(item.id)}
+                    >
+                      <Text style={[styles.presetText, isSelected && styles.presetTextSelected]}>
+                        {item.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
 
             {/* Age Range Section with Presets */}

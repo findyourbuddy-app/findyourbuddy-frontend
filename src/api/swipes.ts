@@ -13,6 +13,7 @@ export interface SwipeCandidateFilters {
   isVerifiedOnly?: boolean;
   hasVoiceNote?: boolean;
   minTrustScore?: number;
+  lookingFor?: string;
 }
 
 export function getSwipeCandidates(
@@ -32,6 +33,7 @@ export function getSwipeCandidates(
         is_verified_only: filters?.isVerifiedOnly,
         has_voice_note: filters?.hasVoiceNote,
         min_trust_score: filters?.minTrustScore,
+        looking_for: filters?.lookingFor,
       },
     })
     .then((res) => res.data);

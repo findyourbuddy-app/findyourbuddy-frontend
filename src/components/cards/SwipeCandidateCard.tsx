@@ -258,7 +258,7 @@ export function SwipeCandidateCard({
         <View style={styles.lookingForRow}>
           <Feather name="message-circle" size={12} color="#4DEEEA" />
           <Text style={styles.lookingForText} numberOfLines={1}>
-            {language === "en" ? "Looking for: " : "Aradığı İletişim: "}
+            {language === "en" ? "Looking for: " : "Aradığı Arkadaşlık İlişkisi: "}
             {candidate.looking_for || (language === "en" ? "Event Buddy & Chat" : "Etkinlik Arkadaşı & Sohbet")}
           </Text>
         </View>
