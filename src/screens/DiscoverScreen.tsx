@@ -690,11 +690,6 @@ export function DiscoverScreen() {
                 contentContainerStyle={{ flexDirection: "row", gap: spacing.xs, paddingVertical: 4 }}
               >
                 <Chip
-                  label={language === "en" ? "All Events 🌍" : "Tüm Etkinlikler 🌍"}
-                  active={originFilter === null}
-                  onPress={() => handleSelectOrigin(null)}
-                />
-                <Chip
                   label={t("systemEvents")}
                   active={originFilter === "system"}
                   onPress={() => handleSelectOrigin("system")}
