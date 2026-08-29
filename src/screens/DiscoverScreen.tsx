@@ -738,7 +738,7 @@ export function DiscoverScreen() {
                 >
                   <View style={styles.aiMatchingTextCol}>
                     <Text style={styles.aiMatchingTitle}>{t("aiMatchTitle")}</Text>
-                    <Text style={styles.aiMatchingDesc}>{t("aiMatchDesc")}</Text>
+                    <Text style={styles.aiMatchingDesc} numberOfLines={2}>{t("aiMatchDesc")}</Text>
                   </View>
                   <View style={styles.aiMatchingBadge}>
                     <Text style={[styles.aiMatchingBadgeText, { color: accentColor }]}>{t("calculate")}</Text>
