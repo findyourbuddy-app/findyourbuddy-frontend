@@ -292,19 +292,15 @@ export function SwipeScreen() {
       if (candidates.length === 0) {
         setIsLoading(true);
       }
-      refreshQuota();
-      // Fetch system and user events separately (origin=system / origin=user) so
-      // neither crowds the other out of its 50-item budget -- otherwise system
-      // events (far more numerous) push nearly all user/1-on-1 events off this page.
+      const targetOrigin = activeTab === "system" ? "system" : "user";
       Promise.all([
-        listEvents(undefined, true, 0, 50, "system"),
-        listEvents(undefined, true, 0, 50, "user"),
+        listEvents(undefined, true, 0, 25, targetOrigin),
         listMyAttendingEvents(true).catch(() => []),
       ])
-        .then(async ([systemEvts, userEvts, attending]) => {
+        .then(async ([tabEvts, attending]) => {
           if (cancelled) return;
-          const allEvents = mergeEvents(mergeEvents(systemEvts, userEvts), attending);
-          setAvailableEvents(allEvents);
+          const allEvents = mergeEvents(tabEvts, attending);
+          setAvailableEvents((prev) => mergeEvents(prev, allEvents));
           const { event, tab, subTab } = await resolveActiveEvent(allEvents);
           if (cancelled) return;
           setActiveTab(tab);
@@ -404,9 +400,23 @@ export function SwipeScreen() {
         setIsLoading(false);
       }
     } else {
-      setActiveEvent(null);
-      setCandidates([]);
-      setIsLoading(false);
+      try {
+        const evts = await listEvents(undefined, true, 0, 20, "system");
+        setAvailableEvents((prev) => mergeEvents(prev, evts));
+        const firstEvt = evts[0];
+        if (firstEvt) {
+          setActiveEvent({ id: firstEvt.id, title: firstEvt.title, location_name: firstEvt.location_name });
+          const list = await getSwipeCandidates(firstEvt.id, filters);
+          setCandidates(list.filter((c) => !swipedCandidateIdsRef.current.has(c.id)));
+        } else {
+          setActiveEvent(null);
+          setCandidates([]);
+        }
+      } catch {
+        setCandidates([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
   }
 
