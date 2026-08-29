@@ -738,7 +738,7 @@ export function DiscoverScreen() {
                 >
                   <View style={styles.aiMatchingTextCol}>
                     <Text style={styles.aiMatchingTitle}>{t("aiMatchTitle")}</Text>
-                    <Text style={styles.aiMatchingDesc} numberOfLines={1}>{t("aiMatchDesc")}</Text>
+                    <Text style={styles.aiMatchingDesc}>{t("aiMatchDesc")}</Text>
                   </View>
                   <View style={styles.aiMatchingBadge}>
                     <Text style={[styles.aiMatchingBadgeText, { color: accentColor }]}>{t("calculate")}</Text>
@@ -1082,14 +1082,11 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   aiMatchingBannerGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     padding: spacing.md,
     gap: spacing.sm,
+    alignItems: "flex-start",
   },
   aiMatchingTextCol: {
-    flex: 1,
     gap: 2,
   },
   aiMatchingTitle: {
@@ -1099,12 +1096,13 @@ const styles = StyleSheet.create({
   },
   aiMatchingDesc: {
     fontFamily: fontFamily.body,
-    fontSize: 11,
-    color: "rgba(255, 255, 255, 0.75)",
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.8)",
   },
   aiMatchingBadge: {
     flexDirection: "row",
     alignItems: "center",
+    alignSelf: "flex-start",
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
