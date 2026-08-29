@@ -120,7 +120,10 @@ export function SwipeScreen() {
       return true;
     });
   }, [availableEvents]);
-  const userEvents = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id)), [availableEvents]);
+  const userEvents = useMemo(
+    () => availableEvents.filter((event) => Boolean(event.creator_id) && !event.is_group_event),
+    [availableEvents]
+  );
   const tabEvents = activeTab === "system" ? systemEvents : userEvents;
 
   const userGroupEventsRef = useRef(userGroupEvents);
@@ -594,8 +597,8 @@ export function SwipeScreen() {
   }
 
   function startGroupEventCandidatesSwipe(event: Event): void {
+    setGroupSwipeEvent(event);
     setActiveEvent({ id: event.id, title: event.title, location_name: event.location_name });
-    setUserSubTab("birebir");
     setCurrentIndex(0);
     setCandidates([]);
     setIsLoading(true);
