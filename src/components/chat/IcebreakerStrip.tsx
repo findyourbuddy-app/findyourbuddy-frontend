@@ -52,9 +52,9 @@ export function IcebreakerStrip({ icebreakers, isLoading, onSelect, onRefresh, l
                 name={isVoice ? "mic" : "message-circle"}
                 size={14}
                 color={isVoice ? "#FF6B6B" : "#8A2BE2"}
-                style={{ marginRight: 6 }}
+                style={styles.chipIcon}
               />
-              <Text style={[styles.chipText, isVoice && styles.voiceChipText]} numberOfLines={2}>
+              <Text style={[styles.chipText, isVoice && styles.voiceChipText]} numberOfLines={3}>
                 {item.text}
               </Text>
             </Pressable>
@@ -99,20 +99,26 @@ const styles = StyleSheet.create({
   },
   chip: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
+    alignSelf: "flex-start",
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: "rgba(138, 43, 226, 0.2)",
     maxWidth: 260,
     ...shadows.soft,
   },
-
+  chipIcon: {
+    marginRight: 6,
+    marginTop: 1,
+  },
   chipText: {
+    flexShrink: 1,
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
+    lineHeight: 16,
     color: colors.textPrimary,
   },
   voiceChip: {

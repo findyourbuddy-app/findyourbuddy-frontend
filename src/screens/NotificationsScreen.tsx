@@ -12,7 +12,6 @@ import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { listMyNotifications, markMyNotificationsRead } from "../api/notifications";
-import { listMyCreatedEvents, listMyAttendingEvents } from "../api/events";
 import { EventRatingModal } from "../components/overlays/EventRatingModal";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
@@ -96,6 +95,10 @@ export function NotificationsScreen() {
       return { icon: "star" as const, color: "#F1C40F", type: "feedback" };
     }
 
+    if (lowercaseTitle.includes("double buddy")) {
+      return { icon: "users" as const, color: colors.primary, type: "double_buddy" };
+    }
+
     if (
       lowercaseTitle.includes("beğeni") ||
       lowercaseBody.includes("beğendi") ||
@@ -145,99 +148,115 @@ export function NotificationsScreen() {
     return { title, body };
   }
 
-  function extractEventId(item: Notification): number | null {
-    if (item.event_id) {
-      const parsed = Number(item.event_id);
-      if (!isNaN(parsed) && parsed > 0) return parsed;
-    }
-    let dataObj: any = item.data;
-    if (typeof dataObj === "string") {
+  function parseNotificationData(item: Notification): Record<string, any> {
+    let raw: any = item.data;
+    if (typeof raw === "string") {
       try {
-        dataObj = JSON.parse(dataObj);
+        raw = JSON.parse(raw);
       } catch {
-        dataObj = null;
+        raw = null;
       }
     }
-    if (dataObj && typeof dataObj === "object") {
-      const raw = dataObj.event_id || dataObj.eventId || dataObj.id;
-      if (raw) {
-        const parsed = Number(raw);
-        if (!isNaN(parsed) && parsed > 0) return parsed;
-      }
+    return raw && typeof raw === "object" ? raw : {};
+  }
+
+  function pickId(...values: unknown[]): number | null {
+    for (const value of values) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
     }
     return null;
   }
 
-  async function handlePressNotification(item: Notification) {
+  function handlePressNotification(item: Notification) {
+    const data = parseNotificationData(item);
     const meta = getNotificationMeta(item.title, item.body);
-    let targetEventId = extractEventId(item);
+    const type = item.notification_type ?? "";
 
-    // Fallback: If event_id is missing from old DB records for event-type notifications
-    if (!targetEventId && (meta.type === "event" || item.notification_type === "event" || item.notification_type === "event_request")) {
-      try {
-        const created = await listMyCreatedEvents();
-        if (created.length > 0) {
-          targetEventId = created[0].id;
-        } else {
-          const attending = await listMyAttendingEvents();
-          if (attending.length > 0) {
-            targetEventId = attending[0].id;
-          }
-        }
-      } catch {
-        // best effort fallback
+    const eventId = pickId(item.event_id, data.event_id, data.eventId);
+    const matchId = pickId(item.match_id, data.match_id);
+    const otherUserId = pickId(data.other_user_id, data.sender_id, data.otherUserId);
+    const otherUserName =
+      typeof data.other_user_name === "string" && data.other_user_name.trim()
+        ? data.other_user_name
+        : "Kanka";
+
+    const openEvent = (opts?: { autoOpenRequests?: boolean; autoOpenRating?: boolean }) => {
+      if (eventId) {
+        navigation.navigate("EventDetail", { eventId, ...opts });
+      } else {
+        navigation.navigate("Tabs", { screen: "Discover" });
       }
+    };
+    const openChat = () => {
+      if (matchId && otherUserId) {
+        navigation.navigate("Chat", { matchId, otherUserId, otherUserName });
+      } else {
+        navigation.navigate("Tabs", { screen: "Messages" });
+      }
+    };
+
+    // Route by the explicit type first.
+    switch (type) {
+      case "like":
+        navigation.navigate("LikesReceived");
+        return;
+      case "match":
+      case "message":
+        openChat();
+        return;
+      case "match_feedback":
+        openEvent({ autoOpenRating: true });
+        return;
+      case "event_request":
+      case "event_join_request":
+        openEvent({ autoOpenRequests: true });
+        return;
+      case "event":
+      case "event_response":
+        openEvent();
+        return;
+      case "verification":
+        navigation.navigate("Profile");
+        return;
+      case "double_buddy_invite":
+        navigation.navigate("Profile", { openDoubleBuddy: true });
+        return;
+      case "double_buddy_accepted":
+      case "double_buddy_rejected":
+        navigation.navigate("Profile");
+        return;
+      case "event_rejected":
+        // The event no longer exists -- nothing to open.
+        return;
     }
 
-    // 1. Event notifications (join request, approval, event update, feedback)
-    if (targetEventId) {
-      const isJoinRequest =
-        item.notification_type === "event_join_request" ||
-        item.notification_type === "event_request" ||
-        item.title.toLowerCase().includes("katılım") ||
-        item.title.toLowerCase().includes("istek") ||
-        item.body.toLowerCase().includes("katılmak") ||
-        item.body.toLowerCase().includes("istiyor");
-
-      navigation.navigate("EventDetail", {
-        eventId: targetEventId,
-        autoOpenRating: meta.type === "feedback" || item.notification_type === "match_feedback",
-        autoOpenRequests: isJoinRequest,
-      });
-      return;
-    }
-
-    // 2. Match or Message notifications
-    const targetMatchId = item.match_id || (item.data && (item.data as any).match_id);
-    if (targetMatchId) {
-      const data = item.data as Record<string, any> | undefined;
-      navigation.navigate("Chat", {
-        matchId: Number(targetMatchId),
-        otherUserId: Number(data?.other_user_id || 0),
-        otherUserName: String(data?.other_user_name || "Kanka"),
-      });
-      return;
-    }
-
-    // 3. Likes received
-    if (meta.type === "like" || item.notification_type === "like") {
+    // Legacy records saved before notification_type existed: fall back to the
+    // keyword-derived meta.
+    if (meta.type === "like") {
       navigation.navigate("LikesReceived");
       return;
     }
-
-    // 4. Verification result
-    if (meta.type === "verification") {
+    if (meta.type === "verification" || meta.type === "double_buddy") {
       navigation.navigate("Profile");
       return;
     }
-
-    if (meta.type === "match" || meta.type === "message") {
-      navigation.navigate("Tabs", { screen: "Messages" });
+    if (meta.type === "feedback") {
+      openEvent({ autoOpenRating: true });
       return;
     }
-
-    // Fallback
-    navigation.navigate("Tabs", { screen: "Discover" });
+    if (meta.type === "event" || eventId) {
+      const isJoinRequest =
+        item.title.toLowerCase().includes("katılım isteği") ||
+        item.body.toLowerCase().includes("katılmak istiyor");
+      openEvent({ autoOpenRequests: isJoinRequest });
+      return;
+    }
+    if (matchId) {
+      openChat();
+      return;
+    }
+    navigation.navigate("Tabs", { screen: "Messages" });
   }
 
   if (isLoading && notifications.length === 0) {

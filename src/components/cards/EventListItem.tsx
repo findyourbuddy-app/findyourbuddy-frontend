@@ -9,6 +9,7 @@ import { formatEventDate } from "../../utils/date";
 import type { Event } from "../../types";
 
 import { useAppTheme } from "../../context/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
 
 import { resolvePhotoUrl } from "../ui/Avatar";
 
@@ -22,6 +23,8 @@ interface EventListItemProps {
 
 export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, distanceLabel }: EventListItemProps) {
   const { language } = useAppTheme();
+  const { user } = useAuth();
+  const isMine = Boolean(event.creator_id && event.creator_id === user?.id);
   const category = getCategoryMeta(event.category, language);
 
   return (
@@ -64,7 +67,12 @@ export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, di
             </Text>
           )}
           {event.creator_id ? (
-            <Text style={styles.userEventTag}>{"  ·  "}{language === "en" ? "User Event" : "Kullanıcı Etkinliği"}</Text>
+            <Text style={styles.userEventTag}>
+              {"  ·  "}
+              {isMine
+                ? (language === "en" ? "My Event" : "Başlattığım Etkinlik")
+                : (language === "en" ? "User Event" : "Kullanıcı Etkinliği")}
+            </Text>
           ) : (
             <Text style={styles.systemEventTag}>{"  ·  "}{language === "en" ? "Official Event" : "Resmi Etkinlik"}</Text>
           )}

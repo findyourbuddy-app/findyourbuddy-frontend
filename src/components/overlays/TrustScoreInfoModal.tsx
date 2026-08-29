@@ -43,8 +43,8 @@ export function TrustScoreInfoModal({
 
           <Text style={styles.description}>
             {language === "en"
-              ? "Trust Score measures user authenticity, attendance reliability, and community respect."
-              : "Güven Skoru, kullanıcının gerçekliğini, etkinlik devamlılığını ve topluluk içindeki saygınlığını temsil eden 0-100 arası puan sistemidir."}
+              ? "A 0-100 score recalculated from your real activity: verification, showing up to events, ratings from other buddies, and any reports. It always reflects your current standing -- a rough patch can be recovered."
+              : "Doğrulama, etkinliklere katılım, kankalardan aldığın puanlar ve şikayetler gibi gerçek verilerden yeniden hesaplanan 0-100 arası bir puandır. Her zaman güncel durumunu yansıtır -- kötü bir dönem sonradan telafi edilebilir."}
           </Text>
 
           <View style={styles.list}>
@@ -52,22 +52,22 @@ export function TrustScoreInfoModal({
               <Feather name="check-circle" size={16} color="#1DA1F2" style={styles.itemIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>
-                  {language === "en" ? "Profile Photo Verification (+25 Pts)" : "Mavi Tik Profil Doğrulaması (+25 Puan)"}
+                  {language === "en" ? "Photo verification (+25)" : "Selfie/foto doğrulaması (+25)"}
                 </Text>
                 <Text style={styles.itemSub}>
-                  {language === "en" ? "AI selfie matching for authentic profile check." : "Yapay zeka selfie eşlemesiyle kimlik onayı."}
+                  {language === "en" ? "AI selfie match. Phone (+8) and account (+5) verification add more." : "AI selfie eşlemesi. Telefon (+8) ve hesap (+5) doğrulaması da ekler."}
                 </Text>
               </View>
             </View>
 
             <View style={styles.item}>
-              <Feather name="smartphone" size={16} color="#27AE60" style={styles.itemIcon} />
+              <Feather name="calendar" size={16} color="#27AE60" style={styles.itemIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>
-                  {language === "en" ? "Phone & Email Verification (+15 Pts)" : "Telefon & E-posta Onayı (+15 Puan)"}
+                  {language === "en" ? "Showing up (up to +15)" : "Etkinliklere katılım (+15'e kadar)"}
                 </Text>
                 <Text style={styles.itemSub}>
-                  {language === "en" ? "Verified contact details." : "Doğrulanmış iletişim kanalları."}
+                  {language === "en" ? "Your check-in rate for events you RSVP'd to." : "Katılacağım dediğin etkinliklere gerçekten gitme oranın."}
                 </Text>
               </View>
             </View>
@@ -76,10 +76,10 @@ export function TrustScoreInfoModal({
               <Feather name="star" size={16} color="#F1C40F" style={styles.itemIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>
-                  {language === "en" ? "Event Attendance & Positive Rating (+20 Pts)" : "Etkinlik Katılımı & Olumlu Değerlendirme (+20 Puan)"}
+                  {language === "en" ? "Buddy ratings & meetups (±12, +8)" : "Kanka puanları & buluşmalar (±12, +8)"}
                 </Text>
                 <Text style={styles.itemSub}>
-                  {language === "en" ? "Attending events on time and receiving positive ratings." : "Zamanında katılım ve kankalardan yüksek puan alma."}
+                  {language === "en" ? "Average rating you get as an event host, plus confirmed real-life meetups." : "Etkinlik düzenleyen olarak aldığın ortalama puan ve doğrulanmış gerçek buluşmalar."}
                 </Text>
               </View>
             </View>
@@ -88,10 +88,10 @@ export function TrustScoreInfoModal({
               <Feather name="alert-triangle" size={16} color="#E74C3C" style={styles.itemIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>
-                  {language === "en" ? "No-Show & Rule Violations (-30 Pts)" : "Sebepsiz Katılmama veya İhlal (-30 Puan)"}
+                  {language === "en" ? "No-shows, reports & blocks (down to -30)" : "Gelmeme, şikayet & engellenme (-30'a kadar)"}
                 </Text>
                 <Text style={styles.itemSub}>
-                  {language === "en" ? "Unexcused event absences or community reports." : "Etkinliğe gelmeme veya topluluk şikayetleri."}
+                  {language === "en" ? "Unexcused absences and community reports lower your score." : "Sebepsiz katılmama ve topluluk şikayetleri skorunu düşürür."}
                 </Text>
               </View>
             </View>

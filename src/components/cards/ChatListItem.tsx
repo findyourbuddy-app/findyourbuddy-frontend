@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "../ui/Avatar";
@@ -11,18 +12,19 @@ import { useAppTheme } from "../../context/ThemeContext";
 interface ChatListItemProps {
   match: Match;
   currentUserId: number;
-  onPress: () => void;
-  onPressAvatar?: () => void;
+  onPress: (match: Match) => void;
+  onPressAvatar?: (userId: number) => void;
 }
 
-export function ChatListItem({ match, currentUserId, onPress, onPressAvatar }: ChatListItemProps) {
+function ChatListItemBase({ match, currentUserId, onPress, onPressAvatar }: ChatListItemProps) {
   const { language } = useAppTheme();
   const lastMessage = match.last_message;
   const isUnread = Boolean(lastMessage && !lastMessage.is_read && lastMessage.sender_id !== currentUserId);
+  const handlePress = () => onPress(match);
 
   if (match.event_is_group) {
     return (
-      <Pressable style={styles.container} onPress={onPress}>
+      <Pressable style={styles.container} onPress={handlePress}>
         <View style={styles.groupAvatarBox}>
           <Feather name="users" size={22} color="#FFFFFF" />
         </View>
@@ -52,12 +54,12 @@ export function ChatListItem({ match, currentUserId, onPress, onPressAvatar }: C
   }
 
   return (
-    <Pressable style={styles.container} onPress={onPress}>
+    <Pressable style={styles.container} onPress={handlePress}>
       <Pressable
         onPress={(e) => {
           if (onPressAvatar) {
             e.stopPropagation();
-            onPressAvatar();
+            onPressAvatar(match.other_user.id);
           }
         }}
         hitSlop={4}
@@ -97,6 +99,25 @@ export function ChatListItem({ match, currentUserId, onPress, onPressAvatar }: C
     </Pressable>
   );
 }
+
+export const ChatListItem = memo(ChatListItemBase, (prev, next) => {
+  const a = prev.match;
+  const b = next.match;
+  return (
+    prev.currentUserId === next.currentUserId &&
+    prev.onPress === next.onPress &&
+    prev.onPressAvatar === next.onPressAvatar &&
+    a.id === b.id &&
+    a.other_user.display_name === b.other_user.display_name &&
+    a.other_user.photo_url === b.other_user.photo_url &&
+    a.other_user.is_verified === b.other_user.is_verified &&
+    a.event_title === b.event_title &&
+    a.event_is_group === b.event_is_group &&
+    a.last_message?.id === b.last_message?.id &&
+    a.last_message?.is_read === b.last_message?.is_read &&
+    a.last_message?.content === b.last_message?.content
+  );
+});
 
 const styles = StyleSheet.create({
   groupAvatarBox: {

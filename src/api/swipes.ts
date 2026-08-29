@@ -60,6 +60,8 @@ export interface SwipeQuota {
   swipe_limit: number | null;
   super_likes_used_today: number;
   super_like_limit: number;
+  // UTC ISO instant the daily allowance next resets to zero.
+  resets_at: string;
 }
 
 export function getSwipeQuota(): Promise<SwipeQuota> {

@@ -24,7 +24,7 @@ import { useAppTheme } from "../context/ThemeContext";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event, User, UserPublic } from "../types";
-import { formatEventDate } from "../utils/date";
+import { formatEventDate, formatQuotaReset, parseApiDate } from "../utils/date";
 import { getCategoryMeta } from "../constants/categories";
 
 interface ActiveEvent {
@@ -32,6 +32,10 @@ interface ActiveEvent {
   title: string;
   location_name?: string | null;
 }
+
+// Last quota seen this app session -- shown instantly on the next mount so the
+// "Sınırsız beğeni / n/m süper" line doesn't pop in a few hundred ms late.
+let lastKnownQuota: SwipeQuota | null = null;
 
 // `listEvents` returns a fixed, date-sorted page -- an event the user is already
 // attending (especially an older group event) can fall outside that window and
@@ -64,7 +68,14 @@ export function SwipeScreen() {
   const [filters, setFilters] = useState<SwipeCandidateFilters>({});
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [availableEvents, setAvailableEvents] = useState<Event[]>([]);
-  const [quota, setQuota] = useState<SwipeQuota | null>(null);
+  const [quota, setQuotaState] = useState<SwipeQuota | null>(lastKnownQuota);
+  const setQuota = useCallback<typeof setQuotaState>((value) => {
+    setQuotaState((prev) => {
+      const next = typeof value === "function" ? (value as (p: SwipeQuota | null) => SwipeQuota | null)(prev) : value;
+      lastKnownQuota = next;
+      return next;
+    });
+  }, []);
   const [eventPickerVisible, setEventPickerVisible] = useState(false);
   const [storeVisible, setStoreVisible] = useState(false);
   const [boostConfirmVisible, setBoostConfirmVisible] = useState(false);
@@ -101,7 +112,7 @@ export function SwipeScreen() {
       if (event.creator_id) return false;
       if (!event.is_attending) return false;
       if (event.starts_at) {
-        const eventMs = new Date(event.starts_at).getTime();
+        const eventMs = parseApiDate(event.starts_at).getTime();
         // Remove expired events (older than 4 hours after start time)
         if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
       }
@@ -114,7 +125,7 @@ export function SwipeScreen() {
       if (!event.creator_id || event.is_group_event) return false;
       if (!event.is_attending) return false;
       if (event.starts_at) {
-        const eventMs = new Date(event.starts_at).getTime();
+        const eventMs = parseApiDate(event.starts_at).getTime();
         if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
       }
       return true;
@@ -159,13 +170,32 @@ export function SwipeScreen() {
     }, [activeTab, userSubTab])
   );
 
-  const refreshQuota = useCallback(() => {
+  // The server count is the single source of truth -- take it as-is. Optimistic
+  // bumps in handleSwipe give instant feedback; failed swipes roll their bump
+  // back, so this reconcile always matches what actually happened and the number
+  // survives an app restart instead of snapping back to a stale value.
+  const loadQuota = useCallback(() => {
     getSwipeQuota()
       .then(setQuota)
       .catch(() => {
-        // Non-critical; the quota display just stays hidden if this fails.
+        // Non-critical; the display keeps its last value.
       });
   }, []);
+
+  // Post-swipe reconcile, debounced so a burst of swipes triggers ONE refetch
+  // (after the user pauses) rather than a flicker of racing partial counts.
+  const quotaReconcileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconcileQuota = useCallback(() => {
+    if (quotaReconcileTimerRef.current) clearTimeout(quotaReconcileTimerRef.current);
+    quotaReconcileTimerRef.current = setTimeout(loadQuota, 250);
+  }, [loadQuota]);
+
+  useEffect(
+    () => () => {
+      if (quotaReconcileTimerRef.current) clearTimeout(quotaReconcileTimerRef.current);
+    },
+    []
+  );
 
   // Silently top up the deck with newly-joined attendees -- only when the user
   // is near the end, and only by APPENDING. The list ahead of the current card
@@ -240,22 +270,24 @@ export function SwipeScreen() {
 
       // Keep the like / super-like counters honest on every return to the tab
       // (e.g. after buying credits in the store).
-      refreshQuota();
+      loadQuota();
 
       // Same tab / filters / target as the loaded deck and cards still in hand:
-      // this is just a re-focus, so keep what's on screen (the 15s poller keeps
-      // candidates fresh) instead of a visible refetch.
+      // this is just a re-focus, so keep the deck on screen (the 15s poller
+      // keeps candidates fresh) instead of a visible refetch. The event list
+      // itself is refreshed unconditionally below -- a system event joined on
+      // Discover, or a group just created, must show up here right away.
       const deckKey = JSON.stringify({ activeTab, filters, paramEventId });
-      if (
+      const isPlainRefocus =
         hasInitialLoadedRef.current &&
         !hasParamChange &&
         loadedDeckKeyRef.current === deckKey &&
-        candidatesRef.current.length > 0
-      ) {
-        return;
+        candidatesRef.current.length > 0;
+
+      if (!isPlainRefocus) {
+        loadedDeckKeyRef.current = deckKey;
+        hasInitialLoadedRef.current = true;
       }
-      loadedDeckKeyRef.current = deckKey;
-      hasInitialLoadedRef.current = true;
 
       async function resolveActiveEvent(
         upcoming: Event[]
@@ -295,7 +327,7 @@ export function SwipeScreen() {
           if (activeTab === "system") {
             if (event.creator_id || !event.is_attending) return false;
             if (event.starts_at) {
-              const eventMs = new Date(event.starts_at).getTime();
+              const eventMs = parseApiDate(event.starts_at).getTime();
               if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
             }
             return true;
@@ -307,8 +339,19 @@ export function SwipeScreen() {
           ? validEvents.find((e) => e.id === activeEventRef.current?.id)
           : null;
 
-        if (!chosen && validEvents.length > 0) {
+        // Only the "Resmi Etkinlikler" (system) tab needs a concrete event to
+        // swipe within -- it has no global browse. The "Birebir" tab defaults to
+        // general user browsing (activeEvent = null); auto-picking an event here
+        // made the deck jump from the general browse to a random 1-on-1 event's
+        // candidates the moment this effect re-ran after the first render.
+        if (!chosen && validEvents.length > 0 && activeTab === "system") {
           chosen = validEvents[0];
+        }
+
+        // An event the user explicitly picked can sit outside the paginated
+        // list; keep swiping it instead of silently dropping to general browse.
+        if (!chosen && activeTab === "user" && activeEventRef.current) {
+          return { event: activeEventRef.current, tab: "user" };
         }
 
         return {
@@ -317,7 +360,7 @@ export function SwipeScreen() {
         };
       }
 
-      if (candidates.length === 0) {
+      if (!isPlainRefocus && candidates.length === 0) {
         setIsLoading(true);
       }
       const targetOrigin = activeTab === "system" ? "system" : "user";
@@ -328,7 +371,14 @@ export function SwipeScreen() {
         .then(async ([tabEvts, attending]) => {
           if (cancelled) return;
           const allEvents = mergeEvents(tabEvts, attending);
-          setAvailableEvents((prev) => mergeEvents(prev, allEvents));
+          // Fresh data wins so a just-joined event flips to is_attending here;
+          // only carry over prev entries the fresh page dropped (e.g. an
+          // off-page event the user is actively swiping).
+          setAvailableEvents((prev) => mergeEvents(allEvents, prev));
+
+          // Plain re-focus: the event list is now current; leave the deck alone.
+          if (isPlainRefocus) return;
+
           const { event, tab, subTab } = await resolveActiveEvent(allEvents);
           if (cancelled) return;
           setActiveTab(tab);
@@ -345,6 +395,16 @@ export function SwipeScreen() {
           if (!isSameEvent || hasParamChange) {
             setCurrentIndex(0);
           }
+
+          // The "Resmi Etkinlikler" tab has no global browse -- with no event
+          // picked it must stay empty ("pick an event"), never fall through to
+          // general platform users.
+          if (tab === "system" && !event) {
+            setCandidates([]);
+            setCurrentIndex(0);
+            return;
+          }
+
           const list = await getSwipeCandidates(event ? event.id : undefined, filters);
           if (!cancelled) {
             const freshCandidates = list.filter((c) => !swipedCandidateIdsRef.current.has(c.id));
@@ -369,7 +429,7 @@ export function SwipeScreen() {
       return () => {
         cancelled = true;
       };
-    }, [route.params, filters, refreshQuota, activeTab, language])
+    }, [route.params, filters, loadQuota, activeTab, language])
   );
 
   function switchEvent(event: Event): void {
@@ -539,18 +599,77 @@ export function SwipeScreen() {
     setFiltersVisible(false);
   }
 
+  function renewalLine(): string {
+    if (!quota) return "";
+    return language === "en"
+      ? `\n\nYour allowance renews ${formatQuotaReset(quota.resets_at, "en")}.`
+      : `\n\nHakların ${formatQuotaReset(quota.resets_at, "tr")} yenilenecek.`;
+  }
+
   async function handleSwipe(direction: "like" | "pass" | "super_like"): Promise<User | null> {
     const target = candidates[currentIndex];
     if (!target) {
       return null;
     }
+
+    // Don't spend a super-like before we actually know the remaining count.
+    if (direction === "super_like" && !quota) {
+      loadQuota();
+      Alert.alert(
+        language === "en" ? "One sec" : "Bir saniye",
+        language === "en"
+          ? "Checking your Super Like balance -- try again in a moment."
+          : "Süper beğeni hakkın kontrol ediliyor -- birazdan tekrar dene."
+      );
+      return null;
+    }
+
+    // Block a like / super-like before we advance the deck when the allowance
+    // is spent. The regular-like cap is premium-exempt, but the super-like cap
+    // applies to everyone -- premium just gets a bigger one.
+    if (direction !== "pass" && quota) {
+      if (!quota.is_premium) {
+        const outOfSwipes = quota.swipe_limit != null && quota.swipes_used_today >= quota.swipe_limit;
+        if (outOfSwipes) {
+          Alert.alert(
+            language === "en" ? "Daily limit reached" : "Günlük hakkın doldu",
+            (language === "en"
+              ? "You're out of likes for today. Passing is still free, or grab more from the store."
+              : "Bugünlük beğeni hakkın bitti. Geçmeye devam edebilir ya da mağazadan hak alabilirsin.") +
+              renewalLine()
+          );
+          return null;
+        }
+      }
+      if (direction === "super_like" && quota.super_likes_used_today >= quota.super_like_limit) {
+        Alert.alert(
+          language === "en" ? "Out of Super Likes" : "Süper beğeni hakkın doldu",
+          (language === "en"
+            ? "Send a normal like, or get more Super Likes from the store."
+            : "Normal beğeni gönderebilir ya da mağazadan süper beğeni alabilirsin.") +
+            renewalLine()
+        );
+        return null;
+      }
+    }
+
     const targetId = target.id;
     const eventId = activeEvent?.id;
+    const fromIndex = currentIndex;
+
     swipedCandidateIdsRef.current.add(targetId);
 
-    // OPTIMISTIC UPDATE: Increment candidate index IMMEDIATELY for 0ms instant UI transition!
-    const nextIndex = currentIndex + 1;
+    // The card leaves instantly; the counter follows the SERVER via
+    // reconcileQuota() below (~350ms, debounced). No optimistic counter bump --
+    // that's what made the number get stuck high and "revert" on the next open.
+    const nextIndex = fromIndex + 1;
     setCurrentIndex(nextIndex);
+
+    // Hard rejection (limit hit): put the card back and un-consume the candidate.
+    const rollBack = (): void => {
+      swipedCandidateIdsRef.current.delete(targetId);
+      setCurrentIndex((idx) => (idx === nextIndex ? fromIndex : idx));
+    };
 
     createSwipe({ target_id: targetId, event_id: eventId, direction })
       .then((result) => {
@@ -559,27 +678,37 @@ export function SwipeScreen() {
         }
       })
       .catch((error) => {
-        if (axios.isAxiosError(error)) {
-          const status = error.response?.status;
-          const detail = error.response?.data?.detail as string | undefined;
+        if (!axios.isAxiosError(error)) {
+          return;
+        }
+        const status = error.response?.status;
+        const detail = error.response?.data?.detail as string | undefined;
 
-          if (status === 409 || status === 403 || detail?.includes("Already swiped")) {
-            return;
-          }
+        // Blocked user or a swipe already on file -- keep the card gone.
+        if (status === 409 || status === 403 || detail?.includes("Already swiped")) {
+          return;
+        }
 
-          if (status === 429) {
-            if (detail === "Daily super like limit reached") {
-              Alert.alert(
-                "Süper beğeni hakkın bitti",
-                "Bugünlük süper beğeni hakkın doldu, yarın tekrar dene ya da Premium'a geç."
-              );
-            } else {
-              Alert.alert("Günlük limit doldu", "Bugünlük beğeni hakkın bitti, yarın tekrar dene. Geçmeye devam edebilirsin.");
-            }
+        if (status === 429) {
+          rollBack();
+          if (detail === "Daily super like limit reached") {
+            Alert.alert(
+              language === "en" ? "Out of Super Likes" : "Süper beğeni hakkın doldu",
+              (language === "en"
+                ? "Send a normal like, or get more Super Likes from the store."
+                : "Normal beğeni gönderebilir ya da mağazadan süper beğeni alabilirsin.") + renewalLine()
+            );
+          } else {
+            Alert.alert(
+              language === "en" ? "Daily limit reached" : "Günlük hakkın doldu",
+              (language === "en"
+                ? "You're out of likes for today. Passing is still free, or grab more from the store."
+                : "Bugünlük beğeni hakkın bitti. Geçmeye devam edebilir ya da mağazadan hak alabilirsin.") + renewalLine()
+            );
           }
         }
       })
-      .finally(() => refreshQuota());
+      .finally(() => reconcileQuota());
 
     return candidates[nextIndex] || null;
   }
@@ -708,6 +837,17 @@ export function SwipeScreen() {
       Alert.alert("Bir sorun oluştu", "Etkinliğe katılamadın. Lütfen tekrar dene.");
     }
   }
+
+  // Gate the card's like / super-like gestures. A regular like is low-risk, so
+  // it stays allowed until the quota loads (premium is unlimited anyway, and
+  // the server is the final word). A super-like is scarce -- never hand one out
+  // before we actually know the remaining count.
+  const canLike =
+    !quota ||
+    quota.is_premium ||
+    quota.swipe_limit == null ||
+    quota.swipes_used_today < quota.swipe_limit;
+  const canSuperLike = quota != null && quota.super_likes_used_today < quota.super_like_limit;
 
   return (
     <View style={[styles.background, { backgroundColor: bgGradient[0], paddingBottom: 56 + insets.bottom }]}>
@@ -895,13 +1035,29 @@ export function SwipeScreen() {
           )}
 
           {quota ? (
-            <Text style={[styles.quotaText, !activeEvent && { marginLeft: "auto" }]}>
-              {quota.is_premium
-                ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
-                : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}
-              {" · "}
-              {quota.super_likes_used_today}/{quota.super_like_limit} {language === "en" ? "super" : "süper"}
-            </Text>
+            <View style={[styles.quotaColumn, !activeEvent && { marginLeft: "auto" }]}>
+              <Text style={styles.quotaText}>
+                {quota.is_premium
+                  ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
+                  : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}
+              </Text>
+              <Text style={styles.quotaText}>
+                {quota.super_likes_used_today}/{quota.super_like_limit} {language === "en" ? "super" : "süper"}
+              </Text>
+              {(() => {
+                const outOfLikes =
+                  !quota.is_premium && quota.swipe_limit != null && quota.swipes_used_today >= quota.swipe_limit;
+                const outOfSupers = quota.super_likes_used_today >= quota.super_like_limit;
+                if (!outOfLikes && !outOfSupers) return null;
+                return (
+                  <Text style={styles.quotaResetText}>
+                    {language === "en"
+                      ? `Renews ${formatQuotaReset(quota.resets_at, "en")}`
+                      : `${formatQuotaReset(quota.resets_at, "tr")} yenilenir`}
+                  </Text>
+                );
+              })()}
+            </View>
           ) : null}
         </View>
       ) : null}
@@ -1022,6 +1178,8 @@ export function SwipeScreen() {
           <SwipeCandidateCard
             key={candidates[currentIndex].id}
             candidate={candidates[currentIndex]}
+            canLike={canLike}
+            canSuperLike={canSuperLike}
             onSwipeLeft={() => handleSwipe("pass")}
             onSwipeRight={() => handleSwipe("like")}
             onSwipeUp={() => handleSwipe("super_like")}
@@ -1037,8 +1195,8 @@ export function SwipeScreen() {
             <Text style={styles.emptyText}>
               {activeEvent
                 ? language === "en"
-                  ? "You've seen all candidates for this event!"
-                  : "Bu etkinlik için tüm ilgilenen adayları gördün!"
+                  ? "No one else is interested in this event right now. Check back later."
+                  : "Bu etkinlik için şu an başka ilgilenen kimse yok. Sonra tekrar bak."
                 : language === "en"
                 ? "No active platform users available right now."
                 : "Şu anda görülecek başka platform kullanıcısı kalmadı."}
@@ -1087,6 +1245,18 @@ export function SwipeScreen() {
             <View style={styles.helpRow}>
               <Feather name="arrow-up" size={18} color="#2E7FC9" />
               <Text style={styles.helpText}>{language === "en" ? "Up — Super Like" : "Yukarı kaydır — Süper Beğeni"}</Text>
+            </View>
+            <View style={styles.helpRow}>
+              <Feather name="image" size={18} color={colors.primary} />
+              <Text style={styles.helpText}>
+                {language === "en" ? "Double-tap — Next / previous photo" : "Çift dokun — Sonraki / önceki fotoğraf"}
+              </Text>
+            </View>
+            <View style={styles.helpRow}>
+              <Feather name="user" size={18} color={colors.textSecondary} />
+              <Text style={styles.helpText}>
+                {language === "en" ? "Single tap — Open profile" : "Tek dokun — Profili aç"}
+              </Text>
             </View>
             <Pressable style={styles.closeBtn} onPress={() => setHelpVisible(false)}>
               <Text style={styles.closeBtnText}>{t("close")}</Text>
@@ -1298,10 +1468,20 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flexShrink: 1,
   },
+  quotaColumn: {
+    alignItems: "flex-end",
+    flexShrink: 1,
+  },
   quotaText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  quotaResetText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.primary,
+    marginTop: 1,
   },
   cardArea: {
     flex: 1,

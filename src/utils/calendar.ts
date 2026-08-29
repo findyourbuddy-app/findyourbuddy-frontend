@@ -2,14 +2,15 @@ import { Alert } from "./alert";
 import * as Calendar from "expo-calendar";
 import { Linking, Platform } from "react-native";
 import type { Event } from "../types";
+import { parseApiDate } from "./date";
 
 export function getGoogleCalendarUrl(event: Event): string {
   const title = encodeURIComponent(event.title);
   const details = encodeURIComponent(event.description || "FindYourBuddy etkinliği");
   const location = encodeURIComponent(event.location_name);
 
-  const startTime = new Date(event.starts_at).toISOString().replace(/-|:|\.\d\d\d/g, "");
-  const endTime = new Date(new Date(event.starts_at).getTime() + 2 * 60 * 60 * 1000)
+  const startTime = parseApiDate(event.starts_at).toISOString().replace(/-|:|\.\d\d\d/g, "");
+  const endTime = new Date(parseApiDate(event.starts_at).getTime() + 2 * 60 * 60 * 1000)
     .toISOString()
     .replace(/-|:|\.\d\d\d/g, "");
 
@@ -33,7 +34,7 @@ export async function openAddToCalendar(event: Event): Promise<void> {
       return;
     }
 
-    const startDate = new Date(event.starts_at);
+    const startDate = parseApiDate(event.starts_at);
     const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
 
     // Launches the native OS calendar dialog screen directly on the device

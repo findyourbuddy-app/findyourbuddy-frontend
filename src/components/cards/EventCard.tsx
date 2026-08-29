@@ -11,6 +11,7 @@ import { formatEventDate, isToday } from "../../utils/date";
 import type { Event } from "../../types";
 
 import { useAppTheme } from "../../context/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
 
 import { resolvePhotoUrl } from "../ui/Avatar";
 
@@ -25,6 +26,8 @@ interface EventCardProps {
 
 export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, onPress, distanceLabel }: EventCardProps) {
   const { language, t } = useAppTheme();
+  const { user } = useAuth();
+  const isMine = Boolean(event.creator_id && event.creator_id === user?.id);
   const category = getCategoryMeta(event.category, language);
   const startLabel = formatEventDate(event.starts_at, language);
 
@@ -58,7 +61,15 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
         <View style={styles.badgeSlot}>
           {isToday(event.starts_at) ? <Badge label={language === "en" ? "Tonight" : "Bu akşam"} variant="yellow" icon="⚡" /> : null}
           {event.creator_id ? (
-            <Badge label={language === "en" ? "User Event" : "Kullanıcı Etkinliği"} variant="primary" />
+            <Badge
+              label={
+                isMine
+                  ? (language === "en" ? "My Event" : "Başlattığım Etkinlik")
+                  : (language === "en" ? "User Event" : "Kullanıcı Etkinliği")
+              }
+              variant="primary"
+              icon={isMine ? "⭐" : undefined}
+            />
           ) : (
             <Badge label={language === "en" ? "Official Event" : "Resmi Etkinlik"} variant="blue" icon="✓" />
           )}

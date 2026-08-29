@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, PanResponder, StyleSheet, Text, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 import { getInterestLabel } from "../../constants/interests";
 import { hasValidCoordinates, resolveCityDistrict } from "../../utils/location";
@@ -16,12 +16,20 @@ interface SwipeCandidateCardProps {
   onSwipeUp: () => void;
   onPressProfile: () => void;
   onShowHelp: () => void;
+  // When false, that gesture still notifies the parent (which explains why)
+  // but the card springs back instead of flying off.
+  canLike: boolean;
+  canSuperLike: boolean;
 }
 
 const FALLBACK_GRADIENT: [string, string] = ["#9385D8", "#5B41CE"];
 const DRAG_THRESHOLD_X = 100;
 const DRAG_THRESHOLD_Y = 120;
-const TAP_MOVE_THRESHOLD = 6;
+// Generous so a quick, slightly-sloppy double tap still counts as two taps
+// rather than a drag.
+const TAP_MOVE_THRESHOLD = 12;
+// Gap allowed between the two taps of a double tap.
+const DOUBLE_TAP_MS = 320;
 
 import { resolvePhotoUrl } from "../ui/Avatar";
 
@@ -45,6 +53,8 @@ export function SwipeCandidateCard({
   onSwipeUp,
   onPressProfile,
   onShowHelp,
+  canLike,
+  canSuperLike,
 }: SwipeCandidateCardProps) {
   const { language } = useAppTheme();
   const photoUrls = candidatePhotoUrls(candidate);
@@ -65,6 +75,8 @@ export function SwipeCandidateCard({
     onSwipeUp,
     onPressProfile,
     onShowHelp,
+    canLike,
+    canSuperLike,
   });
   liveRef.current = {
     cardWidth: liveRef.current.cardWidth,
@@ -75,13 +87,25 @@ export function SwipeCandidateCard({
     onSwipeUp,
     onPressProfile,
     onShowHelp,
+    canLike,
+    canSuperLike,
   };
+
+  // A single tap opens the profile, a double tap browses photos -- so the
+  // single-tap action is held for one double-tap window before it fires.
+  const tapStateRef = useRef<{ timer: ReturnType<typeof setTimeout> | null }>({ timer: null });
 
   useEffect(() => {
     if (hasValidCoordinates(candidate.latitude, candidate.longitude)) {
       resolveCityDistrict(candidate.latitude, candidate.longitude).then(setLocationName);
     }
   }, [candidate.latitude, candidate.longitude]);
+
+  useEffect(() => {
+    return () => {
+      if (tapStateRef.current.timer) clearTimeout(tapStateRef.current.timer);
+    };
+  }, []);
 
   function handleLayout(event: LayoutChangeEvent): void {
     const { width, height } = event.nativeEvent.layout;
@@ -123,19 +147,50 @@ export function SwipeCandidateCard({
           // Top-right corner opens the "how to swipe" help.
           if (w > 0 && tapX > w - 56 && tapY < 56) {
             live.onShowHelp();
-          } else if (live.photoCount > 1 && w > 0 && tapX < w * 0.25) {
-            goToPhoto(-1);
-          } else if (live.photoCount > 1 && w > 0 && tapX > w * 0.75) {
-            goToPhoto(1);
+            return;
+          }
+          const tap = tapStateRef.current;
+          if (tap.timer) {
+            // Second tap inside the window -> browse photos (left half back,
+            // right half forward) instead of opening the profile.
+            clearTimeout(tap.timer);
+            tapStateRef.current = { timer: null };
+            if (live.photoCount > 1 && w > 0) {
+              goToPhoto(tapX < w / 2 ? -1 : 1);
+            } else {
+              live.onPressProfile();
+            }
           } else {
-            live.onPressProfile();
+            const openProfile = live.onPressProfile;
+            tapStateRef.current = {
+              timer: setTimeout(() => {
+                tapStateRef.current = { timer: null };
+                openProfile();
+              }, DOUBLE_TAP_MS),
+            };
           }
           return;
         }
+        // A real drag: drop any single-tap that hasn't fired yet so the
+        // profile never opens for a card the user is swiping away.
+        if (tapStateRef.current.timer) {
+          clearTimeout(tapStateRef.current.timer);
+          tapStateRef.current = { timer: null };
+        }
         if (gesture.dy < -DRAG_THRESHOLD_Y && Math.abs(gesture.dy) > Math.abs(gesture.dx)) {
-          flingOut("up", live.onSwipeUp);
+          if (live.canSuperLike) {
+            flingOut("up", live.onSwipeUp);
+          } else {
+            resetPosition();
+            live.onSwipeUp();
+          }
         } else if (gesture.dx > DRAG_THRESHOLD_X) {
-          flingOut("right", live.onSwipeRight);
+          if (live.canLike) {
+            flingOut("right", live.onSwipeRight);
+          } else {
+            resetPosition();
+            live.onSwipeRight();
+          }
         } else if (gesture.dx < -DRAG_THRESHOLD_X) {
           flingOut("left", live.onSwipeLeft);
         } else {
@@ -218,12 +273,16 @@ export function SwipeCandidateCard({
         <Feather name="info" size={15} color="#FFFFFF" />
       </View>
 
+      {/* Plain View, not a Pressable: every tap on the card must reach the
+          PanResponder so single-tap (profile) and double-tap (photos) are
+          told apart. A Pressable here swallowed taps over the text block and
+          opened the profile before the double tap could register. */}
       <LinearGradient
         colors={["transparent", "rgba(10,5,30,0.85)"]}
         style={styles.overlay}
-        pointerEvents="box-none"
+        pointerEvents="none"
       >
-        <Pressable onPress={onPressProfile} style={{ gap: 3 }}>
+        <View style={{ gap: 3 }}>
           <View style={styles.nameRow}>
             <Text style={styles.name}>
               {candidate.display_name}
@@ -269,7 +328,7 @@ export function SwipeCandidateCard({
               ))}
             </View>
           ) : null}
-        </Pressable>
+        </View>
       </LinearGradient>
 
       {/* Rendered last so the swipe feedback always sits above the photo + overlay. */}

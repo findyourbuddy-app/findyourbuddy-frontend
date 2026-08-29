@@ -1,11 +1,12 @@
-import { useCallback, useState } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { FlatList, InteractionManager, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Alert } from "../utils/alert";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RouteProp } from "@react-navigation/native";
 import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { Badge } from "../components/ui/Badge";
 import { IconSectionHeader } from "../components/ui/IconSectionHeader";
@@ -20,11 +21,13 @@ import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { LANGUAGES_LIST } from "../constants/languages";
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
-import { formatEventDate, formatMemberSince, isNewMember } from "../utils/date";
+import { formatEventDate, formatMemberSince, isNewMember, parseApiDate } from "../utils/date";
 import { listMyAttendingEvents } from "../api/events";
 import * as ImagePicker from "expo-image-picker";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
 import { TrustScoreInfoModal } from "../components/overlays/TrustScoreInfoModal";
+import { DoubleBuddyModal } from "../components/overlays/DoubleBuddyModal";
+import { getMyDoubleBuddy, type DoubleBuddyPair } from "../api/doubleBuddy";
 import type { GeocodingResult } from "../api/geocoding";
 import { activateBoost, getCurrentUser, updateCurrentUser, uploadProfilePhoto } from "../api/users";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
@@ -56,6 +59,7 @@ function getZodiacLabel(key: string, language: string): string {
 
 export function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
+  const route = useRoute<RouteProp<MainStackParamList, "Profile">>();
   const { user, signOut, isPremium, updateUser, refreshSubscription } = useAuth();
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [attendingEvents, setAttendingEvents] = useState<Event[]>([]);
@@ -69,6 +73,14 @@ export function ProfileScreen() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [lightboxData, setLightboxData] = useState<{ url: string; photos: string[] } | null>(null);
   const [trustInfoVisible, setTrustInfoVisible] = useState(false);
+  const [doubleBuddy, setDoubleBuddy] = useState<DoubleBuddyPair | null>(null);
+  const [doubleBuddyVisible, setDoubleBuddyVisible] = useState(false);
+
+  const loadDoubleBuddy = useCallback(() => {
+    getMyDoubleBuddy()
+      .then(setDoubleBuddy)
+      .catch(() => setDoubleBuddy(null));
+  }, []);
 
   async function handleLocationSelect(result: GeocodingResult) {
     try {
@@ -181,10 +193,29 @@ export function ProfileScreen() {
         .catch(() => {});
 
       listMyAttendingEvents(false)
-        .then((all) => setPastEvents(all.filter((event) => new Date(event.starts_at) < new Date())))
+        .then((all) => setPastEvents(all.filter((event) => parseApiDate(event.starts_at) < new Date())))
         .catch(() => {});
-    }, [])
+
+      loadDoubleBuddy();
+    }, [loadDoubleBuddy])
   );
+
+  // Opened straight from a Double Buddy notification -> jump to the card once
+  // the navigation transition has settled (a Modal toggled mid-transition can
+  // fail to appear).
+  const openDoubleBuddyParam = route.params?.openDoubleBuddy;
+  const consumedDoubleBuddyParamRef = useRef(false);
+  useEffect(() => {
+    if (!openDoubleBuddyParam) {
+      consumedDoubleBuddyParamRef.current = false;
+      return;
+    }
+    if (consumedDoubleBuddyParamRef.current) return;
+    consumedDoubleBuddyParamRef.current = true;
+    navigation.setParams({ openDoubleBuddy: undefined });
+    const task = InteractionManager.runAfterInteractions(() => setDoubleBuddyVisible(true));
+    return () => task.cancel();
+  }, [openDoubleBuddyParam, navigation]);
 
   async function handleBoostClick(): Promise<void> {
     if (!user) return;
@@ -602,6 +633,35 @@ export function ProfileScreen() {
         </Pressable>
         <Pressable
           style={styles.actionRow}
+          onPress={() => setDoubleBuddyVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Double Buddy"
+        >
+          <View style={styles.actionRowLeft}>
+            <View style={[styles.actionIcon, { backgroundColor: colors.primaryMuted }]}>
+              <Feather name="users" size={16} color={colors.primary} />
+            </View>
+            <View style={{ gap: 1 }}>
+              <Text style={styles.actionLabel}>Double Buddy</Text>
+              <Text style={styles.actionSublabel}>
+                {doubleBuddy?.status === "accepted"
+                  ? (language === "en" ? `Paired with ${doubleBuddy.partner_name}` : `${doubleBuddy.partner_name} ile eşli`)
+                  : doubleBuddy?.status === "pending" && doubleBuddy.is_incoming
+                  ? (language === "en" ? `${doubleBuddy.partner_name} invited you` : `${doubleBuddy.partner_name} seni davet etti`)
+                  : doubleBuddy?.status === "pending"
+                  ? (language === "en" ? "Invite sent" : "Davet gönderildi")
+                  : (language === "en" ? "Pair up with a matched buddy" : "Eşleştiğin bir kankayla ikili ol")}
+              </Text>
+            </View>
+          </View>
+          {doubleBuddy?.status === "pending" && doubleBuddy.is_incoming ? (
+            <View style={styles.doubleBuddyDot} />
+          ) : (
+            <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+          )}
+        </Pressable>
+        <Pressable
+          style={styles.actionRow}
           onPress={signOut}
           accessibilityRole="button"
           accessibilityLabel={t("signOut")}
@@ -644,6 +704,13 @@ export function ProfileScreen() {
         visible={trustInfoVisible}
         trustScore={user?.trust_score}
         onClose={() => setTrustInfoVisible(false)}
+      />
+
+      <DoubleBuddyModal
+        visible={doubleBuddyVisible}
+        language={language}
+        onClose={() => setDoubleBuddyVisible(false)}
+        onChange={loadDoubleBuddy}
       />
     </ScrollView>
   );
@@ -944,6 +1011,12 @@ const styles = StyleSheet.create({
   },
   actionIconBoost: {
     backgroundColor: "#F1C40F15",
+  },
+  doubleBuddyDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: colors.accentRed,
   },
   actionSublabel: {
     fontFamily: fontFamily.body,
