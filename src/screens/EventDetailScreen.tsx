@@ -184,7 +184,7 @@ export function EventDetailScreen({ route }: Props) {
   async function handleAttendAndSwipe(): Promise<void> {
     if (!event) return;
     if (event.is_attending) {
-      await goToSwipe();
+      await handleStartGroupChat();
       return;
     }
     if (event.is_pending) return;
@@ -536,7 +536,7 @@ export function EventDetailScreen({ route }: Props) {
         {isOwnerOfGroupEvent ? (
           <View style={{ gap: spacing.md }}>
             <PrimaryButton
-              label={language === "en" ? "Start / Open Group Chat" : "Grup Sohbetini Başlat / Aç"}
+              label={language === "en" ? "Chat" : "Sohbet"}
               onPress={handleStartGroupChat}
             />
             <View style={styles.joinRequestsSection}>
@@ -595,12 +595,10 @@ export function EventDetailScreen({ route }: Props) {
             <PrimaryButton
               label={
                 event.is_attending
-                  ? (!event.is_group_event
-                      ? (language === "en" ? "View Buddy & Connect" : "Kankayı Gör & İletişime Geç")
-                      : (language === "en" ? "See Buddies" : "Kankaları Gör"))
+                  ? (language === "en" ? "Chat" : "Sohbet")
                   : event.is_pending
                   ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
-                  : (language === "en" ? "I'm Going to This Event" : "Bu Etkinliğe Gidiyorum")
+                  : (language === "en" ? "Join" : "Katıl")
               }
               onPress={handleAttendAndSwipe}
               loading={isJoining}

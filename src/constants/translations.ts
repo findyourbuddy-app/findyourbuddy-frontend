@@ -26,7 +26,7 @@ export const translations = {
     popularNearYou: "Yakınındaki Popüler Aktiviteler",
     noEventsYet: "Şu an gösterilecek etkinlik yok.",
     personInterested: "kişi bu etkinliğe ilgi gösteriyor",
-    imGoingToThisEvent: "Bu Etkinliğe Gidiyorum",
+    imGoingToThisEvent: "Katıl",
     buddiesNearYou: "Yakınındaki Kankalar",
     whoIsNextBuddy: "Bir sonraki kankan kim?",
 
@@ -59,8 +59,8 @@ export const translations = {
     publishEventBtn: "Etkinliği Oluştur",
 
     // Event Detail Screen
-    joinEventBtn: "Etkinliğe Katıl",
-    seeBuddiesBtn: "Kankaları Gör",
+    joinEventBtn: "Katıl",
+    seeBuddiesBtn: "Sohbet",
     leaveEventBtn: "Etkinlikten Ayrıl",
     organizerLabel: "Organizatör",
     attendeesLabel: "Katılımcılar",
