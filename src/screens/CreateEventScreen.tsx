@@ -372,15 +372,6 @@ export function CreateEventScreen() {
         </View>
       ) : null}
 
-      <View style={styles.photoTipCard}>
-        <Feather name="camera" size={16} color={accentColor} />
-        <Text style={styles.photoTipText}>
-          {language === "en"
-            ? "Pick a cover photo below — your profile photo or a category photo — to boost this event's visibility!"
-            : "Aşağıdan bir kapak görseli seç — profil fotoğrafın ya da kategori görseli — etkinliğinin görünürlüğünü artır!"}
-        </Text>
-      </View>
-
       <View style={styles.field}>
         <Text style={typeScale.eyebrow}>{t("eventTitleLabel")}</Text>
         <TextInput
