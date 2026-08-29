@@ -104,7 +104,7 @@ function RectangleCropModal({
             ]}
             {...panResponder.panHandlers}
           >
-            <Image source={{ uri }} style={styles.modalCropImage} contentFit="cover" />
+            <Image source={{ uri }} style={styles.modalCropImage} contentFit="contain" />
           </Animated.View>
 
           {/* Bounding Rectangle Overlay */}
@@ -444,7 +444,7 @@ export function CreateEventScreen() {
                 <Image
                   source={{ uri: resolvePhotoUrl(user.photo_url) ?? undefined }}
                   style={styles.coverPreviewImage}
-                  contentFit="cover"
+                  contentFit="contain"
                 />
                 <View style={styles.tapToCropBanner}>
                   <Feather name="maximize-2" size={13} color="#FFFFFF" />
