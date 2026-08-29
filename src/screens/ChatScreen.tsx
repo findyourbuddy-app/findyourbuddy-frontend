@@ -23,7 +23,7 @@ import { API_BASE_URL } from "../constants/config";
 import { colors, fontFamily, radius, spacing, typeScale, shadows } from "../theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
-import { formatMessageTime, formatRelativeTimestamp } from "../utils/date";
+import { formatMessageTime } from "../utils/date";
 import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Message, ReportReason, UserPublic } from "../types";

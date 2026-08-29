@@ -12,6 +12,7 @@ import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { listMyNotifications, markMyNotificationsRead } from "../api/notifications";
+import { listMyCreatedEvents, listMyAttendingEvents } from "../api/events";
 import { EventRatingModal } from "../components/overlays/EventRatingModal";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
@@ -163,14 +164,32 @@ export function NotificationsScreen() {
     return null;
   }
 
-  function handlePressNotification(item: Notification) {
+  async function handlePressNotification(item: Notification) {
     const meta = getNotificationMeta(item.title, item.body);
-    const targetEventId = extractEventId(item);
+    let targetEventId = extractEventId(item);
+
+    // Fallback: If event_id is missing from old DB records for event-type notifications
+    if (!targetEventId && (meta.type === "event" || item.notification_type === "event" || item.notification_type === "event_request")) {
+      try {
+        const created = await listMyCreatedEvents();
+        if (created.length > 0) {
+          targetEventId = created[0].id;
+        } else {
+          const attending = await listMyAttendingEvents();
+          if (attending.length > 0) {
+            targetEventId = attending[0].id;
+          }
+        }
+      } catch {
+        // best effort fallback
+      }
+    }
 
     // 1. Event notifications (join request, approval, event update, feedback)
     if (targetEventId) {
       const isJoinRequest =
         item.notification_type === "event_join_request" ||
+        item.notification_type === "event_request" ||
         item.title.toLowerCase().includes("katılım isteği") ||
         item.body.toLowerCase().includes("katılmak istiyor");
 
