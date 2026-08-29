@@ -29,7 +29,7 @@ import { getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import { cleanHtmlText } from "../utils/text";
 import { formatEventDate } from "../utils/date";
-import { hasValidCoordinates } from "../utils/location";
+import { getFastCurrentLocation, hasValidCoordinates } from "../utils/location";
 import { useAuth } from "../context/AuthContext";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event, User } from "../types";
@@ -254,7 +254,12 @@ export function EventDetailScreen({ route }: Props) {
         setIsCheckingIn(false);
         return;
       }
-      const position = await Location.getCurrentPositionAsync({});
+      const position = await getFastCurrentLocation();
+      if (!position) {
+        setIsCheckingIn(false);
+        Alert.alert("Konum Alınamadı", "Konumunuz tespit edilemedi.");
+        return;
+      }
 
       if (hasValidCoordinates(event.latitude, event.longitude)) {
         const R = 6371;

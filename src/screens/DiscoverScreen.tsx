@@ -20,7 +20,7 @@ import { LocationPickerModal } from "../components/overlays/LocationPickerModal"
 import { createBookmark, deleteBookmark, listMyBookmarks } from "../api/bookmarks";
 import { reverseGeocode } from "../api/geocoding";
 import type { GeocodingResult } from "../api/geocoding";
-import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
+import { getFastCurrentLocation, hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { attendEvent, listEvents, recordBulkEventImpressions } from "../api/events";
 import { formatEventDate } from "../utils/date";
 import { useAuth } from "../context/AuthContext";
@@ -160,8 +160,8 @@ export function DiscoverScreen() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === "granted") {
-          const position = await Location.getCurrentPositionAsync({});
-          if (!cancelled) {
+          const position = await getFastCurrentLocation();
+          if (position && !cancelled) {
             setUserCoords({
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
@@ -253,7 +253,11 @@ export function DiscoverScreen() {
         Alert.alert("Konum İzni Gerekli", "Etkinlikleri mesafeye göre sıralayabilmek için konum izni vermen gerekiyor.");
         return;
       }
-      const position = await Location.getCurrentPositionAsync({});
+      const position = await getFastCurrentLocation();
+      if (!position) {
+        Alert.alert("Konum Alınamadı", "Konumunuz alınırken bir sorun oluştu.");
+        return;
+      }
       setUserCoords({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,

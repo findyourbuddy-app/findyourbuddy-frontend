@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { Animated, ActivityIndicator, KeyboardAvoidingView, Linking, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Alert } from "../utils/alert";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
@@ -51,6 +51,53 @@ function parseLocalDateTime(dateText: string, timeText: string): Date | null {
     Number(minutes)
   );
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function PannableCoverImage({ uri }: { uri: string }) {
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        pan.setOffset({
+          x: (pan.x as any)._value || 0,
+          y: (pan.y as any)._value || 0,
+        });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
+        useNativeDriver: false,
+      }),
+      onPanResponderRelease: () => {
+        pan.flattenOffset();
+      },
+    })
+  ).current;
+
+  return (
+    <View style={styles.coverPreviewCard}>
+      <View style={{ height: 160, overflow: "hidden", backgroundColor: "#15102A" }}>
+        <Animated.View
+          style={{
+            width: "100%",
+            height: "100%",
+            transform: [{ translateX: pan.x }, { translateY: pan.y }],
+          }}
+          {...panResponder.panHandlers}
+        >
+          <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+        </Animated.View>
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 6, backgroundColor: colors.background }}>
+        <Feather name="move" size={12} color={colors.primary} />
+        <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.textSecondary }}>
+          Görseli parmağınla sürükleyerek hizalayabilirsin 🖐️
+        </Text>
+      </View>
+    </View>
+  );
 }
 
 export function CreateEventScreen() {
@@ -363,21 +410,17 @@ export function CreateEventScreen() {
         </View>
 
         {coverOption === "profile" ? (
-          <View style={styles.coverPreviewCard}>
-            {user?.photo_url ? (
-              <Image
-                source={{ uri: resolvePhotoUrl(user.photo_url) ?? undefined }}
-                style={styles.coverPreviewImage}
-                contentFit="cover"
-              />
-            ) : (
+          user?.photo_url ? (
+            <PannableCoverImage uri={resolvePhotoUrl(user.photo_url) || ""} />
+          ) : (
+            <View style={styles.coverPreviewCard}>
               <LinearGradient colors={currentCategoryMeta?.gradient || ["#B8AEE8", "#6C4CF1"]} style={styles.coverPreviewImage}>
                 <View style={styles.gradientFallbackIcon}>
                   <Feather name={currentCategoryMeta?.icon || "grid"} size={40} color={colors.surface} />
                 </View>
               </LinearGradient>
-            )}
-          </View>
+            </View>
+          )
         ) : (
           <View style={styles.coverPreviewCard}>
             <Image
