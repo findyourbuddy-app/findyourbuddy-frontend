@@ -544,6 +544,32 @@ export function SwipeScreen() {
     if (!target) {
       return null;
     }
+
+    // Block a like / super-like before we advance the deck when the daily
+    // allowance is spent -- a super-like needs a regular swipe too, so no
+    // swipes left means no super either.
+    if (direction !== "pass" && quota && !quota.is_premium) {
+      const outOfSwipes = quota.swipe_limit != null && quota.swipes_used_today >= quota.swipe_limit;
+      if (outOfSwipes) {
+        Alert.alert(
+          language === "en" ? "Daily limit reached" : "Günlük hakkın doldu",
+          language === "en"
+            ? "You're out of likes for today. Passing is still free, or grab more from the store."
+            : "Bugünlük beğeni hakkın bitti. Geçmeye devam edebilir ya da mağazadan hak alabilirsin."
+        );
+        return null;
+      }
+      if (direction === "super_like" && quota.super_likes_used_today >= quota.super_like_limit) {
+        Alert.alert(
+          language === "en" ? "Out of Super Likes" : "Süper beğeni hakkın doldu",
+          language === "en"
+            ? "Send a normal like, or get more Super Likes from the store."
+            : "Normal beğeni gönderebilir ya da mağazadan süper beğeni alabilirsin."
+        );
+        return null;
+      }
+    }
+
     const targetId = target.id;
     const eventId = activeEvent?.id;
     swipedCandidateIdsRef.current.add(targetId);
