@@ -1,6 +1,9 @@
 import type { LanguageKey } from "../context/ThemeContext";
 
-function parseApiDate(iso: string): Date {
+export function parseApiDate(iso: string): Date {
+  if (!iso) return new Date();
+  // The backend serializes UTC datetimes without a timezone marker, so a naive
+  // string must be read as UTC -- not local time.
   const hasTimezone = /Z$|[+-]\d{2}:\d{2}$/.test(iso);
   return new Date(hasTimezone ? iso : `${iso}Z`);
 }

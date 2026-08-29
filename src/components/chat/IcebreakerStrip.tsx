@@ -23,7 +23,7 @@ export function IcebreakerStrip({ icebreakers, isLoading, onSelect, onRefresh, l
         <View style={styles.badgeRow}>
           <Feather name="zap" size={14} color="#8A2BE2" />
           <Text style={styles.headerTitle}>
-            {language === "en" ? "Icebreaker AI 💡" : "Yapay Zeka Tanışma Önerileri 💡"}
+            {language === "en" ? "Icebreaker AI" : "Yapay Zeka Tanışma Önerileri"}
           </Text>
         </View>
         <Pressable onPress={onRefresh} style={styles.refreshBtn} disabled={isLoading}>

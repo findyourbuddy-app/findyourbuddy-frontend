@@ -1,3 +1,6 @@
+// DEV: react-native-webrtc Expo Go'da desteklenmiyor (development build gerektiriyor).
+// Orijinal kod geri almak icin asagidaki blok yorumu kaldirin ve placeholder'i silin.
+/*
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -475,5 +478,55 @@ const styles = StyleSheet.create({
   },
   hangupButton: {
     backgroundColor: colors.accentRed,
+  },
+});
+*/
+
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { colors, fontFamily, spacing } from "../theme";
+import type { MainStackParamList } from "../navigation/RootNavigator";
+
+export function CallScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+
+  return (
+    <View style={styles.background}>
+      <Text style={styles.text}>
+        Sesli/görüntülü arama development build gerektiriyor (Expo Go'da desteklenmiyor).
+      </Text>
+      <Pressable style={styles.button} onPress={() => navigation.goBack()}>
+        <Text style={styles.buttonText}>Geri</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    backgroundColor: "#0B071E",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+    gap: spacing.lg,
+  },
+  text: {
+    fontFamily: fontFamily.body,
+    fontSize: 15,
+    color: colors.surface,
+    textAlign: "center",
+  },
+  button: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
+  },
+  buttonText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 15,
+    color: colors.surface,
   },
 });

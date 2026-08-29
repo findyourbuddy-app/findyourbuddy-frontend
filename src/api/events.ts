@@ -6,10 +6,20 @@ export function listEvents(
   upcomingOnly = true,
   skip = 0,
   limit = 20,
-  origin?: "system" | "user"
+  origin?: "system" | "user",
+  isGroupEvent?: boolean
 ): Promise<Event[]> {
   return apiClient
-    .get<Event[]>("/events/", { params: { category, upcoming_only: upcomingOnly, skip, limit, origin } })
+    .get<Event[]>("/events/", {
+      params: {
+        category,
+        upcoming_only: upcomingOnly,
+        skip,
+        limit,
+        origin,
+        is_group_event: isGroupEvent,
+      },
+    })
     .then((res) => res.data);
 }
 
@@ -28,6 +38,12 @@ export function attendEvent(eventId: number): Promise<Event> {
 export function listMyAttendingEvents(upcomingOnly = true): Promise<Event[]> {
   return apiClient
     .get<Event[]>("/events/me/attending", { params: { upcoming_only: upcomingOnly } })
+    .then((res) => res.data);
+}
+
+export function listMyCreatedEvents(upcomingOnly = true): Promise<Event[]> {
+  return apiClient
+    .get<Event[]>("/events/me/created", { params: { upcoming_only: upcomingOnly } })
     .then((res) => res.data);
 }
 
@@ -59,6 +75,30 @@ export function createEventCreditsCheckoutSession(): Promise<{ checkout_url: str
     .then((res) => res.data);
 }
 
+export function getEventAttendees(eventId: number): Promise<User[]> {
+  return apiClient.get<User[]>(`/events/${eventId}/attendees`).then((res) => res.data);
+}
+
+export function getEventJoinRequests(eventId: number): Promise<User[]> {
+  return apiClient.get<User[]>(`/events/${eventId}/join-requests`).then((res) => res.data);
+}
+
+export function handleEventJoinRequest(
+  eventId: number,
+  userId: number,
+  approved: boolean
+): Promise<Event> {
+  return apiClient
+    .patch<Event>(`/events/${eventId}/join-requests/${userId}`, { approved })
+    .then((res) => res.data);
+}
+
+export function approveAllEventJoinRequests(eventId: number): Promise<Event> {
+  return apiClient
+    .post<Event>(`/events/${eventId}/join-requests/approve-all`)
+    .then((res) => res.data);
+}
+
 export function listJoinRequests(eventId: number): Promise<User[]> {
   return apiClient.get<User[]>(`/events/${eventId}/join-requests`).then((res) => res.data);
 }
@@ -66,6 +106,19 @@ export function listJoinRequests(eventId: number): Promise<User[]> {
 export function respondToJoinRequest(eventId: number, userId: number, approved: boolean): Promise<Event> {
   return apiClient
     .patch<Event>(`/events/${eventId}/join-requests/${userId}`, { approved })
+    .then((res) => res.data);
+}
+
+export function rateEvent(
+  eventId: number,
+  rating: number,
+  comment?: string
+): Promise<{ status: string; message: string; creator_trust_score?: number }> {
+  return apiClient
+    .post<{ status: string; message: string; creator_trust_score?: number }>(`/events/${eventId}/rate`, {
+      rating,
+      comment,
+    })
     .then((res) => res.data);
 }
 

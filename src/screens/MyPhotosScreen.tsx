@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
@@ -35,7 +35,7 @@ export function MyPhotosScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingMain, setIsUploadingMain] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
-  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [lightboxData, setLightboxData] = useState<{ url: string; photos: string[] } | null>(null);
 
   const loadPhotos = useCallback(async () => {
     try {
@@ -76,8 +76,8 @@ export function MyPhotosScreen() {
         updateUser(updatedUser);
         Alert.alert("Başarılı", "Ana profil fotoğrafın güncellendi!");
       }
-    } catch {
-      Alert.alert("Hata", "Fotoğraf yüklenirken bir sorun oluştu.");
+    } catch (err: any) {
+      Alert.alert("Hata", err?.message || "Fotoğraf yüklenirken bir sorun oluştu.");
     } finally {
       setIsUploadingMain(false);
     }
@@ -103,11 +103,15 @@ export function MyPhotosScreen() {
         const fileName = uri.split("/").pop() || `gallery_${index}.jpg`;
 
         setUploadingSlot(index);
-        const newPhoto = await uploadGalleryPhoto(uri, fileName);
-        setPhotos((prev) => [...prev, newPhoto]);
+        await uploadGalleryPhoto(uri, fileName);
+        const refreshedPhotos = await listMyPhotos();
+        setPhotos(refreshedPhotos);
+        if (user) {
+          updateUser({ ...user, photos: refreshedPhotos });
+        }
       }
-    } catch {
-      Alert.alert("Hata", "Fotoğraf galeriye eklenirken bir sorun oluştu.");
+    } catch (err: any) {
+      Alert.alert("Hata", err?.message || "Fotoğraf galeriye eklenirken bir sorun oluştu.");
     } finally {
       setUploadingSlot(null);
     }
@@ -122,7 +126,11 @@ export function MyPhotosScreen() {
         onPress: async () => {
           try {
             await deleteGalleryPhoto(photoId);
-            setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+            setPhotos((prev) => {
+              const next = prev.filter((p) => p.id !== photoId);
+              if (user) updateUser({ ...user, photos: next });
+              return next;
+            });
           } catch {
             Alert.alert("Hata", "Fotoğraf silinemedi.");
           }
@@ -130,6 +138,8 @@ export function MyPhotosScreen() {
       },
     ]);
   }
+
+  const galleryPhotos = photos.map((p) => p.photo_url).filter((u): u is string => Boolean(u));
 
   return (
     <ScrollView
@@ -141,12 +151,20 @@ export function MyPhotosScreen() {
         <Text style={typeScale.eyebrow}>Ana Profil Fotoğrafı</Text>
 
         <View style={styles.mainAvatarRow}>
-          <Avatar
-            name={user?.display_name ?? "?"}
-            photoUrl={user?.photo_url}
-            isVerified={user?.is_verified}
-            size={90}
-          />
+          <Pressable
+            onPress={() => {
+              if (user?.photo_url) {
+                setLightboxData({ url: user.photo_url, photos: [user.photo_url] });
+              }
+            }}
+          >
+            <Avatar
+              name={user?.display_name ?? "?"}
+              photoUrl={user?.photo_url}
+              isVerified={user?.is_verified}
+              size={90}
+            />
+          </Pressable>
           <View style={{ flex: 1, gap: spacing.xs }}>
             <Text style={styles.mainPhotoTitle}>{user?.display_name}</Text>
             <Text style={styles.mainPhotoSub}>
@@ -193,9 +211,12 @@ export function MyPhotosScreen() {
                 const resolvedUri = resolvePhotoUrl(photo.photo_url);
                 return (
                   <View key={photo.id} style={styles.photoBox}>
-                    <Pressable onPress={() => setLightboxPhoto(photo.photo_url)}>
+                    <Pressable
+                      style={styles.photoPressable}
+                      onPress={() => setLightboxData({ url: photo.photo_url, photos: galleryPhotos })}
+                    >
                       {resolvedUri ? (
-                        <Image source={{ uri: resolvedUri }} style={styles.photoImage} />
+                        <Image source={{ uri: resolvedUri }} style={styles.photoImage} contentFit="cover" cachePolicy="memory-disk" pointerEvents="none" />
                       ) : (
                         <View style={styles.emptyBox}>
                           <Feather name="image" size={24} color={colors.textSecondary} />
@@ -235,9 +256,10 @@ export function MyPhotosScreen() {
       </View>
 
       <PhotoLightboxModal
-        visible={lightboxPhoto !== null}
-        photoUrl={lightboxPhoto}
-        onClose={() => setLightboxPhoto(null)}
+        visible={lightboxData !== null}
+        photoUrl={lightboxData?.url}
+        photos={lightboxData?.photos}
+        onClose={() => setLightboxData(null)}
       />
     </ScrollView>
   );
@@ -306,16 +328,20 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.md,
+    rowGap: spacing.md,
     justifyContent: "space-between",
   },
   photoBox: {
     width: "30%",
-    aspectRatio: 0.8,
+    aspectRatio: 0.82,
     borderRadius: radius.card,
     overflow: "hidden",
     position: "relative",
     backgroundColor: "#F1F5F9",
+  },
+  photoPressable: {
+    width: "100%",
+    height: "100%",
   },
   photoImage: {
     width: "100%",
@@ -334,7 +360,7 @@ const styles = StyleSheet.create({
   },
   emptyBox: {
     width: "30%",
-    aspectRatio: 0.8,
+    aspectRatio: 0.82,
     borderRadius: radius.card,
     borderWidth: 2,
     borderColor: "#E2E8F0",

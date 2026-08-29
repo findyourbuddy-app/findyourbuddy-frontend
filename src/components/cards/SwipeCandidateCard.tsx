@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Animated, PanResponder, StyleSheet, Text, View } from "react-native";
+import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 import { getInterestLabel } from "../../constants/interests";
 import { hasValidCoordinates, resolveCityDistrict } from "../../utils/location";
@@ -15,9 +15,10 @@ interface SwipeCandidateCardProps {
   onSwipeRight: () => void;
   onSwipeUp: () => void;
   onPressProfile: () => void;
+  onShowHelp: () => void;
 }
 
-const FALLBACK_GRADIENT: [string, string] = ["#B8AEE8", "#6C4CF1"];
+const FALLBACK_GRADIENT: [string, string] = ["#9385D8", "#5B41CE"];
 const DRAG_THRESHOLD_X = 100;
 const DRAG_THRESHOLD_Y = 120;
 const TAP_MOVE_THRESHOLD = 6;
@@ -43,14 +44,38 @@ export function SwipeCandidateCard({
   onSwipeRight,
   onSwipeUp,
   onPressProfile,
+  onShowHelp,
 }: SwipeCandidateCardProps) {
   const { language } = useAppTheme();
   const photoUrls = candidatePhotoUrls(candidate);
   const [activeIndex, setActiveIndex] = useState(0);
   const [cardWidth, setCardWidth] = useState(0);
-  const [cardHeight, setCardHeight] = useState(0);
   const [locationName, setLocationName] = useState<string | null>(null);
   const position = useRef(new Animated.ValueXY()).current;
+
+  // The PanResponder is created once, so its handlers must read live values
+  // (measured size, latest callbacks) through this ref instead of the stale
+  // first-render closure.
+  const liveRef = useRef({
+    cardWidth: 0,
+    cardHeight: 0,
+    photoCount: photoUrls.length,
+    onSwipeLeft,
+    onSwipeRight,
+    onSwipeUp,
+    onPressProfile,
+    onShowHelp,
+  });
+  liveRef.current = {
+    cardWidth: liveRef.current.cardWidth,
+    cardHeight: liveRef.current.cardHeight,
+    photoCount: photoUrls.length,
+    onSwipeLeft,
+    onSwipeRight,
+    onSwipeUp,
+    onPressProfile,
+    onShowHelp,
+  };
 
   useEffect(() => {
     if (hasValidCoordinates(candidate.latitude, candidate.longitude)) {
@@ -59,8 +84,10 @@ export function SwipeCandidateCard({
   }, [candidate.latitude, candidate.longitude]);
 
   function handleLayout(event: LayoutChangeEvent): void {
-    setCardWidth(event.nativeEvent.layout.width);
-    setCardHeight(event.nativeEvent.layout.height);
+    const { width, height } = event.nativeEvent.layout;
+    setCardWidth(width);
+    liveRef.current.cardWidth = width;
+    liveRef.current.cardHeight = height;
   }
 
   function resetPosition(): void {
@@ -86,25 +113,31 @@ export function SwipeCandidateCard({
         position.setValue({ x: gesture.dx, y: gesture.dy });
       },
       onPanResponderRelease: (evt, gesture) => {
+        const live = liveRef.current;
         const movedEnough =
           Math.abs(gesture.dx) > TAP_MOVE_THRESHOLD || Math.abs(gesture.dy) > TAP_MOVE_THRESHOLD;
         if (!movedEnough) {
           const tapX = evt.nativeEvent.locationX;
-          if (photoUrls.length > 1 && cardWidth > 0 && tapX < cardWidth * 0.3) {
+          const tapY = evt.nativeEvent.locationY;
+          const w = live.cardWidth;
+          // Top-right corner opens the "how to swipe" help.
+          if (w > 0 && tapX > w - 56 && tapY < 56) {
+            live.onShowHelp();
+          } else if (live.photoCount > 1 && w > 0 && tapX < w * 0.25) {
             goToPhoto(-1);
-          } else if (photoUrls.length > 1 && cardWidth > 0 && tapX > cardWidth * 0.7) {
+          } else if (live.photoCount > 1 && w > 0 && tapX > w * 0.75) {
             goToPhoto(1);
           } else {
-            onPressProfile();
+            live.onPressProfile();
           }
           return;
         }
         if (gesture.dy < -DRAG_THRESHOLD_Y && Math.abs(gesture.dy) > Math.abs(gesture.dx)) {
-          flingOut("up", onSwipeUp);
+          flingOut("up", live.onSwipeUp);
         } else if (gesture.dx > DRAG_THRESHOLD_X) {
-          flingOut("right", onSwipeRight);
+          flingOut("right", live.onSwipeRight);
         } else if (gesture.dx < -DRAG_THRESHOLD_X) {
-          flingOut("left", onSwipeLeft);
+          flingOut("left", live.onSwipeLeft);
         } else {
           resetPosition();
         }
@@ -125,17 +158,17 @@ export function SwipeCandidateCard({
     outputRange: ["-12deg", "0deg", "12deg"],
   });
   const likeOpacity = position.x.interpolate({
-    inputRange: [20, DRAG_THRESHOLD_X],
+    inputRange: [12, 70],
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
   const passOpacity = position.x.interpolate({
-    inputRange: [-DRAG_THRESHOLD_X, -20],
+    inputRange: [-70, -12],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
   const superOpacity = position.y.interpolate({
-    inputRange: [-DRAG_THRESHOLD_Y, -20],
+    inputRange: [-80, -12],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
@@ -151,11 +184,14 @@ export function SwipeCandidateCard({
       onLayout={handleLayout}
       {...panResponder.panHandlers}
     >
-      {photoUrls.length > 0 && cardWidth > 0 && cardHeight > 0 ? (
+      {photoUrls.length > 0 ? (
         <Image
           source={{ uri: photoUrls[activeIndex] }}
-          style={[styles.photo, { width: cardWidth, height: cardHeight }]}
+          style={StyleSheet.absoluteFill}
           contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={{ duration: 150 }}
+          pointerEvents="none"
         />
       ) : (
         <LinearGradient colors={FALLBACK_GRADIENT} style={StyleSheet.absoluteFill}>
@@ -176,6 +212,67 @@ export function SwipeCandidateCard({
         </View>
       ) : null}
 
+      {/* Visual only -- the tap is handled by the card's PanResponder (top-right
+          corner), so this moves and rotates with the card. */}
+      <View style={styles.helpBadge} pointerEvents="none">
+        <Feather name="info" size={15} color="#FFFFFF" />
+      </View>
+
+      <LinearGradient
+        colors={["transparent", "rgba(10,5,30,0.85)"]}
+        style={styles.overlay}
+        pointerEvents="box-none"
+      >
+        <Pressable onPress={onPressProfile} style={{ gap: 3 }}>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>
+              {candidate.display_name}
+              {candidate.age ? `, ${candidate.age}` : ""}
+            </Text>
+            {candidate.is_verified && (
+              <View style={styles.verifiedBadge}>
+                <Feather name="check" size={10} color="#FFF" />
+              </View>
+            )}
+          </View>
+
+          {locationName ? (
+            <View style={styles.locationRow}>
+              <Feather name="map-pin" size={11} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.locationText}>{locationName}</Text>
+            </View>
+          ) : null}
+
+          {candidate.looking_for ? (
+            <View style={styles.lookingForRow}>
+              <Feather name="message-circle" size={11} color="#4DEEEA" />
+              <Text style={styles.lookingForText} numberOfLines={1}>
+                {candidate.looking_for}
+              </Text>
+            </View>
+          ) : null}
+
+          {candidate.bio || candidate.about_me_prompt ? (
+            <View style={styles.bioBox}>
+              <Text style={styles.bioText} numberOfLines={1}>
+                "{candidate.bio || candidate.about_me_prompt}"
+              </Text>
+            </View>
+          ) : null}
+
+          {candidate.interests.length > 0 ? (
+            <View style={styles.chipRow}>
+              {candidate.interests.slice(0, 3).map((interest) => (
+                <View key={interest} style={styles.chip}>
+                  <Text style={styles.chipText}>{getInterestLabel(interest, language)}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </Pressable>
+      </LinearGradient>
+
+      {/* Rendered last so the swipe feedback always sits above the photo + overlay. */}
       <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]} pointerEvents="none">
         <Text style={styles.stampText}>{language === "en" ? "LIKE" : "BEĞEN"}</Text>
       </Animated.View>
@@ -185,57 +282,6 @@ export function SwipeCandidateCard({
       <Animated.View style={[styles.stamp, styles.stampSuper, { opacity: superOpacity }]} pointerEvents="none">
         <Text style={styles.stampText}>{language === "en" ? "SUPER" : "SÜPER"}</Text>
       </Animated.View>
-
-      <LinearGradient
-        colors={["transparent", "rgba(15,10,40,0.9)"]}
-        style={styles.overlay}
-        pointerEvents="none"
-      >
-
-        <View style={styles.nameRow}>
-          <Text style={styles.name}>
-            {candidate.display_name}
-            {candidate.age ? `, ${candidate.age}` : ""}
-          </Text>
-          {candidate.is_verified && (
-            <View style={styles.verifiedBadge}>
-              <Feather name="check" size={10} color="#FFF" />
-            </View>
-          )}
-          {candidate.trust_score > 0 && (
-            <View style={styles.trustBadge}>
-              <Feather name="shield" size={10} color="#FFF" />
-              <Text style={styles.trustBadgeText}>Güvenilir Buddy</Text>
-            </View>
-          )}
-        </View>
-
-
-        {locationName ? (
-          <View style={styles.locationRow}>
-            <Feather name="map-pin" size={12} color="rgba(255,255,255,0.9)" />
-            <Text style={styles.locationText}>{locationName}</Text>
-          </View>
-        ) : null}
-
-        {candidate.bio || candidate.about_me_prompt ? (
-          <View style={styles.bioBox}>
-            <Text style={styles.bioText} numberOfLines={2}>
-              "{candidate.bio || candidate.about_me_prompt}"
-            </Text>
-          </View>
-        ) : null}
-
-        {candidate.interests.length > 0 ? (
-          <View style={styles.chipRow}>
-            {candidate.interests.slice(0, 3).map((interest) => (
-              <View key={interest} style={styles.chip}>
-                <Text style={styles.chipText}>{getInterestLabel(interest, language)}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-      </LinearGradient>
     </Animated.View>
   );
 }
@@ -262,6 +308,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.xs,
   },
+  helpBadge: {
+    position: "absolute",
+    top: spacing.md,
+    right: spacing.md,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0, 0, 0, 0.42)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   dot: {
     width: 6,
     height: 6,
@@ -274,39 +331,40 @@ const styles = StyleSheet.create({
   stamp: {
     position: "absolute",
     top: spacing.xxl,
-    borderWidth: 3,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.92)",
     borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
   stampLike: {
     left: spacing.lg,
-    borderColor: colors.accentGreen,
+    backgroundColor: colors.accentGreen,
     transform: [{ rotate: "-12deg" }],
   },
   stampPass: {
     right: spacing.lg,
-    borderColor: colors.accentRed,
+    backgroundColor: colors.accentRed,
     transform: [{ rotate: "12deg" }],
   },
   stampSuper: {
     alignSelf: "center",
     left: "50%",
     marginLeft: -60,
-    borderColor: "#2E7FC9",
+    backgroundColor: "#2E7FC9",
   },
   stampText: {
     fontFamily: fontFamily.displayBold,
     fontSize: 24,
-    color: colors.surface,
+    color: "#FFFFFF",
   },
   overlay: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    padding: spacing.lg,
-    gap: spacing.sm,
+    padding: spacing.md,
+    gap: 2,
   },
   nameRow: {
     flexDirection: "row",
@@ -315,75 +373,106 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: fontFamily.displayBold,
-    fontSize: 22,
+    fontSize: 19,
     color: colors.surface,
   },
   verifiedBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: "#1DA1F2",
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 4,
   },
-  trustBadge: {
+  eventLocationPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2E7D32",
-    paddingHorizontal: 6,
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255, 201, 60, 0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 201, 60, 0.4)",
+    paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: radius.pill,
-    gap: 3,
-    marginLeft: 6,
-  },
-  trustBadgeText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 10,
-    color: "#FFF",
-  },
-  locationRow: {
-
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
     marginTop: -2,
     marginBottom: 2,
   },
+  eventLocationPillText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 11,
+    color: "#FFC93C",
+    flexShrink: 1,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   locationText: {
     fontFamily: fontFamily.bodyMedium,
-    fontSize: 13,
+    fontSize: 12,
     color: "rgba(255, 255, 255, 0.95)",
+  },
+  lookingForRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  lookingForText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.95)",
+    flexShrink: 1,
+  },
+  eventPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  eventPillText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.surface,
+    flexShrink: 1,
   },
   bioBox: {
     backgroundColor: "rgba(0, 0, 0, 0.35)",
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
     borderRadius: radius.sm,
-    borderLeftWidth: 3,
+    borderLeftWidth: 2,
     borderLeftColor: colors.primary,
+    marginTop: 1,
   },
   bioText: {
     fontFamily: fontFamily.body,
-    fontSize: 13,
+    fontSize: 12,
     fontStyle: "italic",
     color: "rgba(255, 255, 255, 0.95)",
-    lineHeight: 18,
+    lineHeight: 16,
   },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.xs,
+    gap: 4,
+    marginTop: 2,
   },
   chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: radius.pill,
     backgroundColor: "rgba(255,255,255,0.2)",
   },
   chipText: {
     fontFamily: fontFamily.bodyMedium,
-    fontSize: 12,
+    fontSize: 11,
     color: colors.surface,
   },
 });

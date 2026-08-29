@@ -30,7 +30,7 @@ export function MatchPreviewCard({ match, subtitle, onPressMessage }: MatchPrevi
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
       </View>
-      <PrimaryButton label={language === "en" ? "📍 Send Message" : "📍 Mesaj Gönder"} onPress={onPressMessage} variant="outline" />
+      <PrimaryButton label={language === "en" ? "Send Message" : "Mesaj Gönder"} onPress={onPressMessage} variant="outline" />
     </LinearGradient>
   );
 }

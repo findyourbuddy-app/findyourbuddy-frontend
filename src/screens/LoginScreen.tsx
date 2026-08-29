@@ -111,7 +111,7 @@ export function LoginScreen() {
           <View style={styles.headerBox}>
             <BuddyLogo size={85} showText={true} />
             <Text style={styles.headerTitle}>
-              {language === "en" ? "Welcome Back! 👋" : "Tekrar Hoş Geldin! 👋"}
+              {language === "en" ? "Welcome Back!" : "Tekrar Hoş Geldin!"}
             </Text>
             <Text style={styles.headerSubtitle}>
               {language === "en"
@@ -141,6 +141,8 @@ export function LoginScreen() {
                   placeholder={language === "en" ? "Email Address" : "E-posta Adresi"}
                   placeholderTextColor="#94A3B8"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
                   keyboardType="email-address"
                   value={email}
                   onChangeText={setEmail}
@@ -167,6 +169,9 @@ export function LoginScreen() {
                   placeholder={language === "en" ? "Password" : "Şifre"}
                   placeholderTextColor="#94A3B8"
                   secureTextEntry={!showPassword}
+                  autoCorrect={false}
+                  spellCheck={false}
+                  autoCapitalize="none"
                   value={password}
                   onChangeText={setPassword}
                   onFocus={() => setFocusedInput("password")}
@@ -232,18 +237,6 @@ export function LoginScreen() {
                 </LinearGradient>
               </Pressable>
             </View>
-          </View>
-
-          {/* Links Section */}
-          <View style={styles.linksBox}>
-            <Pressable onPress={() => navigation.navigate("Register")}>
-              <Text style={styles.signUpText}>
-                {language === "en" ? "Don't have an account? " : "Hesabın yok mu? "}
-                <Text style={styles.signUpHighlight}>
-                  {language === "en" ? "Sign Up Free" : "Ücretsiz Kayıt Ol"}
-                </Text>
-              </Text>
-            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -314,9 +307,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
     paddingHorizontal: spacing.lg,
-    paddingTop: Platform.OS === "ios" ? 100 : 80,
+    paddingTop: Platform.OS === "ios" ? 90 : 70,
     paddingBottom: spacing.xxl,
   },
   headerBox: {

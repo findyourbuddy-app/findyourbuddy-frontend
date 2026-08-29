@@ -1,8 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -11,6 +12,8 @@ import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { listMyNotifications, markMyNotificationsRead } from "../api/notifications";
+import { listMyCreatedEvents, listMyAttendingEvents } from "../api/events";
+import { EventRatingModal } from "../components/overlays/EventRatingModal";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import type { MainStackParamList } from "../navigation/RootNavigator";
@@ -26,31 +29,72 @@ export function NotificationsScreen() {
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [ratingModalData, setRatingModalData] = useState<{ eventId: number; title: string; creatorName?: string } | null>(null);
+
+  const notificationsRef = useRef(notifications);
+  notificationsRef.current = notifications;
 
   const loadNotifications = useCallback(async () => {
-    setIsLoading(true);
+    if (notificationsRef.current.length === 0) {
+      setIsLoading(true);
+    }
     try {
-      setNotifications(await listMyNotifications());
-      await markMyNotificationsRead();
+      const list = await listMyNotifications();
+      setNotifications(list);
     } catch {
-      Alert.alert(
-        language === "en" ? "Error" : "Bir sorun oluştu",
-        language === "en" ? "Notifications could not be loaded. Please try again." : "Bildirimler yüklenemedi. Lütfen tekrar dene."
-      );
+      if (notificationsRef.current.length === 0) {
+        Alert.alert(
+          language === "en" ? "Error" : "Bir sorun oluştu",
+          language === "en" ? "Notifications could not be loaded. Please try again." : "Bildirimler yüklenemedi. Lütfen tekrar dene."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
   }, [language]);
 
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const list = await listMyNotifications();
+      setNotifications(list);
+    } catch {
+      // transient failure ignore
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadNotifications();
+      markMyNotificationsRead()
+        .then(() => {
+          setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+        })
+        .catch(() => {});
+      const interval = setInterval(() => {
+        loadNotifications();
+      }, 15000);
+      return () => clearInterval(interval);
     }, [loadNotifications])
   );
 
-  function getNotificationMeta(title: string, body: string) {
-    const lowercaseTitle = title.toLowerCase();
-    const lowercaseBody = body.toLowerCase();
+  function getNotificationMeta(title?: string | null, body?: string | null) {
+    const lowercaseTitle = (title || "").toLowerCase();
+    const lowercaseBody = (body || "").toLowerCase();
+
+    if (
+      lowercaseTitle.includes("nasıldı") ||
+      lowercaseBody.includes("nasıldı") ||
+      lowercaseTitle.includes("buluştun mu") ||
+      lowercaseBody.includes("buluştun mu") ||
+      lowercaseTitle.includes("değerlendir") ||
+      lowercaseBody.includes("değerlendir")
+    ) {
+      return { icon: "star" as const, color: "#F1C40F", type: "feedback" };
+    }
 
     if (
       lowercaseTitle.includes("beğeni") ||
@@ -59,6 +103,25 @@ export function NotificationsScreen() {
     ) {
       return { icon: "heart" as const, color: "#FF2E93", type: "like" };
     }
+
+    if (
+      lowercaseTitle.includes("doğrulama") ||
+      lowercaseTitle.includes("mavi tik") ||
+      lowercaseBody.includes("selfie") ||
+      lowercaseBody.includes("doğrulandı")
+    ) {
+      return { icon: "check-circle" as const, color: "#2ECC71", type: "verification" };
+    }
+
+    if (
+      lowercaseTitle.includes("etkinlik") ||
+      lowercaseTitle.includes("katılım") ||
+      lowercaseTitle.includes("grup") ||
+      lowercaseBody.includes("etkinlik")
+    ) {
+      return { icon: "calendar" as const, color: colors.primary, type: "event" };
+    }
+
     if (
       lowercaseTitle.includes("match") ||
       lowercaseTitle.includes("eşleşme") ||
@@ -66,6 +129,7 @@ export function NotificationsScreen() {
     ) {
       return { icon: "users" as const, color: "#9B7BFF", type: "match" };
     }
+
     if (
       lowercaseTitle.includes("mesaj") ||
       lowercaseTitle.includes("message") ||
@@ -73,85 +137,107 @@ export function NotificationsScreen() {
     ) {
       return { icon: "message-circle" as const, color: "#2ECC71", type: "message" };
     }
-    if (
-      lowercaseTitle.includes("etkinlik") ||
-      lowercaseBody.includes("buluştun mu") ||
-      lowercaseBody.includes("nasıldı")
-    ) {
-      return { icon: "check-square" as const, color: "#F1C40F", type: "feedback" };
-    }
+
     return { icon: "bell" as const, color: colors.primary, type: "general" };
   }
 
   function formatNotificationContent(title: string, body: string) {
-    const lowercaseTitle = title.toLowerCase();
-    const lowercaseBody = body.toLowerCase();
-
-    if (language === "en") {
-      if (lowercaseTitle.includes("beğeni") || lowercaseBody.includes("beğendi") || lowercaseTitle.includes("like")) {
-        return {
-          title: "New Like! ❤️",
-          body: "Someone liked you as a buddy!",
-        };
-      }
-      if (lowercaseTitle.includes("match") || lowercaseTitle.includes("eşleşme") || lowercaseBody.includes("eşleşti")) {
-        return {
-          title: "New Match! 🎉",
-          body: "You have a new match on FindYourBuddy!",
-        };
-      }
-      if (lowercaseTitle.includes("mesaj") || lowercaseTitle.includes("message")) {
-        return {
-          title: "New Message 💬",
-          body: "You received a new message.",
-        };
-      }
-      if (lowercaseTitle.includes("etkinlik") || lowercaseBody.includes("nasıldı") || lowercaseBody.includes("buluştun")) {
-        return {
-          title: "How was the event? ⭐",
-          body: "Did you meet your buddy? Quickly rate your experience.",
-        };
-      }
-    } else {
-      if (lowercaseTitle.includes("like") || lowercaseTitle.includes("beğeni")) {
-        return {
-          title: "Yeni Beğeni! ❤️",
-          body: "Biri seni kanka olarak beğendi.",
-        };
-      }
-      if (lowercaseTitle.includes("match") || lowercaseTitle.includes("eşleşme")) {
-        return {
-          title: "Yeni Eşleşme! 🎉",
-          body: "FindYourBuddy'de yeni bir kanka eşleşmen var!",
-        };
-      }
-      if (lowercaseTitle.includes("message") || lowercaseTitle.includes("mesaj")) {
-        return {
-          title: "Yeni Mesaj 💬",
-          body: "Sana yeni bir mesaj geldi.",
-        };
-      }
-      if (lowercaseTitle.includes("etkinlik") || lowercaseBody.includes("nasıldı") || lowercaseBody.includes("buluştun")) {
-        return {
-          title: "Etkinlik nasıldı? ⭐",
-          body: "Kankanla buluştun mu? Sohbet ekranından hızlıca belirtebilirsin.",
-        };
-      }
-    }
-
     return { title, body };
   }
 
-  function handlePressNotification(item: Notification) {
-    const meta = getNotificationMeta(item.title, item.body);
-
-    if (meta.type === "like") {
-      navigation.navigate("LikesReceived");
-    } else if (meta.type === "match" || meta.type === "message" || meta.type === "feedback") {
-      navigation.navigate("Tabs", { screen: "Messages" });
-    } else {
-      navigation.navigate("Tabs", { screen: "Discover" });
+  function extractEventId(item: Notification): number | null {
+    if (item.event_id) {
+      const parsed = Number(item.event_id);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
     }
+    let dataObj: any = item.data;
+    if (typeof dataObj === "string") {
+      try {
+        dataObj = JSON.parse(dataObj);
+      } catch {
+        dataObj = null;
+      }
+    }
+    if (dataObj && typeof dataObj === "object") {
+      const raw = dataObj.event_id || dataObj.eventId || dataObj.id;
+      if (raw) {
+        const parsed = Number(raw);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    }
+    return null;
+  }
+
+  async function handlePressNotification(item: Notification) {
+    const meta = getNotificationMeta(item.title, item.body);
+    let targetEventId = extractEventId(item);
+
+    // Fallback: If event_id is missing from old DB records for event-type notifications
+    if (!targetEventId && (meta.type === "event" || item.notification_type === "event" || item.notification_type === "event_request")) {
+      try {
+        const created = await listMyCreatedEvents();
+        if (created.length > 0) {
+          targetEventId = created[0].id;
+        } else {
+          const attending = await listMyAttendingEvents();
+          if (attending.length > 0) {
+            targetEventId = attending[0].id;
+          }
+        }
+      } catch {
+        // best effort fallback
+      }
+    }
+
+    // 1. Event notifications (join request, approval, event update, feedback)
+    if (targetEventId) {
+      const isJoinRequest =
+        item.notification_type === "event_join_request" ||
+        item.notification_type === "event_request" ||
+        item.title.toLowerCase().includes("katılım") ||
+        item.title.toLowerCase().includes("istek") ||
+        item.body.toLowerCase().includes("katılmak") ||
+        item.body.toLowerCase().includes("istiyor");
+
+      navigation.navigate("EventDetail", {
+        eventId: targetEventId,
+        autoOpenRating: meta.type === "feedback" || item.notification_type === "match_feedback",
+        autoOpenRequests: isJoinRequest,
+      });
+      return;
+    }
+
+    // 2. Match or Message notifications
+    const targetMatchId = item.match_id || (item.data && (item.data as any).match_id);
+    if (targetMatchId) {
+      const data = item.data as Record<string, any> | undefined;
+      navigation.navigate("Chat", {
+        matchId: Number(targetMatchId),
+        otherUserId: Number(data?.other_user_id || 0),
+        otherUserName: String(data?.other_user_name || "Kanka"),
+      });
+      return;
+    }
+
+    // 3. Likes received
+    if (meta.type === "like" || item.notification_type === "like") {
+      navigation.navigate("LikesReceived");
+      return;
+    }
+
+    // 4. Verification result
+    if (meta.type === "verification") {
+      navigation.navigate("Profile");
+      return;
+    }
+
+    if (meta.type === "match" || meta.type === "message") {
+      navigation.navigate("Tabs", { screen: "Messages" });
+      return;
+    }
+
+    // Fallback
+    navigation.navigate("Tabs", { screen: "Discover" });
   }
 
   if (isLoading && notifications.length === 0) {
@@ -164,18 +250,42 @@ export function NotificationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bgGradient[0] }]}>
-      <View style={styles.timelineLine} />
+      {notifications.length > 0 ? <View style={styles.timelineLine} /> : null}
       <FlatList
         style={[styles.background, { backgroundColor: bgGradient[0] }]}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={notifications.length === 0 ? styles.emptyListContent : styles.list}
         data={notifications}
         keyExtractor={(item) => String(item.id)}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[accentColor]}
+            tintColor={accentColor}
+          />
+        }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>{t("noNotificationsYet")}</Text>
+          <View style={styles.emptyContainer}>
+            <View style={[styles.emptyIconCircle, { backgroundColor: `${accentColor}15` }]}>
+              <Feather name="bell-off" size={32} color={accentColor} />
+            </View>
+            <Text style={styles.emptyTitle}>
+              {language === "en" ? "No Notifications Yet" : "Henüz Bildirimin Yok"}
+            </Text>
+            <Text style={styles.emptySub}>
+              {language === "en"
+                ? "When you receive likes, event updates, or new messages, they will show up right here."
+                : "Yeni bir beğeni, mesaj veya etkinlik güncellemesi aldığında hepsi burada görünecek."}
+            </Text>
+          </View>
         }
         renderItem={({ item }) => {
           const meta = getNotificationMeta(item.title, item.body);
-          const formatted = formatNotificationContent(item.title, item.body);
+          const formatted = formatNotificationContent(item.title || "Bildirim", item.body || "");
 
           return (
             <Pressable
@@ -187,7 +297,7 @@ export function NotificationsScreen() {
               onPress={() => handlePressNotification(item)}
             >
               <View style={[styles.iconContainer, { backgroundColor: `${meta.color}15` }]}>
-                <Feather name={meta.icon} size={18} color={meta.color} />
+                <Feather name={meta.icon as any} size={18} color={meta.color} />
               </View>
 
               <View style={styles.textColumn}>
@@ -200,6 +310,14 @@ export function NotificationsScreen() {
             </Pressable>
           );
         }}
+      />
+
+      <EventRatingModal
+        visible={ratingModalData !== null}
+        eventId={ratingModalData?.eventId || 0}
+        eventTitle={ratingModalData?.title || ""}
+        creatorName={ratingModalData?.creatorName}
+        onClose={() => setRatingModalData(null)}
       />
     </View>
   );
@@ -224,6 +342,40 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
     paddingLeft: spacing.xl + 8,
+  },
+  emptyListContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+    maxWidth: 320,
+  },
+  emptyIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    fontFamily: fontFamily.displaySemiBold,
+    fontSize: 18,
+    color: colors.textPrimary,
+    textAlign: "center",
+    marginBottom: spacing.xs,
+  },
+  emptySub: {
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 19,
   },
   timelineLine: {
     position: "absolute",
@@ -275,12 +427,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  emptyText: {
-    fontFamily: fontFamily.body,
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginTop: spacing.xl,
   },
 });

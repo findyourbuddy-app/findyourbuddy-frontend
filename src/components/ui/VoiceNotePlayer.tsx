@@ -1,67 +1,123 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useAudioPlayer } from "expo-audio";
+import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
 import { useAppTheme } from "../../context/ThemeContext";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 
 interface VoiceNotePlayerProps {
   audioUrl?: string | null;
+  durationSeconds?: number;
   onDelete?: () => void;
 }
 
 const WAVE_BAR_HEIGHTS = [12, 22, 16, 30, 24, 14, 28, 36, 18, 26, 12, 32, 20, 15, 28, 10, 24, 16];
 
-export function VoiceNotePlayer({ audioUrl, onDelete }: VoiceNotePlayerProps) {
+function parseSeconds(dur: number): number {
+  if (!dur || isNaN(dur) || dur <= 0) return 0;
+  return dur > 1000 ? dur / 1000 : dur;
+}
+
+function formatTime(totalSecs: number): string {
+  const secsVal = parseSeconds(totalSecs);
+  if (secsVal <= 0) return "0:00";
+  const mins = Math.floor(secsVal / 60);
+  const secs = Math.floor(secsVal % 60);
+  return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+}
+
+export function VoiceNotePlayer({ audioUrl, durationSeconds, onDelete }: VoiceNotePlayerProps) {
   const { accentColor } = useAppTheme();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackDisplay, setPlaybackDisplay] = useState("0:00");
+  const [totalDuration, setTotalDuration] = useState<number>(durationSeconds || 0);
+  const [playbackDisplay, setPlaybackDisplay] = useState(formatTime(durationSeconds || 0));
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Expo audio player for native platforms
   const player = useAudioPlayer(audioUrl || "");
+
+  // Load/replace audio source on native player when audioUrl changes
+  useEffect(() => {
+    if (Platform.OS !== "web" && player && audioUrl) {
+      try {
+        player.replace({ uri: audioUrl });
+      } catch {
+        // Best effort
+      }
+    }
+  }, [player, audioUrl]);
+
+  // Continuously check player duration when idle to populate duration immediately (e.g. 0:14)
+  useEffect(() => {
+    if (Platform.OS === "web" || !player) return;
+
+    const checkDuration = () => {
+      const dur = player.duration;
+      if (dur && dur > 0) {
+        setTotalDuration(dur);
+        if (!isPlaying) {
+          setPlaybackDisplay(formatTime(dur));
+        }
+      }
+    };
+
+    checkDuration();
+    const interval = setInterval(checkDuration, 300);
+    return () => clearInterval(interval);
+  }, [player, isPlaying]);
 
   // Web HTML5 Audio setup
   useEffect(() => {
     if (Platform.OS === "web" && audioUrl) {
       const audio = new window.Audio(audioUrl);
       webAudioRef.current = audio;
+      
+      const updateDuration = () => {
+        if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
+          setTotalDuration(audio.duration);
+          if (!isPlaying) {
+            setPlaybackDisplay(formatTime(audio.duration));
+          }
+        }
+      };
+
+      audio.onloadedmetadata = updateDuration;
+      audio.oncanplaythrough = updateDuration;
+      audio.load();
+
       audio.onended = () => {
         setIsPlaying(false);
-        setPlaybackDisplay("0:00");
+        setPlaybackDisplay(formatTime(audio.duration || totalDuration));
       };
+      
       audio.ontimeupdate = () => {
-        const secs = Math.floor(audio.currentTime);
-        const mins = Math.floor(secs / 60);
-        const remSecs = secs % 60;
-        setPlaybackDisplay(`${mins}:${remSecs < 10 ? "0" : ""}${remSecs}`);
+        if (audio.currentTime > 0) {
+          setPlaybackDisplay(formatTime(audio.currentTime));
+        }
       };
+
       return () => {
         audio.pause();
         audio.src = "";
       };
     }
-  }, [audioUrl]);
+  }, [audioUrl, totalDuration, isPlaying]);
 
-  // Native player state sync -- only polls while this note is actually
-  // playing, so idle voice-note bubbles (e.g. several stacked candidate
-  // profiles while swiping) don't each run a background timer forever.
+  // Native player state sync -- only polls while playing
   useEffect(() => {
     if (Platform.OS === "web" || !player || !isPlaying) {
       return;
     }
     const interval = setInterval(() => {
       if (player.playing) {
-        const secs = Math.floor(player.currentTime);
-        const mins = Math.floor(secs / 60);
-        const remSecs = secs % 60;
-        setPlaybackDisplay(`${mins}:${remSecs < 10 ? "0" : ""}${remSecs}`);
+        setPlaybackDisplay(formatTime(player.currentTime));
       } else {
         setIsPlaying(false);
+        setPlaybackDisplay(formatTime(player.duration || totalDuration));
       }
-    }, 250);
+    }, 200);
     return () => clearInterval(interval);
-  }, [player, isPlaying]);
+  }, [player, isPlaying, totalDuration]);
 
   // Waveform pulsation animation
   const animValue = useRef(new Animated.Value(1)).current;
@@ -95,11 +151,19 @@ export function VoiceNotePlayer({ audioUrl, onDelete }: VoiceNotePlayerProps) {
   async function togglePlay() {
     if (!audioUrl) return;
 
+    // Route audio to main loudspeaker in silent mode
+    try {
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+    } catch {
+      // Ignore fallback on unsupported platforms
+    }
+
     if (Platform.OS === "web") {
       if (webAudioRef.current) {
         if (isPlaying) {
           webAudioRef.current.pause();
           setIsPlaying(false);
+          setPlaybackDisplay(formatTime(webAudioRef.current.duration || totalDuration));
         } else {
           try {
             await webAudioRef.current.play();
@@ -116,8 +180,14 @@ export function VoiceNotePlayer({ audioUrl, onDelete }: VoiceNotePlayerProps) {
       if (isPlaying) {
         player.pause();
         setIsPlaying(false);
+        setPlaybackDisplay(formatTime(player.duration || totalDuration));
       } else {
         try {
+          const cur = parseSeconds(player.currentTime);
+          const dur = parseSeconds(player.duration);
+          if (cur >= (dur || 1) - 0.2) {
+            player.seekTo(0);
+          }
           player.play();
           setIsPlaying(true);
         } catch {

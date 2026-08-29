@@ -8,6 +8,7 @@ import { useFonts, Baloo2_600SemiBold, Baloo2_700Bold } from "@expo-google-fonts
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from "@expo-google-fonts/inter";
 import { AuthProvider } from "./src/context/AuthContext";
 import { MessagesProvider } from "./src/context/MessagesContext";
+import { ThemeProvider } from "./src/context/ThemeContext";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { colors } from "./src/theme";
 
@@ -22,8 +23,6 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
-
-import { ThemeProvider } from "./src/context/ThemeContext";
 
 export default function App() {
   const [fontsLoaded] = useFonts({

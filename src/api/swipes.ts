@@ -8,21 +8,32 @@ export interface SwipeCandidateFilters {
   genderPreference?: string;
   requirePhoto?: boolean;
   onlyOnline?: boolean;
+  university?: string;
   zodiacSign?: string;
+  isVerifiedOnly?: boolean;
+  hasVoiceNote?: boolean;
+  minTrustScore?: number;
+  lookingFor?: string;
 }
 
 export function getSwipeCandidates(
-  eventId: number,
+  eventId?: number | null,
   filters?: SwipeCandidateFilters
 ): Promise<User[]> {
   return apiClient
     .get<User[]>("/swipes/candidates", {
       params: {
-        event_id: eventId,
+        event_id: eventId ?? undefined,
         min_age: filters?.minAge,
         max_age: filters?.maxAge,
         max_distance_km: filters?.maxDistanceKm,
         gender_preference: filters?.genderPreference,
+        university: filters?.university,
+        zodiac_sign: filters?.zodiacSign,
+        is_verified_only: filters?.isVerifiedOnly,
+        has_voice_note: filters?.hasVoiceNote,
+        min_trust_score: filters?.minTrustScore,
+        looking_for: filters?.lookingFor,
       },
     })
     .then((res) => res.data);

@@ -3,8 +3,10 @@ import { FlatList, ScrollView, StyleSheet, Text, View, ActivityIndicator, Pressa
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect } from "@react-navigation/native";
-import { Avatar } from "../components/ui/Avatar";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { MainStackParamList } from "../navigation/RootNavigator";
+import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
 import { formatMemberSince } from "../utils/date";
@@ -14,20 +16,32 @@ import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
 import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
 import type { User } from "../types";
 
+import { Alert } from "../utils/alert";
+import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 
 export function ViewProfileScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { user } = useAuth();
   const { bgGradient, accentColor, language } = useAppTheme();
-  const [profile, setProfile] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<User | null>(user ?? null);
+  const [isLoading, setIsLoading] = useState(!user);
   const [locationName, setLocationName] = useState<string | null>(null);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+
+  function openTrustInfo() {
+    Alert.alert(
+      language === "en" ? "What is Trust Score?" : "Güven Skoru Nedir?",
+      language === "en"
+        ? "• Default Score: 50 points\n• Event Check-in: +5 points for every confirmed GPS event check-in.\n• Blue Badge: +10 points for verifying your profile photo.\n• No-Show: -10 points if you join an event and don't show up.\n\nNote: Keeping a low score for long durations flags the account as a troll account."
+        : "• Başlangıç Skorunuz: 50 Puan\n• Etkinlik Check-In: Katıldığınız her etkinlikte GPS konum doğrulaması ile +5 puan kazanırsınız.\n• Mavi Tık Doğrulaması: Profilinizi doğruladığınızda +10 puan eklenir.\n• Katılmama (No-Show): Katılacağım dediğiniz etkinliğe gitmezseniz -10 puan düşer.\n\nDüşük Skor Uyarısı: Skoru sürekli düşük kalan hesaplar kısıtlanır."
+    );
+  }
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      setIsLoading(true);
       apiClient.get<User>("/users/me")
         .then((res) => {
           if (active) {
@@ -56,21 +70,19 @@ export function ViewProfileScreen() {
     );
   }
 
-  // Extract all photo URLs
-  const allPhotoUrls: string[] = [];
-  if (profile.photo_url) {
-    allPhotoUrls.push(profile.photo_url);
-  }
-  profile.photos.forEach((p) => {
-    if (p.photo_url && !allPhotoUrls.includes(p.photo_url)) {
-      allPhotoUrls.push(p.photo_url);
-    }
-  });
+  const [lightboxData, setLightboxData] = useState<{ url: string; photos: string[] } | null>(null);
 
-  const photo1 = allPhotoUrls[0];
-  const photo2 = allPhotoUrls[1];
-  const photo3 = allPhotoUrls[2];
-  const remainingPhotos = allPhotoUrls.slice(3);
+  const profilePhoto = profile.photo_url || null;
+  const galleryPhotos = (profile.photos || [])
+    .map((p) => p.photo_url)
+    .filter((u): u is string => Boolean(u));
+
+  const photo1 = profilePhoto || galleryPhotos[0] || null;
+  const displayedGalleryPhotos = galleryPhotos.filter((url) => url !== photo1);
+
+  const photo2 = displayedGalleryPhotos[0] || null;
+  const photo3 = displayedGalleryPhotos[1] || null;
+  const remainingPhotos = displayedGalleryPhotos.slice(2);
 
   return (
     <>
@@ -78,8 +90,8 @@ export function ViewProfileScreen() {
       {/* Photo 1 Hero Header */}
       <View style={styles.mainPhotoCard}>
         {photo1 ? (
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxPhoto(photo1)}>
-            <Image source={{ uri: photo1 }} style={styles.fullImage} contentFit="cover" />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxData({ url: photo1, photos: galleryPhotos })}>
+            <Image source={{ uri: resolvePhotoUrl(photo1) ?? undefined }} style={styles.fullImage} contentFit="cover" cachePolicy="memory-disk" pointerEvents="none" />
           </Pressable>
         ) : (
           <View style={styles.avatarPlaceholder}>
@@ -89,6 +101,7 @@ export function ViewProfileScreen() {
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.85)"]}
           style={styles.photoGradient}
+          pointerEvents="box-none"
         >
           <View style={styles.nameRow}>
             <Text style={styles.heroName}>
@@ -112,12 +125,10 @@ export function ViewProfileScreen() {
           ) : null}
 
           <View style={styles.badgeRow}>
-            {profile.trust_score > 0 ? (
-              <View style={styles.trustBadge}>
-                <Feather name="shield" size={12} color={colors.surface} />
-                <Text style={styles.trustText}>{profile.trust_score} Onaylı Buluşma</Text>
-              </View>
-            ) : null}
+            <Pressable style={styles.trustBadge} onPress={openTrustInfo}>
+              <Feather name="shield" size={12} color={colors.surface} />
+              <Text style={styles.trustText}>{profile.trust_score || 50} Güven Skoru</Text>
+            </Pressable>
             {profile.zodiac_sign && !profile.hidden_fields?.includes("zodiac_sign") ? (
               <View style={styles.trustBadge}>
                 <Text style={styles.trustText}>{profile.zodiac_sign}</Text>
@@ -125,7 +136,7 @@ export function ViewProfileScreen() {
             ) : null}
             {profile.height && !profile.hidden_fields?.includes("height") ? (
               <View style={styles.trustBadge}>
-                <Text style={styles.trustText}>📏 {profile.height} cm</Text>
+                <Text style={styles.trustText}>{profile.height} cm</Text>
               </View>
             ) : null}
           </View>
@@ -150,21 +161,34 @@ export function ViewProfileScreen() {
             </View>
           ) : null}
 
-          {profile.voice_note_url ? (
-            <View style={{ marginTop: spacing.xs }}>
-              <Text style={[styles.promptQuestion, { marginBottom: spacing.xs }]}>
-                Ses Tanıtımı 🎙️
+          <Pressable
+            style={{ marginTop: spacing.xs }}
+            onPress={() => navigation.navigate("EditProfile")}
+          >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
+              <Text style={styles.promptQuestion}>Ses Tanıtımı</Text>
+              <Text style={{ fontSize: 12, color: colors.primary, fontFamily: fontFamily.bodySemiBold }}>
+                {profile.voice_note_url ? (language === "en" ? "Edit" : "Düzenle") : (language === "en" ? "+ Add Voice" : "+ Ses Ekle")}
               </Text>
-              <VoiceNotePlayer audioUrl={profile.voice_note_url} />
             </View>
-          ) : null}
+            {profile.voice_note_url ? (
+              <VoiceNotePlayer audioUrl={resolvePhotoUrl(profile.voice_note_url)} />
+            ) : (
+              <View style={styles.emptyVoiceBox}>
+                <Feather name="mic" size={18} color={colors.primary} />
+                <Text style={styles.emptyVoiceText}>
+                  {language === "en" ? "Tap to record your voice introduction" : "Ses tanıtımını kaydetmek için dokun"}
+                </Text>
+              </View>
+            )}
+          </Pressable>
         </View>
       ) : null}
 
       {/* Interspersed Photo 2 Card */}
       {photo2 ? (
-        <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo2)}>
-          <Image source={{ uri: photo2 }} style={styles.fullImage} contentFit="cover" />
+        <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: photo2, photos: galleryPhotos })}>
+          <Image source={{ uri: resolvePhotoUrl(photo2) ?? undefined }} style={styles.fullImage} contentFit="cover" cachePolicy="memory-disk" pointerEvents="none" />
         </Pressable>
       ) : null}
 
@@ -175,7 +199,7 @@ export function ViewProfileScreen() {
             <View style={{ gap: spacing.xs }}>
               <View style={styles.cardHeader}>
                 <Feather name="heart" size={18} color="#8A2BE2" />
-                <Text style={[styles.cardTitle, { color: "#8A2BE2" }]}>Hobilerim (Max 4)</Text>
+                <Text style={[styles.cardTitle, { color: "#8A2BE2" }]}>Hobilerim</Text>
               </View>
               <View style={styles.chipRow}>
                 {profile.hobbies.map((hobby) => (
@@ -207,37 +231,88 @@ export function ViewProfileScreen() {
 
       {/* Interspersed Photo 3 Card */}
       {photo3 ? (
-        <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo3)}>
-          <Image source={{ uri: photo3 }} style={styles.fullImage} contentFit="cover" />
+        <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: photo3, photos: galleryPhotos })}>
+          <Image source={{ uri: resolvePhotoUrl(photo3) ?? undefined }} style={styles.fullImage} contentFit="cover" cachePolicy="memory-disk" pointerEvents="none" />
         </Pressable>
       ) : null}
 
-      {/* Verbal Card 3: Kariyer & Beklentiler */}
-      {(profile.occupation || profile.university || profile.looking_for) ? (
+      {/* Verbal Card 3: Kariyer & Okul & Beklentiler */}
+      {((profile.occupation && !profile.hidden_fields?.includes("occupation")) ||
+        (profile.university && !profile.hidden_fields?.includes("university")) ||
+        (profile.class_year && !profile.hidden_fields?.includes("class_year")) ||
+        (profile.looking_for && !profile.hidden_fields?.includes("looking_for")) ||
+        (profile.languages_spoken && profile.languages_spoken.length > 0 && !profile.hidden_fields?.includes("languages_spoken"))) ? (
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Feather name="briefcase" size={18} color={colors.primary} />
-            <Text style={styles.cardTitle}>Kariyer & Beklentiler</Text>
+            <Text style={styles.cardTitle}>Kariyer, Eğitim & İletişim</Text>
           </View>
 
-          {profile.occupation ? (
+          {profile.occupation && !profile.hidden_fields?.includes("occupation") ? (
             <View style={styles.infoRow}>
               <Feather name="briefcase" size={16} color={colors.textSecondary} />
               <Text style={styles.infoText}>{profile.occupation}</Text>
             </View>
           ) : null}
 
-          {profile.university ? (
+          {profile.university && !profile.hidden_fields?.includes("university") ? (
             <View style={styles.infoRow}>
               <Feather name="book-open" size={16} color={colors.textSecondary} />
               <Text style={styles.infoText}>{profile.university}</Text>
             </View>
           ) : null}
 
-          {profile.looking_for ? (
+          {profile.class_year && !profile.hidden_fields?.includes("class_year") ? (
+            <View style={styles.infoRow}>
+              <Feather name="award" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoText}>{profile.class_year}</Text>
+            </View>
+          ) : null}
+
+          {profile.looking_for && !profile.hidden_fields?.includes("looking_for") ? (
             <View style={styles.infoRow}>
               <Feather name="target" size={16} color={colors.textSecondary} />
               <Text style={styles.infoText}>Ne Arıyor: {profile.looking_for}</Text>
+            </View>
+          ) : null}
+
+          {profile.languages_spoken && profile.languages_spoken.length > 0 && !profile.hidden_fields?.includes("languages_spoken") ? (
+            <View style={styles.infoRow}>
+              <Feather name="globe" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoText}>Bildiği Diller: {profile.languages_spoken.join(", ")}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      {/* Verbal Card 4: Dünya Görüşü & Kişisel Tercihler */}
+      {((profile.gender && !profile.hidden_fields?.includes("gender")) ||
+        (profile.political_views && !profile.hidden_fields?.includes("political_views")) ||
+        (profile.beliefs && !profile.hidden_fields?.includes("beliefs"))) ? (
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Feather name="compass" size={18} color="#9B51E0" />
+            <Text style={[styles.cardTitle, { color: "#9B51E0" }]}>Dünya Görüşü & Tercihler</Text>
+          </View>
+
+          {profile.gender && !profile.hidden_fields?.includes("gender") ? (
+            <View style={styles.infoRow}>
+              <Feather name="user" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoText}>Cinsiyet: {profile.gender}</Text>
+            </View>
+          ) : null}
+
+          {profile.political_views && !profile.hidden_fields?.includes("political_views") ? (
+            <View style={styles.infoRow}>
+              <Feather name="compass" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoText}>Siyasi Görüş: {profile.political_views}</Text>
+            </View>
+          ) : null}
+
+          {profile.beliefs && !profile.hidden_fields?.includes("beliefs") ? (
+            <View style={styles.infoRow}>
+              <Feather name="sun" size={16} color={colors.textSecondary} />
+              <Text style={styles.infoText}>İnanç: {profile.beliefs}</Text>
             </View>
           ) : null}
         </View>
@@ -245,16 +320,17 @@ export function ViewProfileScreen() {
 
       {/* Remaining Photos Interspersed */}
       {remainingPhotos.map((uri, idx) => (
-        <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(uri)}>
-          <Image source={{ uri }} style={styles.fullImage} contentFit="cover" />
+        <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: uri, photos: galleryPhotos })}>
+          <Image source={{ uri: resolvePhotoUrl(uri) ?? undefined }} style={styles.fullImage} contentFit="cover" cachePolicy="memory-disk" pointerEvents="none" />
         </Pressable>
       ))}
     </ScrollView>
 
     <PhotoLightboxModal
-      visible={lightboxPhoto !== null}
-      photoUrl={lightboxPhoto}
-      onClose={() => setLightboxPhoto(null)}
+      visible={lightboxData !== null}
+      photoUrl={lightboxData?.url}
+      photos={lightboxData?.photos}
+      onClose={() => setLightboxData(null)}
     />
     </>
   );
@@ -397,6 +473,21 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 13,
     color: colors.textPrimary,
+  },
+  emptyVoiceBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.primaryMuted,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyVoiceText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.primary,
   },
   interspersedPhotoCard: {
     height: 340,

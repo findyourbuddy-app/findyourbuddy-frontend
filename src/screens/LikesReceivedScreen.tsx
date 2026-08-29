@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Alert } from "../utils/alert";
 import axios from "axios";
@@ -32,8 +32,11 @@ export function LikesReceivedScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpgrading, setIsUpgrading] = useState(false);
 
+  const likersRef = useRef(likers);
+  likersRef.current = likers;
+
   const loadLikers = useCallback(async () => {
-    if (likers.length === 0) {
+    if (likersRef.current.length === 0) {
       setIsLoading(true);
     }
     try {
@@ -55,7 +58,7 @@ export function LikesReceivedScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [likers.length, language]);
+  }, [language]);
 
   useFocusEffect(
     useCallback(() => {
@@ -143,29 +146,7 @@ export function LikesReceivedScreen() {
       );
       return;
     }
-    navigation.navigate("CandidateProfile", {
-      candidate: item.user,
-      onSwipeLeft: async () => {
-        try {
-          await createSwipe({ target_id: item.user.id, event_id: item.event_id, direction: "pass" });
-          loadLikers();
-        } catch (e) {
-          // silently ignore
-        }
-      },
-      onSwipeRight: async () => {
-        try {
-          await createSwipe({ target_id: item.user.id, event_id: item.event_id, direction: "like" });
-          loadLikers();
-        } catch (e) {}
-      },
-      onSwipeUp: async () => {
-        try {
-          await createSwipe({ target_id: item.user.id, event_id: item.event_id, direction: "super_like" });
-          loadLikers();
-        } catch (e) {}
-      },
-    });
+    navigation.navigate("CandidateProfile", { candidate: item.user });
   };
 
   const handleUpgrade = async () => {

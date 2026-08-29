@@ -8,63 +8,99 @@ import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-n
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
 import { getUserUpcomingEvents } from "../api/events";
+import { getUserById } from "../api/users";
 import { formatEventDate, formatMemberSince, isNewMember } from "../utils/date";
 import { getCategoryMeta } from "../constants/categories";
 import type { EventPublicSummary } from "../types";
 import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
+import { resolvePhotoUrl } from "../components/ui/Avatar";
 import { PhotoLightboxModal } from "../components/overlays/PhotoLightboxModal";
+import { TrustScoreInfoModal } from "../components/overlays/TrustScoreInfoModal";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import { useAppTheme } from "../context/ThemeContext";
 
 type Props = NativeStackScreenProps<MainStackParamList, "CandidateProfile">;
 
 export function CandidateProfileScreen({ route }: Props) {
-  const { candidate, onSwipeLeft, onSwipeRight, onSwipeUp } = route.params;
+  const { candidate } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { bgGradient, language } = useAppTheme();
+  const [profile, setProfile] = useState(candidate);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [trustInfoVisible, setTrustInfoVisible] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState<EventPublicSummary[]>([]);
 
-  function act(action: () => void): void {
-    action();
-    navigation.goBack();
-  }
+  useEffect(() => {
+    setProfile(candidate);
+    let cancelled = false;
+
+    // Prefetch candidate primary photo & existing photos immediately so they render in 0ms
+    if (candidate.photo_url) {
+      const url = resolvePhotoUrl(candidate.photo_url);
+      if (url) Image.prefetch(url).catch(() => {});
+    }
+    candidate.photos?.forEach((p) => {
+      const url = resolvePhotoUrl(p.photo_url);
+      if (url) Image.prefetch(url).catch(() => {});
+    });
+
+    Promise.all([
+      getUserById(candidate.id).catch(() => null),
+      getUserUpcomingEvents(candidate.id).catch(() => []),
+    ]).then(([fullUser, events]) => {
+      if (cancelled) return;
+      if (fullUser) {
+        setProfile((prev) => ({ ...prev, ...fullUser }));
+        // Prefetch fullUser gallery photos so they appear seamlessly at the exact same time
+        if (fullUser.photo_url) {
+          const url = resolvePhotoUrl(fullUser.photo_url);
+          if (url) Image.prefetch(url).catch(() => {});
+        }
+        fullUser.photos?.forEach((p: any) => {
+          const url = resolvePhotoUrl(p.photo_url);
+          if (url) Image.prefetch(url).catch(() => {});
+        });
+      }
+      setUpcomingEvents(events);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [candidate]);
 
   const [locationName, setLocationName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (hasValidCoordinates(candidate.latitude, candidate.longitude)) {
-      resolveCityDistrict(candidate.latitude, candidate.longitude).then(setLocationName);
+    if (hasValidCoordinates(profile.latitude, profile.longitude)) {
+      resolveCityDistrict(profile.latitude, profile.longitude).then(setLocationName);
     }
-  }, [candidate.latitude, candidate.longitude]);
+  }, [profile.latitude, profile.longitude]);
 
   useEffect(() => {
-    getUserUpcomingEvents(candidate.id)
+    getUserUpcomingEvents(profile.id)
       .then(setUpcomingEvents)
       .catch(() => {
         // Best-effort; the section just stays hidden if this fails.
       });
-  }, [candidate.id]);
+  }, [profile.id]);
 
-  // Extract all photos (main photo_url + photos array)
-  const allPhotoUrls: string[] = [];
-  if (candidate.photo_url) {
-    allPhotoUrls.push(candidate.photo_url);
-  }
-  if (candidate.photos && candidate.photos.length > 0) {
-    candidate.photos.forEach((p) => {
-      if (p.photo_url && !allPhotoUrls.includes(p.photo_url)) {
-        allPhotoUrls.push(p.photo_url);
-      }
-    });
-  }
+  const [lightboxData, setLightboxData] = useState<{ url: string; photos: string[] } | null>(null);
 
-  const photo1 = allPhotoUrls[0] || null;
-  const photo2 = allPhotoUrls[1] || null;
-  const photo3 = allPhotoUrls[2] || null;
-  const remainingPhotos = allPhotoUrls.slice(3);
+  // Separate profile photo (avatar) from gallery photos category
+  const profilePhoto = profile.photo_url || null;
+  const galleryPhotos: string[] = (profile.photos || [])
+    .map((p) => p.photo_url)
+    .filter((u): u is string => Boolean(u));
+
+  const photo1 = profilePhoto || galleryPhotos[0] || null;
+  const displayedGalleryPhotos = galleryPhotos.filter((url) => url !== photo1);
+
+  const photo2 = displayedGalleryPhotos[0] || null;
+  const photo3 = displayedGalleryPhotos[1] || null;
+  const remainingPhotos = displayedGalleryPhotos.slice(2);
 
   return (
     <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
@@ -72,8 +108,8 @@ export function CandidateProfileScreen({ route }: Props) {
         {/* SECTION 1: Main Photo 1 Hero with overlay */}
         <View style={styles.mainPhotoCard}>
           {photo1 ? (
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxPhoto(photo1)}>
-              <Image source={{ uri: photo1 }} style={styles.fullImage} contentFit="cover" />
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setLightboxData({ url: photo1, photos: galleryPhotos })}>
+              <Image source={{ uri: resolvePhotoUrl(photo1) ?? undefined }} style={styles.fullImage} contentFit="cover" cachePolicy="memory-disk" pointerEvents="none" />
             </Pressable>
           ) : (
             <View style={styles.avatarPlaceholder}>
@@ -83,18 +119,19 @@ export function CandidateProfileScreen({ route }: Props) {
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.85)"]}
             style={styles.photoGradient}
+            pointerEvents="box-none"
           >
             <View style={styles.nameRow}>
               <Text style={styles.heroName}>
-                {candidate.display_name}
-                {candidate.age ? `, ${candidate.age}` : ""}
+                {profile.display_name}
+                {!profile.hidden_fields?.includes("age") && profile.age ? `, ${profile.age}` : ""}
               </Text>
-              {candidate.is_verified || candidate.verification_status === "verified" ? (
+              {profile.is_verified || profile.verification_status === "verified" ? (
                 <Feather name="check-circle" size={20} color="#1DA1F2" style={{ marginLeft: 6 }} />
               ) : null}
             </View>
 
-            {locationName ? (
+            {!profile.hidden_fields?.includes("location") && locationName ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
                 <Feather name="map-pin" size={13} color="rgba(255,255,255,0.9)" />
                 <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
@@ -104,55 +141,61 @@ export function CandidateProfileScreen({ route }: Props) {
             ) : null}
 
             <View style={styles.badgeRow}>
-              {candidate.trust_score > 0 ? (
-                <View style={styles.trustBadge}>
-                  <Feather name="shield" size={12} color={colors.surface} />
+              {profile.trust_score > 0 ? (
+                <Pressable style={styles.trustBadge} onPress={() => setTrustInfoVisible(true)}>
+                  <Feather name="shield" size={13} color={colors.surface} />
                   <Text style={styles.trustText}>
-                    {candidate.trust_score} Onaylı Buluşma
+                    Güven Skoru: {profile.trust_score}
                   </Text>
-                </View>
+                  <Feather name="info" size={11} color="rgba(255,255,255,0.85)" style={{ marginLeft: 3 }} />
+                </Pressable>
               ) : null}
-              {isNewMember(candidate.created_at) ? (
+              {!profile.hidden_fields?.includes("zodiac_sign") && profile.zodiac_sign ? (
                 <View style={styles.trustBadge}>
-                  <Text style={styles.trustText}>✨ Yeni Üye</Text>
-                </View>
-              ) : null}
-              {candidate.zodiac_sign ? (
-                <View style={styles.trustBadge}>
-                  <Text style={styles.trustText}>{candidate.zodiac_sign}</Text>
+                  <Text style={styles.trustText}>{profile.zodiac_sign}</Text>
                 </View>
               ) : null}
             </View>
 
-            <Text style={styles.memberSince}>{formatMemberSince(candidate.created_at)}</Text>
+            <View style={styles.heroMemberSinceRow}>
+              <Feather name="calendar" size={13} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.heroMemberSinceText}>{formatMemberSince(profile.created_at)}</Text>
+              {isNewMember(profile.created_at) ? (
+                <View style={styles.newMemberBadgeInline}>
+                  <Text style={styles.newMemberBadgeText}>Yeni Üye</Text>
+                </View>
+              ) : null}
+            </View>
           </LinearGradient>
         </View>
 
         {/* SECTION 2: Verbal Card 1 - Bio & Prompts & Voice */}
-        {(candidate.bio || candidate.about_me_prompt || candidate.voice_note_url) ? (
+        {((profile.bio && !profile.hidden_fields?.includes("bio")) ||
+          (profile.about_me_prompt && !profile.hidden_fields?.includes("about_me_prompt")) ||
+          (profile.voice_note_url && !profile.hidden_fields?.includes("voice_note"))) ? (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Feather name="user" size={18} color={colors.primary} />
               <Text style={styles.cardTitle}>Hakkında & Detaylar</Text>
             </View>
 
-            {candidate.bio ? (
-              <Text style={styles.bioText}>{candidate.bio}</Text>
+            {profile.bio && !profile.hidden_fields?.includes("bio") ? (
+              <Text style={styles.bioText}>{profile.bio}</Text>
             ) : null}
 
-            {candidate.about_me_prompt ? (
+            {profile.about_me_prompt && !profile.hidden_fields?.includes("about_me_prompt") ? (
               <View style={styles.promptBox}>
                 <Text style={styles.promptQuestion}>Beni yakından tanımak istersen:</Text>
-                <Text style={styles.promptAnswer}>“{candidate.about_me_prompt}”</Text>
+                <Text style={styles.promptAnswer}>“{profile.about_me_prompt}”</Text>
               </View>
             ) : null}
 
-            {candidate.voice_note_url ? (
+            {profile.voice_note_url && !profile.hidden_fields?.includes("voice_note") ? (
               <View style={{ marginTop: spacing.xs }}>
                 <Text style={[styles.promptQuestion, { marginBottom: spacing.xs }]}>
-                  Ses Tanıtımı 🎙️
+                  Ses Tanıtımı
                 </Text>
-                <VoiceNotePlayer audioUrl={candidate.voice_note_url} />
+                <VoiceNotePlayer audioUrl={resolvePhotoUrl(profile.voice_note_url)} />
               </View>
             ) : null}
           </View>
@@ -173,7 +216,7 @@ export function CandidateProfileScreen({ route }: Props) {
                 <Pressable
                   key={event.id}
                   style={styles.eventRow}
-                  onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
+                  onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
                   accessibilityRole="button"
                   accessibilityLabel={event.title}
                 >
@@ -193,22 +236,22 @@ export function CandidateProfileScreen({ route }: Props) {
 
         {/* SECTION 3: Interspersed Photo 2 Card */}
         {photo2 ? (
-          <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo2)}>
-            <Image source={{ uri: photo2 }} style={styles.fullImage} contentFit="cover" />
+          <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: photo2, photos: galleryPhotos })}>
+            <Image source={{ uri: resolvePhotoUrl(photo2) ?? undefined }} style={styles.fullImage} contentFit="cover" cachePolicy="memory-disk" pointerEvents="none" />
           </Pressable>
         ) : null}
 
         {/* SECTION 4: Verbal Card 2 - Hobilerim & Yapmak İstediğim Aktiviteler */}
-        {(candidate.hobbies && candidate.hobbies.length > 0) || (candidate.interests && candidate.interests.length > 0) ? (
+        {(profile.hobbies && profile.hobbies.length > 0) || (profile.interests && profile.interests.length > 0) ? (
           <View style={styles.card}>
-            {candidate.hobbies && candidate.hobbies.length > 0 ? (
+            {profile.hobbies && profile.hobbies.length > 0 ? (
               <View style={{ gap: spacing.xs }}>
                 <View style={styles.cardHeader}>
                   <Feather name="heart" size={18} color="#8A2BE2" />
-                  <Text style={[styles.cardTitle, { color: "#8A2BE2" }]}>Hobilerim (Max 4)</Text>
+                  <Text style={[styles.cardTitle, { color: "#8A2BE2" }]}>Hobilerim</Text>
                 </View>
                 <View style={styles.chipRow}>
-                  {candidate.hobbies.map((hobby) => (
+                  {profile.hobbies.map((hobby) => (
                     <View key={hobby} style={styles.hobbyChip}>
                       <Text style={styles.hobbyChipText}>{getHobbyLabel(hobby)}</Text>
                     </View>
@@ -217,14 +260,14 @@ export function CandidateProfileScreen({ route }: Props) {
               </View>
             ) : null}
 
-            {candidate.interests && candidate.interests.length > 0 ? (
-              <View style={{ gap: spacing.xs, marginTop: candidate.hobbies?.length ? spacing.md : 0 }}>
+            {profile.interests && profile.interests.length > 0 ? (
+              <View style={{ gap: spacing.xs, marginTop: profile.hobbies?.length ? spacing.md : 0 }}>
                 <View style={styles.cardHeader}>
                   <Feather name="activity" size={18} color={colors.primary} />
                   <Text style={styles.cardTitle}>Yapmak İstediğim Aktiviteler</Text>
                 </View>
                 <View style={styles.chipRow}>
-                  {candidate.interests.map((interest) => (
+                  {profile.interests.map((interest) => (
                     <View key={interest} style={styles.chip}>
                       <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
                     </View>
@@ -237,37 +280,93 @@ export function CandidateProfileScreen({ route }: Props) {
 
         {/* SECTION 5: Interspersed Photo 3 Card */}
         {photo3 ? (
-          <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(photo3)}>
-            <Image source={{ uri: photo3 }} style={styles.fullImage} contentFit="cover" />
+          <Pressable style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: photo3, photos: galleryPhotos })}>
+            <Image source={{ uri: resolvePhotoUrl(photo3) ?? undefined }} style={styles.fullImage} contentFit="cover" cachePolicy="memory-disk" pointerEvents="none" />
           </Pressable>
         ) : null}
 
         {/* SECTION 6: Verbal Card 3 - Career, University & Expectations */}
-        {(candidate.occupation || candidate.university || candidate.looking_for) ? (
+        {((profile.occupation && !profile.hidden_fields?.includes("occupation")) ||
+          (profile.university && !profile.hidden_fields?.includes("university")) ||
+          (profile.class_year && !profile.hidden_fields?.includes("class_year")) ||
+          (profile.looking_for && !profile.hidden_fields?.includes("looking_for")) ||
+          (profile.languages_spoken && profile.languages_spoken.length > 0 && !profile.hidden_fields?.includes("languages_spoken"))) ? (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Feather name="briefcase" size={18} color={colors.primary} />
-              <Text style={styles.cardTitle}>Kariyer & Beklentiler</Text>
+              <Text style={styles.cardTitle}>
+                {language === "en" ? "Career, Education & Intention" : "Kariyer, Eğitim & Arkadaşlık İlişkisi"}
+              </Text>
             </View>
 
-            {candidate.occupation ? (
+            {profile.occupation && !profile.hidden_fields?.includes("occupation") ? (
               <View style={styles.infoRow}>
                 <Feather name="briefcase" size={16} color={colors.textSecondary} />
-                <Text style={styles.infoText}>{candidate.occupation}</Text>
+                <Text style={styles.infoText}>{profile.occupation}</Text>
               </View>
             ) : null}
 
-            {candidate.university ? (
+            {profile.university && !profile.hidden_fields?.includes("university") ? (
               <View style={styles.infoRow}>
                 <Feather name="book-open" size={16} color={colors.textSecondary} />
-                <Text style={styles.infoText}>{candidate.university}</Text>
+                <Text style={styles.infoText}>{profile.university}</Text>
               </View>
             ) : null}
 
-            {candidate.looking_for ? (
+            {profile.class_year && !profile.hidden_fields?.includes("class_year") ? (
+              <View style={styles.infoRow}>
+                <Feather name="award" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>{profile.class_year}</Text>
+              </View>
+            ) : null}
+
+            {profile.looking_for && !profile.hidden_fields?.includes("looking_for") ? (
               <View style={styles.infoRow}>
                 <Feather name="target" size={16} color={colors.textSecondary} />
-                <Text style={styles.infoText}>Ne Arıyor: {candidate.looking_for}</Text>
+                <Text style={styles.infoText}>
+                  {language === "en" ? "Looking for: " : "Aradığı Arkadaşlık İlişkisi: "}
+                  {profile.looking_for}
+                </Text>
+              </View>
+            ) : null}
+
+            {candidate.languages_spoken && candidate.languages_spoken.length > 0 && !candidate.hidden_fields?.includes("languages_spoken") ? (
+              <View style={styles.infoRow}>
+                <Feather name="globe" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>Bildiği Diller: {candidate.languages_spoken.join(", ")}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* SECTION 7: Verbal Card 4 - Worldview & Preferences */}
+        {((candidate.gender && !candidate.hidden_fields?.includes("gender")) ||
+          (candidate.political_views && !candidate.hidden_fields?.includes("political_views")) ||
+          (candidate.beliefs && !candidate.hidden_fields?.includes("beliefs"))) ? (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Feather name="compass" size={18} color="#9B51E0" />
+              <Text style={[styles.cardTitle, { color: "#9B51E0" }]}>Dünya Görüşü & Tercihler</Text>
+            </View>
+
+            {candidate.gender && !candidate.hidden_fields?.includes("gender") ? (
+              <View style={styles.infoRow}>
+                <Feather name="user" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>Cinsiyet: {candidate.gender}</Text>
+              </View>
+            ) : null}
+
+            {candidate.political_views && !candidate.hidden_fields?.includes("political_views") ? (
+              <View style={styles.infoRow}>
+                <Feather name="compass" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>Siyasi Görüş: {candidate.political_views}</Text>
+              </View>
+            ) : null}
+
+            {candidate.beliefs && !candidate.hidden_fields?.includes("beliefs") ? (
+              <View style={styles.infoRow}>
+                <Feather name="sun" size={16} color={colors.textSecondary} />
+                <Text style={styles.infoText}>İnanç: {candidate.beliefs}</Text>
               </View>
             ) : null}
           </View>
@@ -275,45 +374,24 @@ export function CandidateProfileScreen({ route }: Props) {
 
         {/* SECTION 7: Remaining Photos Interspersed */}
         {remainingPhotos.map((uri, idx) => (
-          <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxPhoto(uri)}>
-            <Image source={{ uri }} style={styles.fullImage} contentFit="cover" />
+          <Pressable key={idx} style={styles.interspersedPhotoCard} onPress={() => setLightboxData({ url: uri, photos: galleryPhotos })}>
+            <Image source={{ uri: resolvePhotoUrl(uri) ?? undefined }} style={styles.fullImage} contentFit="cover" cachePolicy="memory-disk" pointerEvents="none" />
           </Pressable>
         ))}
       </ScrollView>
 
       <PhotoLightboxModal
-        visible={lightboxPhoto !== null}
-        photoUrl={lightboxPhoto}
-        onClose={() => setLightboxPhoto(null)}
+        visible={lightboxData !== null}
+        photoUrl={lightboxData?.url}
+        photos={lightboxData?.photos}
+        onClose={() => setLightboxData(null)}
       />
 
-      {/* Floating Bottom Action Bar */}
-      <View style={styles.actionRow}>
-        <Pressable
-          style={[styles.actionButton, styles.passButton]}
-          onPress={() => act(onSwipeLeft)}
-          accessibilityRole="button"
-          accessibilityLabel="Geç"
-        >
-          <Feather name="x" size={24} color={colors.textSecondary} />
-        </Pressable>
-        <Pressable
-          style={[styles.actionButton, styles.superButton]}
-          onPress={() => act(onSwipeUp)}
-          accessibilityRole="button"
-          accessibilityLabel="Süper beğen"
-        >
-          <Feather name="star" size={22} color={colors.surface} />
-        </Pressable>
-        <Pressable
-          style={[styles.actionButton, styles.likeButton]}
-          onPress={() => act(onSwipeRight)}
-          accessibilityRole="button"
-          accessibilityLabel="Beğen"
-        >
-          <Feather name="heart" size={24} color={colors.surface} />
-        </Pressable>
-      </View>
+      <TrustScoreInfoModal
+        visible={trustInfoVisible}
+        trustScore={profile.trust_score}
+        onClose={() => setTrustInfoVisible(false)}
+      />
     </View>
   );
 }
@@ -326,7 +404,7 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     gap: spacing.md,
-    paddingBottom: 110,
+    paddingBottom: spacing.xl,
   },
   mainPhotoCard: {
     height: 380,
@@ -365,28 +443,47 @@ const styles = StyleSheet.create({
   badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.xs,
-    marginTop: 4,
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+    marginBottom: 2,
   },
   trustBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.22)",
     paddingHorizontal: spacing.md,
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
     borderRadius: radius.pill,
   },
   trustText: {
-    fontFamily: fontFamily.bodyMedium,
+    fontFamily: fontFamily.bodySemiBold,
     fontSize: 12,
     color: colors.surface,
   },
-  memberSince: {
-    fontFamily: fontFamily.body,
+  heroMemberSinceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: spacing.xs,
+  },
+  heroMemberSinceText: {
+    fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
-    color: "rgba(255,255,255,0.75)",
-    marginTop: 2,
+    color: "rgba(255,255,255,0.9)",
+  },
+  newMemberBadgeInline: {
+    backgroundColor: "#27AE60",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    marginLeft: 4,
+  },
+  newMemberBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 10,
+    color: colors.surface,
   },
   card: {
     backgroundColor: colors.surface,
@@ -519,40 +616,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 1,
-  },
-  actionRow: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: spacing.xl,
-    paddingVertical: spacing.md,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  actionButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.soft,
-  },
-  passButton: {
-    backgroundColor: colors.surface,
-  },
-  superButton: {
-    backgroundColor: "#2E7FC9",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-  },
-  likeButton: {
-    backgroundColor: colors.primary,
   },
 });
 

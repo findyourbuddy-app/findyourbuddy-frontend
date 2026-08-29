@@ -1,3 +1,5 @@
+import * as Location from "expo-location";
+
 // (0, 0) is "null island" -- open ocean in the Gulf of Guinea. A scraped
 // event landing there means geocoding failed, not that the event is
 // actually happening there, so treat it as "no usable location" everywhere.
@@ -51,4 +53,16 @@ export async function resolveCityDistrict(
   }
 
   return null;
+}
+
+export async function getFastCurrentLocation(): Promise<Location.LocationObject | null> {
+  try {
+    const last = await Location.getLastKnownPositionAsync();
+    if (last) return last;
+    return await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+  } catch {
+    return null;
+  }
 }

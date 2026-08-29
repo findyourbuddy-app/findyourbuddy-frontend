@@ -31,13 +31,16 @@ export function Badge({ label, variant = "yellow", icon }: BadgeProps) {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: radius.pill,
-    alignSelf: "flex-start",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 28,
   },
   text: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 12,
+    lineHeight: 16,
   },
 });

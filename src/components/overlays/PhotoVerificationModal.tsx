@@ -75,7 +75,7 @@ export function PhotoVerificationModal({
           language === "en" ? "Camera Permission Needed" : "Kamera İzni Gerekli",
           language === "en"
             ? "Camera permission is required to take a live verification selfie."
-            : "Mavi Tik 🔵 doğrulaması için ön kamera ile selfie çekilmesi gerekmektedir."
+            : "Mavi Tik doğrulaması için ön kamera ile selfie çekilmesi gerekmektedir."
         );
         return;
       }
@@ -115,7 +115,7 @@ export function PhotoVerificationModal({
 
     // 2. Alert user and close modal immediately so user isn't blocked waiting
     Alert.alert(
-      language === "en" ? "Verification Submitted! 🚀" : "Doğrulama Alındı! 🚀",
+      language === "en" ? "Verification Submitted!" : "Doğrulama Alındı!",
       language === "en"
         ? "Your selfie was received. AI vision verification is processing in the background."
         : "Selfie fotoğrafınız alındı! Yapay zeka doğrulaması arka planda devam ediyor. Tamamlandığında Mavi Tik rozetiniz aktif edilecektir."
@@ -135,7 +135,7 @@ export function PhotoVerificationModal({
           verification_status: "verified",
         });
         Alert.alert(
-          language === "en" ? "Profile Verified! 🔵" : "Profiliniz Doğrulandı! 🔵",
+          language === "en" ? "Profile Verified!" : "Profiliniz Doğrulandı!",
           language === "en"
             ? "Congratulations! Your profile has been verified with a blue checkmark."
             : "Tebrikler! Profiliniz Yapay Zeka tarafından başarıyla doğrulandı ve Mavi Tik rozeti tanımlandı."
@@ -195,7 +195,7 @@ export function PhotoVerificationModal({
               </Pressable>
               <View style={styles.actionGroup}>
                 <PrimaryButton
-                  label={language === "en" ? "📸 Take Live Selfie" : "📸 Canlı Selfie Çek"}
+                  label={language === "en" ? "Take Live Selfie" : "Canlı Selfie Çek"}
                   variant="accent"
                   onPress={handleLaunchCamera}
                 />
@@ -221,12 +221,12 @@ export function PhotoVerificationModal({
 
               <View style={styles.actionGroup}>
                 <PrimaryButton
-                  label={language === "en" ? "✅ Confirm & Submit" : "✅ Onayla ve Gönder"}
+                  label={language === "en" ? "Confirm & Submit" : "Onayla ve Gönder"}
                   variant="accent"
                   onPress={handleConfirmAndSubmit}
                 />
                 <PrimaryButton
-                  label={language === "en" ? "📸 Retake" : "📸 Yeniden Çek"}
+                  label={language === "en" ? "Retake" : "Yeniden Çek"}
                   variant="outline"
                   onPress={handleLaunchCamera}
                 />

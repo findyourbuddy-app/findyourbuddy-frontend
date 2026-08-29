@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
@@ -35,33 +35,56 @@ function initialsForName(name: string): string {
 export function resolvePhotoUrl(url?: string | null): string | null {
   if (!url || !url.trim()) return null;
   const trimmed = url.trim();
-  if (trimmed.startsWith("file://") || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+
+  // Local mobile device URIs (iOS ph://, Android content://, file://, data:, blob:)
+  if (
+    trimmed.startsWith("file:") ||
+    trimmed.startsWith("content:") ||
+    trimmed.startsWith("ph:") ||
+    trimmed.startsWith("assets-library:") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("blob:")
+  ) {
     return trimmed;
   }
+
   const base = API_BASE_URL.replace(/\/+$/, "");
+
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    if (trimmed.includes("localhost:") || trimmed.includes("127.0.0.1:") || trimmed.includes("192.168.")) {
-      return trimmed.replace(/http:\/\/[^/]+/, base);
+    // Third-party hosts are served directly and must never be rewritten to the
+    // backend -- even Giphy, whose URLs contain "/media/" in their path.
+    if (
+      trimmed.includes("giphy.com") ||
+      trimmed.includes("giphy.org") ||
+      trimmed.includes("googleusercontent.com")
+    ) {
+      return trimmed;
     }
+    // Cloudflare R2 objects are proxied through the backend by filename.
     if (trimmed.includes("r2.dev")) {
-      const filename = trimmed.split("/").pop();
-      if (filename) {
-        return `${base}/static/uploads/${filename}`;
-      }
+      const fileName = trimmed.split("/").pop() || "";
+      return `${base}/media/${fileName}`;
+    }
+    // A backend media/upload URL saved with a now-stale host -- keep the path.
+    if (trimmed.includes("/media/") || trimmed.includes("/uploads/")) {
+      const marker = trimmed.includes("/media/") ? "/media/" : "/uploads/";
+      return `${base}${trimmed.substring(trimmed.indexOf(marker))}`;
     }
     return trimmed;
   }
-  const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-  return `${base}${path}`;
+
+  // Relative path fallback
+  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return `${base}${cleanPath}`;
 }
 
-export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: AvatarProps) {
+export const Avatar = memo(function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: AvatarProps) {
   const [imageError, setImageError] = useState(false);
   const resolvedUrl = resolvePhotoUrl(photoUrl);
 
   useEffect(() => {
     setImageError(false);
-  }, [photoUrl]);
+  }, [resolvedUrl]);
 
   const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
   const badgeSize = Math.max(14, Math.round(size * 0.32));
@@ -71,11 +94,12 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
       {resolvedUrl && !imageError ? (
         <>
           <Image
-            key={resolvedUrl}
             source={{ uri: resolvedUrl }}
             style={dimensionStyle}
             contentFit="cover"
+            cachePolicy="memory-disk"
             onError={() => setImageError(true)}
+            pointerEvents="none"
           />
           {blurRadius && blurRadius > 0 ? (
             // expo-image's own blurRadius prop is unreliable across
@@ -119,7 +143,7 @@ export function Avatar({ name, photoUrl, size = 48, blurRadius, isVerified }: Av
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   fallback: {

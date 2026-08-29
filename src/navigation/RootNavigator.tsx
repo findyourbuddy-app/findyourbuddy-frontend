@@ -5,9 +5,11 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
 import { AlertHost } from "../components/ui/AlertHost";
+import { AppSplashScreen } from "../components/ui/AppSplashScreen";
 import { FloatingTabBar } from "../components/navigation/FloatingTabBar";
-import { colors, spacing } from "../theme";
+import { colors, fontFamily, spacing } from "../theme";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
@@ -32,9 +34,10 @@ import { ViewProfileScreen } from "../screens/ViewProfileScreen";
 import { CommunityGuidelinesScreen } from "../screens/CommunityGuidelinesScreen";
 import { CallScreen } from "../screens/CallScreen";
 import { AIRecommendationsScreen } from "../screens/AIRecommendationsScreen";
+import { MyPhotosScreen } from "../screens/MyPhotosScreen";
 import { OnboardingScreen } from "../screens/OnboardingScreen";
 import { PhoneVerificationScreen } from "../screens/PhoneVerificationScreen";
-import type { User } from "../types";
+import type { User, Event as AppEvent } from "../types";
 
 export type AuthStackParamList = {
   Welcome: undefined;
@@ -45,15 +48,16 @@ export type AuthStackParamList = {
   PhoneVerification: { fromSocialSignIn: boolean };
 };
 
-export type SwipeParams = { eventId: number; eventTitle: string } | undefined;
+export type SwipeParams =
+  | { eventId: number; eventTitle: string; isGroup?: boolean }
+  | { openStore: true }
+  | undefined;
 
 export type MainTabParamList = {
   Discover: undefined;
   Swipe: SwipeParams;
   Messages: undefined;
 };
-
-import { MyPhotosScreen } from "../screens/MyPhotosScreen";
 
 export type MainStackParamList = {
   Onboarding: undefined;
@@ -66,6 +70,8 @@ export type MainStackParamList = {
     needsFeedback?: boolean;
     eventTitle?: string;
     isGroupEvent?: boolean;
+    eventCreatorId?: number;
+    eventId?: number;
   };
   Call: {
     matchId: number;
@@ -85,14 +91,12 @@ export type MainStackParamList = {
   SavedEvents: undefined;
   BlockedUsers: undefined;
   CreateEvent: undefined;
-  EventDetail: { eventId: number };
+  EventDetail: { eventId: number; initialEvent?: AppEvent; autoOpenRating?: boolean; autoOpenRequests?: boolean };
   Notifications: undefined;
   LikesReceived: undefined;
   CandidateProfile: {
     candidate: User;
-    onSwipeLeft: () => void;
-    onSwipeRight: () => void;
-    onSwipeUp: () => void;
+    eventTitle?: string;
   };
 };
 
@@ -142,11 +146,9 @@ function MainTabNavigator() {
   );
 }
 
-import { useAppTheme } from "../context/ThemeContext";
-
 function MainNavigator() {
   const { user, justRegistered } = useAuth();
-  const { t, bgGradient } = useAppTheme();
+  const { t, language, bgGradient } = useAppTheme();
   const isNewOrIncomplete =
     justRegistered ||
     !user?.photo_url ||
@@ -156,12 +158,53 @@ function MainNavigator() {
   return (
     <MainStack.Navigator
       initialRouteName={isNewOrIncomplete ? "Onboarding" : "Tabs"}
-      screenOptions={{
-        contentStyle: { backgroundColor: bgGradient[0] },
+      screenOptions={({ route, navigation }) => {
+        const state = navigation.getState();
+        const routes = state?.routes || [];
+        const currentIndex = routes.findIndex((r) => r.key === route.key);
+        const prevRoute = currentIndex > 0 ? routes[currentIndex - 1] : null;
+
+        let dynamicBackTitle = language === "en" ? "Back" : "Geri";
+        if (prevRoute) {
+          if (prevRoute.name === "Tabs") {
+            const tabState = prevRoute.state;
+            const activeTabName = tabState?.routes?.[tabState.index || 0]?.name;
+            if (activeTabName === "Swipe") {
+              dynamicBackTitle = language === "en" ? "Match" : "Eşleş";
+            } else if (activeTabName === "Messages") {
+              dynamicBackTitle = language === "en" ? "Messages" : "Mesajlar";
+            } else {
+              dynamicBackTitle = language === "en" ? "Discover" : "Keşfet";
+            }
+          } else if (prevRoute.name === "Profile") {
+            dynamicBackTitle = language === "en" ? "Profile" : "Profil";
+          } else if (prevRoute.name === "EventDetail") {
+            dynamicBackTitle = language === "en" ? "Event" : "Etkinlik";
+          } else if (prevRoute.name === "Settings") {
+            dynamicBackTitle = language === "en" ? "Settings" : "Ayarlar";
+          } else if (prevRoute.name === "Chat") {
+            dynamicBackTitle = language === "en" ? "Chat" : "Sohbet";
+          } else if (prevRoute.name === "CandidateProfile") {
+            dynamicBackTitle = language === "en" ? "Profile" : "Profil";
+          }
+        }
+
+        return {
+          contentStyle: { backgroundColor: bgGradient[0] },
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.textPrimary,
+          headerTitleStyle: {
+            fontFamily: fontFamily.bodySemiBold,
+            color: colors.textPrimary,
+            fontSize: 17,
+          },
+          headerBackTitle: dynamicBackTitle,
+          headerShadowVisible: false,
+        };
       }}
     >
       <MainStack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
-      <MainStack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false }} />
+      <MainStack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false, title: language === "en" ? "Home" : "Anasayfa" }} />
       <MainStack.Screen
         name="Chat"
         component={ChatScreen}
@@ -261,8 +304,6 @@ function MainNavigator() {
     </MainStack.Navigator>
   );
 }
-
-import { AppSplashScreen } from "../components/ui/AppSplashScreen";
 
 export function RootNavigator() {
   const { user, isLoading } = useAuth();

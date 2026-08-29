@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { openAddToCalendar } from "../utils/calendar";
 import { Alert } from "../utils/alert";
@@ -22,37 +22,51 @@ import {
 } from "../api/events";
 import { Avatar } from "../components/ui/Avatar";
 import { DoubleBuddyModal } from "../components/overlays/DoubleBuddyModal";
+import { EventRatingModal } from "../components/overlays/EventRatingModal";
+import { EventOrganizerApprovalModal } from "../components/overlays/EventOrganizerApprovalModal";
 import { FormattedHtmlText } from "../components/ui/FormattedHtmlText";
 import { getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import { cleanHtmlText } from "../utils/text";
 import { formatEventDate } from "../utils/date";
-import { hasValidCoordinates } from "../utils/location";
+import { getFastCurrentLocation, hasValidCoordinates } from "../utils/location";
 import { useAuth } from "../context/AuthContext";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event, User } from "../types";
+import { resolvePhotoUrl } from "../components/ui/Avatar";
 
 import { useAppTheme } from "../context/ThemeContext";
 
 type Props = NativeStackScreenProps<MainStackParamList, "EventDetail">;
 
 export function EventDetailScreen({ route }: Props) {
-  const { eventId } = route.params;
+  const { eventId, initialEvent } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user, isPremium } = useAuth();
   const { t, accentColor, bgGradient, language } = useAppTheme();
-  const [event, setEvent] = useState<Event | null>(null);
+  const [event, setEvent] = useState<Event | null>(initialEvent ? (initialEvent as Event) : null);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialEvent);
   const [isJoining, setIsJoining] = useState(false);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [joinRequests, setJoinRequests] = useState<User[]>([]);
   const [respondingUserId, setRespondingUserId] = useState<number | null>(null);
   const [doubleBuddyVisible, setDoubleBuddyVisible] = useState(false);
+  const [isApprovalModalVisible, setIsApprovalModalVisible] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
 
   const isOwnerOfGroupEvent = Boolean(
-    event && event.is_group_event && user && event.creator_id === user.id
+    event && user && event.creator_id === user.id
   );
+
+  useEffect(() => {
+    if (route.params?.autoOpenRating && event && !event.has_rated && !isOwnerOfGroupEvent) {
+      setShowRatingModal(true);
+    }
+    if (route.params?.autoOpenRequests) {
+      setIsApprovalModalVisible(true);
+    }
+  }, [route.params?.autoOpenRating, route.params?.autoOpenRequests, event, isOwnerOfGroupEvent]);
 
   const refreshJoinRequests = useCallback(async (eventIdToLoad: number) => {
     try {
@@ -83,18 +97,20 @@ export function EventDetailScreen({ route }: Props) {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      setIsLoading(true);
+      if (!event || event.id !== eventId) {
+        setIsLoading(true);
+      }
       Promise.all([getEvent(eventId), listMyBookmarks()])
         .then(([loadedEvent, bookmarks]) => {
           if (cancelled) return;
           setEvent(loadedEvent);
           setIsBookmarked(bookmarks.some((b) => b.event.id === eventId));
-          if (loadedEvent.is_group_event && user && loadedEvent.creator_id === user.id) {
+          if (user && loadedEvent.creator_id === user.id) {
             refreshJoinRequests(eventId);
           }
         })
         .catch(() => {
-          if (!cancelled) {
+          if (!cancelled && (!event || event.id !== eventId)) {
             Alert.alert(
               language === "en" ? "Error" : "Bir sorun oluştu",
               language === "en" ? "Event could not be loaded. Please try again." : "Etkinlik yüklenemedi. Lütfen tekrar dene."
@@ -107,8 +123,14 @@ export function EventDetailScreen({ route }: Props) {
       return () => {
         cancelled = true;
       };
-    }, [eventId, user, refreshJoinRequests])
+    }, [eventId, user, refreshJoinRequests, event])
   );
+
+  useEffect(() => {
+    if (user && event && event.creator_id === user.id) {
+      refreshJoinRequests(event.id);
+    }
+  }, [user, event?.id, event?.creator_id, refreshJoinRequests]);
 
   const bookmarkScale = useRef(new Animated.Value(1)).current;
 
@@ -145,39 +167,39 @@ export function EventDetailScreen({ route }: Props) {
     Linking.openURL(url);
   };
 
-  async function goToSwipe(): Promise<void> {
+  function goToSwipe(): void {
     if (!event) return;
-    if (!event.is_group_event) {
-      try {
-        const { getSwipeCandidates } = require("../api/swipes");
-        const candidates = await getSwipeCandidates(event.id);
-        if (candidates && candidates.length > 0) {
-          navigation.navigate("CandidateProfile", {
-            candidate: candidates[0],
-            onSwipeLeft: () => {},
-            onSwipeRight: () => {},
-            onSwipeUp: () => {},
-          });
-          return;
-        }
-      } catch {}
-    }
+    // The Swipe screen owns the candidate deck for both 1-on-1 and group
+    // events; for a group event it shows the deck with an "exit" bar.
     navigation.navigate("Tabs", {
       screen: "Swipe",
-      params: { eventId: event.id, eventTitle: event.title },
+      params: {
+        eventId: event.id,
+        eventTitle: event.title,
+        isGroup: Boolean(event.is_group_event),
+      },
     });
   }
 
   async function handleAttendAndSwipe(): Promise<void> {
     if (!event) return;
     if (event.is_attending) {
-      await goToSwipe();
+      await handleStartGroupChat();
       return;
     }
+    if (event.is_pending) return;
     setIsJoining(true);
     try {
       const updated = await attendEvent(event.id);
       setEvent(updated);
+      if (updated.is_pending) {
+        Alert.alert(
+          language === "en" ? "Request Sent" : "İstek Gönderildi",
+          language === "en"
+            ? "Your request was sent to the organizer. You'll be notified once it's approved."
+            : "İsteğin organizatöre gönderildi. Onaylanınca bilgilendirileceksin."
+        );
+      }
     } catch {
       Alert.alert(
         language === "en" ? "Error" : "Bir sorun oluştu",
@@ -192,31 +214,163 @@ export function EventDetailScreen({ route }: Props) {
     if (!event) return;
     setIsCheckingIn(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Konum izni gerekli", "Etkinlikte olduğunu doğrulamak için konum iznine ihtiyacımız var.");
+      // 1. STRICT TIME WINDOW CHECK (1 hour before start time up to 3 hours after start time)
+      const nowMs = Date.now();
+      const eventStartMs = new Date(event.starts_at).getTime();
+      const oneHourBeforeMs = eventStartMs - 60 * 60 * 1000;
+      const threeHoursAfterMs = eventStartMs + 3 * 60 * 60 * 1000;
+
+      if (nowMs < oneHourBeforeMs) {
+        Alert.alert(
+          language === "en" ? "Not Check-in Time Yet" : "Henüz Etkinlik Saati Gelmedi",
+          language === "en"
+            ? `Check-in opens 1 hour before the event start time.\n\n📅 Event Time: ${formatEventDate(event.starts_at, language)}\n⏰ Check-in Window: Opens 1 hour before event.`
+            : `Katılımını onaylayabilmek için etkinlik saatine en az 1 saat kalmış olmalı.\n\n📅 Etkinlik Saati: ${formatEventDate(event.starts_at, language)}\n⏰ Katılım Onay Penceresi: Etkinlikten 1 saat önce başlar.`
+        );
+        setIsCheckingIn(false);
         return;
       }
-      const position = await Location.getCurrentPositionAsync({});
+
+      if (nowMs > threeHoursAfterMs) {
+        Alert.alert(
+          language === "en" ? "Check-in Window Closed" : "Check-in Süresi Doldu",
+          language === "en"
+            ? "The check-in window for this event has expired."
+            : "Bu etkinliğin katılım onaylama süresi tamamlanmıştır."
+        );
+        setIsCheckingIn(false);
+        return;
+      }
+
+      // 2. STRICT GPS PROXIMITY LOCATION CHECK (< 500m)
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          language === "en" ? "Location Permission Required" : "Konum İzni Gerekli",
+          language === "en"
+            ? "We need your location permission to verify that you are at the event location."
+            : "Etkinlik alanında olduğunu doğrulamak için konum iznine ihtiyacımız var."
+        );
+        setIsCheckingIn(false);
+        return;
+      }
+      const position = await getFastCurrentLocation();
+      if (!position) {
+        setIsCheckingIn(false);
+        Alert.alert("Konum Alınamadı", "Konumunuz tespit edilemedi.");
+        return;
+      }
+
+      if (hasValidCoordinates(event.latitude, event.longitude)) {
+        const R = 6371;
+        const dLat = (event.latitude - position.coords.latitude) * (Math.PI / 180);
+        const dLon = (event.longitude - position.coords.longitude) * (Math.PI / 180);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(position.coords.latitude * (Math.PI / 180)) *
+            Math.cos(event.latitude * (Math.PI / 180)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distKm = R * c;
+
+        if (distKm > 0.5) {
+          const distMeters = Math.round(distKm * 1000);
+          const distanceFormatted = distKm >= 1 ? `${distKm.toFixed(1)} km` : `${distMeters} metre`;
+          Alert.alert(
+            language === "en" ? "Too Far From Event Location" : "Etkinlik Konumuna Uzaktasın 📍",
+            language === "en"
+              ? `You must be within 500 meters of the event area to check in.\n\n📍 Location: ${event.location_name}\n📏 Your Distance: ${distanceFormatted}`
+              : `Katılımını onaylayabilmek için etkinlik alanına (en fazla 500m) yakın olmalısın.\n\n📍 Etkinlik Adresi: ${event.location_name}\n📏 Şu Anki Mesafen: ${distanceFormatted}`
+          );
+          setIsCheckingIn(false);
+          return;
+        }
+      }
+
       const updated = await checkInToEvent(event.id, {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       });
       setEvent(updated);
-      Alert.alert("Katılımın Onaylandı! ✓", "Bu etkinlikte olduğun doğrulandı.");
+      Alert.alert(
+        language === "en" ? "🎉 Attendance Confirmed!" : "🎉 Katılımın Onaylandı!",
+        language === "en"
+          ? "Your location and event time have been verified (+5 Trust Score!)."
+          : "Hem konumun hem de etkinlik saatin doğrulandı! Katılımın başarıyla onaylandı (+5 Güven Puanı!)."
+      );
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
-        const detail = err.response.data?.detail as string | undefined;
-        if (detail?.toLowerCase().includes("far")) {
-          Alert.alert("Çok Uzaktasın", "Katılımını onaylamak için etkinlik konumuna yakın olman gerekiyor.");
+        const detail = String(err.response.data?.detail || "").toLowerCase();
+        if (detail.includes("far")) {
+          Alert.alert(
+            language === "en" ? "Too Far Away" : "Çok Uzaktasın",
+            language === "en"
+              ? "You must be at the event location (max 500m) to confirm attendance."
+              : "Katılımını onaylamak için etkinlik alanında (en fazla 500m) olmalısın."
+          );
         } else {
-          Alert.alert("Check-in Zamanı Değil", "Check-in sadece etkinlik saatine yakın zamanlarda yapılabilir.");
+          Alert.alert(
+            language === "en" ? "Not Check-in Time" : "Check-in Zamanı Değil",
+            language === "en"
+              ? "Check-in is only available around the event's start time."
+              : "Check-in sadece etkinlik saatine yakın zamanlarda yapılabilir."
+          );
         }
       } else {
-        Alert.alert("Bir sorun oluştu", "Konum alınamadı, tekrar dener misin?");
+        Alert.alert(
+          language === "en" ? "Error" : "Bir sorun oluştu",
+          language === "en" ? "Location could not be verified. Please try again." : "Konum doğrulanamadı. Lütfen tekrar dene."
+        );
       }
     } finally {
       setIsCheckingIn(false);
+    }
+  }
+
+  async function handleStartGroupChat(): Promise<void> {
+    if (!event) return;
+    try {
+      const { listMyMatches } = require("../api/matches");
+      const matches = await listMyMatches().catch(() => []);
+      let targetMatch = matches.find((m: any) => m.event_id === event.id);
+
+      if (!targetMatch) {
+        if (user && event.creator_id === user.id) {
+          try {
+            const { approveAllEventJoinRequests } = require("../api/events");
+            await approveAllEventJoinRequests(event.id);
+            const freshMatches = await listMyMatches().catch(() => []);
+            targetMatch = freshMatches.find((m: any) => m.event_id === event.id);
+          } catch {}
+        }
+      }
+
+      if (targetMatch) {
+        navigation.navigate("Chat", {
+          matchId: targetMatch.id,
+          otherUserId: targetMatch.other_user.id,
+          otherUserName: targetMatch.other_user.display_name,
+          otherUserPhoto: targetMatch.other_user.photo_url,
+          eventTitle: event.title,
+          isGroupEvent: true,
+          eventCreatorId: event.creator_id || undefined,
+        });
+      } else {
+        Alert.alert(
+          language === "en" ? "No Attendees Yet" : "Henüz Katılımcı Yok",
+          language === "en"
+            ? "Group chat will be available once at least one attendee is approved."
+            : "Grup sohbetinin açılması için en az 1 katılımcı isteğinin onaylanması gerekmektedir."
+        );
+      }
+    } catch {
+      Alert.alert(
+        language === "en" ? "Info" : "Bilgi",
+        language === "en"
+          ? "Group chat will be available once at least one attendee is approved."
+          : "Grup sohbetinin açılması için en az 1 katılımcı isteğinin onaylanması gerekmektedir."
+      );
     }
   }
 
@@ -234,8 +388,10 @@ export function EventDetailScreen({ route }: Props) {
     <>
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
       <View style={styles.banner}>
-        {event.image_url ? (
-          <Image source={{ uri: event.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        {event.creator_id && event.creator?.photo_url ? (
+          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : event.image_url ? (
+          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
           <LinearGradient colors={category.gradient} style={StyleSheet.absoluteFill}>
             <View style={styles.bannerIcon}>
@@ -347,12 +503,7 @@ export function EventDetailScreen({ route }: Props) {
               <Pressable
                 style={styles.creatorRow}
                 onPress={() => {
-                  navigation.navigate("CandidateProfile", {
-                    candidate: event.creator,
-                    onSwipeLeft: () => {},
-                    onSwipeRight: () => {},
-                    onSwipeUp: () => {},
-                  } as any);
+                  navigation.navigate("CandidateProfile", { candidate: event.creator } as any);
                 }}
               >
                 <Image source={{ uri: event.creator.photo_url || "https://placehold.co/100" }} style={styles.creatorAvatar} />
@@ -376,7 +527,7 @@ export function EventDetailScreen({ route }: Props) {
                   onPress={() => navigation.navigate("AIRecommendations")}
                 >
                   <Feather name="award" size={12} color={colors.surface} style={{ marginRight: 2 }} />
-                  <Text style={styles.lockedBadgeText}>Premium ile Gör 🔓</Text>
+                  <Text style={styles.lockedBadgeText}>Premium ile Gör</Text>
                 </Pressable>
               </View>
             )}
@@ -384,60 +535,82 @@ export function EventDetailScreen({ route }: Props) {
         )}
 
         {isOwnerOfGroupEvent ? (
-          <View style={styles.joinRequestsSection}>
-            <Text style={typeScale.eyebrow}>
-              Katılım İstekleri{joinRequests.length > 0 ? ` (${joinRequests.length})` : ""}
-            </Text>
-            {joinRequests.length === 0 ? (
-              <Text style={styles.helperText}>Şu an bekleyen istek yok.</Text>
-            ) : (
-              joinRequests.map((requester) => (
-                <View key={requester.id} style={styles.joinRequestRow}>
-                  <Avatar name={requester.display_name} photoUrl={requester.photo_url} size={40} />
-                  <Text style={styles.joinRequestName} numberOfLines={1}>
-                    {requester.display_name}
-                  </Text>
-                  <Pressable
-                    style={styles.joinRequestApprove}
-                    onPress={() => handleJoinRequestResponse(requester.id, true)}
-                    disabled={respondingUserId === requester.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${requester.display_name} isteğini onayla`}
-                  >
-                    <Feather name="check" size={16} color={colors.surface} />
-                  </Pressable>
-                  <Pressable
-                    style={styles.joinRequestReject}
-                    onPress={() => handleJoinRequestResponse(requester.id, false)}
-                    disabled={respondingUserId === requester.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${requester.display_name} isteğini reddet`}
-                  >
-                    <Feather name="x" size={16} color={colors.textSecondary} />
-                  </Pressable>
-                </View>
-              ))
-            )}
+          <View style={{ gap: spacing.md }}>
+            <PrimaryButton
+              label={language === "en" ? "Chat" : "Sohbet"}
+              onPress={handleStartGroupChat}
+            />
+            <View style={styles.joinRequestsSection}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
+                <Text style={typeScale.eyebrow}>
+                  Katılım İstekleri{joinRequests.length > 0 ? ` (${joinRequests.length})` : ""}
+                </Text>
+                <Pressable
+                  style={styles.manageRequestsBtn}
+                  onPress={() => setIsApprovalModalVisible(true)}
+                >
+                  <Feather name="check-square" size={14} color="#FFFFFF" />
+                  <Text style={styles.manageRequestsBtnText}>Yönet & Toplu Onayla</Text>
+                </Pressable>
+              </View>
+
+              {joinRequests.length === 0 ? (
+                <Text style={styles.helperText}>Şu an bekleyen istek yok.</Text>
+              ) : (
+                joinRequests.map((requester) => (
+                  <View key={requester.id} style={styles.joinRequestRow}>
+                    <Pressable
+                      style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: spacing.sm }}
+                      onPress={() => navigation.navigate("CandidateProfile", { candidate: requester, eventTitle: event.title })}
+                    >
+                      <Avatar name={requester.display_name} photoUrl={requester.photo_url} size={40} />
+                      <Text style={styles.joinRequestName} numberOfLines={1}>
+                        {requester.display_name}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.joinRequestApprove}
+                      onPress={() => handleJoinRequestResponse(requester.id, true)}
+                      disabled={respondingUserId === requester.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${requester.display_name} isteğini onayla`}
+                    >
+                      <Feather name="check" size={16} color={colors.surface} />
+                    </Pressable>
+                    <Pressable
+                      style={styles.joinRequestReject}
+                      onPress={() => handleJoinRequestResponse(requester.id, false)}
+                      disabled={respondingUserId === requester.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${requester.display_name} isteğini reddet`}
+                    >
+                      <Feather name="x" size={16} color={colors.textSecondary} />
+                    </Pressable>
+                  </View>
+                ))
+              )}
+            </View>
           </View>
         ) : (
           <View style={{ gap: spacing.xs }}>
             <PrimaryButton
               label={
                 event.is_attending
-                  ? (!event.is_group_event
-                      ? (language === "en" ? "👤 View Buddy & Connect" : "👤 Kankayı Gör & İletişime Geç")
-                      : (language === "en" ? "See Buddies" : "Kankaları Gör"))
-                  : (language === "en" ? "I'm Going to This Event" : "Bu Etkinliğe Gidiyorum")
+                  ? (language === "en" ? "Chat" : "Sohbet")
+                  : event.is_pending
+                  ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
+                  : (language === "en" ? "Join" : "Katıl")
               }
               onPress={handleAttendAndSwipe}
               loading={isJoining}
+              disabled={event.is_pending}
             />
             {!event.is_attending ? (
               <Pressable
                 style={styles.trustInfoRow}
                 onPress={() =>
                   Alert.alert(
-                    language === "en" ? "How does the trust score work? 🛡️" : "Güven skoru nasıl işliyor? 🛡️",
+                    language === "en" ? "How does the trust score work?" : "Güven skoru nasıl işliyor?",
                     language === "en"
                       ? "When you say you're going, we check your location at the event. Show up and check in: your trust score goes up. Don't show up: it goes down. If your score stays too low for a while, your account gets flagged as a troll account and may be restricted."
                       : "Katılıyorum dediğinde etkinlikte GPS ile konumunu kontrol ediyoruz. Gidip check-in yaparsan güven skorun artar; gitmezsen düşer. Skorun bir süre çok düşük kalırsa hesabın troll hesap olarak değerlendirilip kısıtlanabilir."
@@ -471,19 +644,39 @@ export function EventDetailScreen({ route }: Props) {
         )}
 
         {!isOwnerOfGroupEvent && event.is_attending ? (
-          event.is_checked_in ? (
-            <View style={styles.checkedInBadge}>
-              <Feather name="check-circle" size={16} color="#2ECC71" />
-              <Text style={styles.checkedInText}>Etkinlikte olduğun doğrulandı ✓</Text>
-            </View>
-          ) : (
-            <PrimaryButton
-              label="Etkinlikteyim, Katılımımı Onayla"
-              onPress={handleCheckIn}
-              loading={isCheckingIn}
-              variant="outline"
-            />
-          )
+          <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
+            {event.is_checked_in ? (
+              <View style={styles.checkedInBadge}>
+                <Feather name="check-circle" size={16} color="#2ECC71" />
+                <Text style={styles.checkedInText}>Etkinlikte olduğun doğrulandı</Text>
+              </View>
+            ) : (
+              <PrimaryButton
+                label="Etkinlikteyim, Katılımımı Onayla"
+                onPress={handleCheckIn}
+                loading={isCheckingIn}
+                variant="outline"
+              />
+            )}
+
+            {/* Rating button ONLY appears after check-in OR after event starts, and can only be used 1 time */}
+            {event.is_checked_in || new Date(event.starts_at) <= new Date() ? (
+              event.has_rated ? (
+                <View style={styles.alreadyRatedBadge}>
+                  <Feather name="check-circle" size={16} color={colors.primary} />
+                  <Text style={styles.alreadyRatedText}>
+                    {language === "en" ? "Event & Host Rated ⭐" : "Değerlendirildi ⭐"}
+                  </Text>
+                </View>
+              ) : (
+                <PrimaryButton
+                  label={language === "en" ? "Rate Host & Event" : "Organizatörü & Etkinliği Değerlendir"}
+                  onPress={() => setShowRatingModal(true)}
+                  variant="outline"
+                />
+              )
+            ) : null}
+          </View>
         ) : null}
       </View>
     </ScrollView>
@@ -493,6 +686,30 @@ export function EventDetailScreen({ route }: Props) {
       onClose={() => setDoubleBuddyVisible(false)}
       language={language}
     />
+
+    <EventOrganizerApprovalModal
+      visible={isApprovalModalVisible}
+      eventId={eventId}
+      eventTitle={event?.title || ""}
+      onDismiss={() => setIsApprovalModalVisible(false)}
+      onUpdated={() => {
+        if (eventId) {
+          getEvent(eventId).then(setEvent);
+          refreshJoinRequests(eventId);
+        }
+      }}
+    />
+
+    {event && (
+      <EventRatingModal
+        visible={showRatingModal}
+        eventId={event.id}
+        eventTitle={event.title}
+        creatorName={event.creator?.display_name}
+        onClose={() => setShowRatingModal(false)}
+        onSuccess={() => setEvent((prev) => (prev ? { ...prev, has_rated: true } : prev))}
+      />
+    )}
     </>
   );
 }
@@ -658,6 +875,20 @@ const styles = StyleSheet.create({
   joinRequestsSection: {
     gap: spacing.sm,
   },
+  manageRequestsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#2ECC71",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.sm,
+    gap: 4,
+  },
+  manageRequestsBtnText: {
+    ...typeScale.caption,
+    fontFamily: fontFamily.displayBold,
+    color: "#FFFFFF",
+  },
   joinRequestRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -686,5 +917,22 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
+  },
+  alreadyRatedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    backgroundColor: `${colors.primary}15`,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+  },
+  alreadyRatedText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 14,
+    color: colors.primary,
   },
 });

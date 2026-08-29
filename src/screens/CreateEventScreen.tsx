@@ -1,15 +1,21 @@
-import { useEffect, useState, useMemo } from "react";
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { Animated, ActivityIndicator, KeyboardAvoidingView, Linking, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Alert } from "../utils/alert";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { resolvePhotoUrl } from "../components/ui/Avatar";
 import { Chip } from "../components/ui/Chip";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
 import type { GeocodingResult } from "../api/geocoding";
 import { createEvent, createEventCreditsCheckoutSession, getEventCreationQuota } from "../api/events";
+import { getCurrentUser } from "../api/users";
+import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
 import type { EventCreationQuota } from "../types";
 import { CATEGORIES } from "../constants/categories";
 import * as Location from "expo-location";
@@ -47,13 +53,83 @@ function parseLocalDateTime(dateText: string, timeText: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-import { getCurrentUser } from "../api/users";
-import { useAuth } from "../context/AuthContext";
-import { useAppTheme } from "../context/ThemeContext";
+function RectangleCropModal({
+  visible,
+  uri,
+  onClose,
+}: {
+  visible: boolean;
+  uri: string;
+  onClose: () => void;
+}) {
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        pan.setOffset({
+          x: (pan.x as any)._value || 0,
+          y: (pan.y as any)._value || 0,
+        });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
+        useNativeDriver: false,
+      }),
+      onPanResponderRelease: () => {
+        pan.flattenOffset();
+      },
+    })
+  ).current;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalCropBackdrop}>
+        <View style={styles.modalCropHeader}>
+          <Text style={styles.modalCropTitle}>Dikdörtgen Çerçeve Hizalama</Text>
+          <Pressable style={styles.modalCropDoneBtn} onPress={onClose}>
+            <Text style={styles.modalCropDoneBtnText}>Tamam</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.modalCropViewport}>
+          <Animated.View
+            style={[
+              styles.modalCropImageWrapper,
+              {
+                transform: [{ translateX: pan.x }, { translateY: pan.y }],
+              },
+            ]}
+            {...panResponder.panHandlers}
+          >
+            <Image source={{ uri }} style={styles.modalCropImage} contentFit="contain" />
+          </Animated.View>
+
+          {/* Bounding Rectangle Overlay */}
+          <View style={styles.modalCropFrameOverlay} pointerEvents="none">
+            <View style={[styles.cornerHandle, styles.topLeft]} />
+            <View style={[styles.cornerHandle, styles.topRight]} />
+            <View style={[styles.cornerHandle, styles.bottomLeft]} />
+            <View style={[styles.cornerHandle, styles.bottomRight]} />
+          </View>
+        </View>
+
+        <View style={styles.modalCropHintBar}>
+          <Feather name="move" size={14} color="#FFFFFF" />
+          <Text style={styles.modalCropHintText}>
+            Parmağınla sürükleyerek dikdörtgen alana yerleştir 🖐️
+          </Text>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 export function CreateEventScreen() {
   const navigation = useNavigation<CreateEventNavigationProp>();
-  const { updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -71,6 +147,22 @@ export function CreateEventScreen() {
   const [maxAttendees, setMaxAttendees] = useState("10");
   const [isPaid, setIsPaid] = useState(false);
   const [ticketPrice, setTicketPrice] = useState("");
+  const [selectedStockUrl, setSelectedStockUrl] = useState<string | null>(null);
+
+  const currentCategoryMeta = useMemo(() => {
+    return CATEGORIES.find((c) => c.slug === category);
+  }, [category]);
+
+  const currentStockImages = useMemo(() => {
+    return currentCategoryMeta?.stockImages || [];
+  }, [currentCategoryMeta]);
+
+  const activeStockUrl = useMemo(() => {
+    if (selectedStockUrl && currentStockImages.includes(selectedStockUrl)) {
+      return selectedStockUrl;
+    }
+    return currentStockImages[0] || currentCategoryMeta?.defaultImage || "";
+  }, [selectedStockUrl, currentStockImages, currentCategoryMeta]);
   const [quota, setQuota] = useState<EventCreationQuota | null>(null);
   const [isQuotaLoading, setIsQuotaLoading] = useState(true);
   const [isBuyingCredits, setIsBuyingCredits] = useState(false);
@@ -179,6 +271,7 @@ export function CreateEventScreen() {
   }
 
   async function handleSave(): Promise<void> {
+    if (isSaving) return;
     setError(null);
 
     if (!title.trim()) {
@@ -210,14 +303,17 @@ export function CreateEventScreen() {
 
     setIsSaving(true);
     try {
+      const imageUrlToSave = activeStockUrl;
+
       await createEvent({
         title: title.trim(),
         description: description.trim() ? description.trim() : undefined,
         category,
+        image_url: imageUrlToSave,
         location_name: locationName.trim(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
-        starts_at: startsAt.toISOString().replace("Z", ""),
+        starts_at: `${startsAt.getFullYear()}-${String(startsAt.getMonth() + 1).padStart(2, "0")}-${String(startsAt.getDate()).padStart(2, "0")}T${String(startsAt.getHours()).padStart(2, "0")}:${String(startsAt.getMinutes()).padStart(2, "0")}:00`,
         is_group_event: isGroupEvent,
         max_attendees: isGroupEvent && maxAttendees.trim() ? parseInt(maxAttendees, 10) : null,
         is_paid: isPaid,
@@ -257,7 +353,13 @@ export function CreateEventScreen() {
   }
 
   return (
-    <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+      <ScrollView
+        style={[styles.background, { backgroundColor: bgGradient[0] }]}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
       {quota && !quota.is_premium && quota.weekly_limit !== null ? (
         <View style={styles.topQuotaRow}>
           <Pressable style={styles.topQuotaPill} onPress={() => setQuotaModalVisible(true)}>
@@ -269,15 +371,6 @@ export function CreateEventScreen() {
           </Pressable>
         </View>
       ) : null}
-
-      <View style={styles.photoTipCard}>
-        <Feather name="camera" size={16} color={accentColor} />
-        <Text style={styles.photoTipText}>
-          {language === "en"
-            ? "Your profile photo will be highlighted as the cover image of this event to boost visibility!"
-            : "Profil fotoğrafın bu etkinliğin kapak görseli olarak öne çıkarılır ve görünürlüğünü artırır! 📸"}
-        </Text>
-      </View>
 
       <View style={styles.field}>
         <Text style={typeScale.eyebrow}>{t("eventTitleLabel")}</Text>
@@ -313,6 +406,38 @@ export function CreateEventScreen() {
               onPress={() => setCategory(item.slug)}
             />
           ))}
+        </View>
+      </View>
+
+      <View style={styles.field}>
+        <View style={styles.coverPreviewCard}>
+          <Image
+            source={{ uri: activeStockUrl }}
+            style={styles.coverPreviewImage}
+            contentFit="cover"
+          />
+          <Text style={styles.stockGalleryTitle}>
+            {language === "en" ? "Select Cover Photo:" : "Görsel Seçenekleri (Seçmek için dokun):"}
+          </Text>
+          <View style={styles.stockGalleryGrid}>
+            {currentStockImages.map((imgUrl) => {
+              const isSelected = imgUrl === activeStockUrl;
+              return (
+                <Pressable
+                  key={imgUrl}
+                  style={[styles.stockThumbWrapper, isSelected && styles.stockThumbSelected]}
+                  onPress={() => setSelectedStockUrl(imgUrl)}
+                >
+                  <Image source={{ uri: imgUrl }} style={styles.stockThumbImage} contentFit="cover" />
+                  {isSelected ? (
+                    <View style={styles.stockThumbBadge}>
+                      <Feather name="check" size={12} color="#FFF" />
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
       </View>
 
@@ -394,7 +519,7 @@ export function CreateEventScreen() {
       <View style={styles.field}>
         <Text style={typeScale.eyebrow}>{t("mapLocationHeader")}</Text>
         <PrimaryButton
-          label={coordinates ? (language === "en" ? "Location Selected ✓" : "Konum Seçildi ✓") : t("selectLocationMap")}
+          label={coordinates ? (language === "en" ? "Location Selected" : "Konum Seçildi") : t("selectLocationMap")}
           onPress={() => setIsLocationPickerVisible(true)}
           variant="outline"
         />
@@ -580,7 +705,7 @@ export function CreateEventScreen() {
           <Pressable style={styles.quotaModalCard} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <Text style={styles.quotaModalTitle}>
-                {language === "en" ? "Weekly Event Creation Quota ⚡" : "Haftalık Etkinlik Limitiniz ⚡"}
+                {language === "en" ? "Weekly Event Creation Quota" : "Haftalık Etkinlik Limitiniz"}
               </Text>
               <Pressable onPress={() => setQuotaModalVisible(false)}>
                 <Feather name="x" size={20} color={colors.textSecondary} />
@@ -615,7 +740,7 @@ export function CreateEventScreen() {
                 loading={isBuyingCredits}
               />
               <PrimaryButton
-                label={language === "en" ? "⭐ Upgrade to Premium (Unlimited)" : "⭐ Premium'a Geç (Sınırsız Limit)"}
+                label={language === "en" ? "Upgrade to Premium (Unlimited)" : "Premium'a Geç (Sınırsız Limit)"}
                 onPress={async () => {
                   setQuotaModalVisible(false);
                   try {
@@ -633,6 +758,7 @@ export function CreateEventScreen() {
         </Pressable>
       </Modal>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -896,5 +1022,250 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 13,
     color: colors.textPrimary,
+  },
+  coverPreviewCard: {
+    marginTop: spacing.xs,
+    borderRadius: radius.card,
+    overflow: "hidden",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  coverPreviewImage: {
+    width: "100%",
+    height: 140,
+    backgroundColor: "#15102A",
+  },
+  fitPill: {
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  fitPillActive: {
+    backgroundColor: colors.primaryMuted,
+    borderColor: colors.primary,
+  },
+  fitPillText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  fitPillTextActive: {
+    fontFamily: fontFamily.bodySemiBold,
+    color: colors.primary,
+  },
+  customPhotoPlaceholder: {
+    height: 140,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background,
+    gap: spacing.xs,
+    padding: spacing.md,
+  },
+  customPhotoPlaceholderText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: "center",
+  },
+  coverPreviewCaption: {
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    color: colors.textSecondary,
+    padding: spacing.xs,
+    textAlign: "center",
+  },
+  stockGalleryTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+    marginHorizontal: spacing.sm,
+  },
+  stockGalleryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    padding: spacing.sm,
+  },
+  stockThumbWrapper: {
+    width: 76,
+    height: 54,
+    borderRadius: radius.sm,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "transparent",
+    position: "relative",
+  },
+  stockThumbSelected: {
+    borderColor: colors.primary,
+  },
+  stockThumbImage: {
+    width: "100%",
+    height: "100%",
+  },
+  stockThumbBadge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    width: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gradientFallbackIcon: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cropEditorCard: {
+    marginTop: spacing.xs,
+    borderRadius: radius.card,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+  },
+  cropEditorHeader: {
+    fontFamily: fontFamily.displayBold,
+    fontSize: 12,
+    color: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: 4,
+  },
+  cropFrameViewport: {
+    height: 180,
+    overflow: "hidden",
+    backgroundColor: "#110D23",
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cropImageWrapper: {
+    width: "100%",
+    height: "100%",
+  },
+  cropImage: {
+    width: "100%",
+    height: "100%",
+  },
+  tapToCropBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    paddingVertical: 6,
+    backgroundColor: colors.primary,
+  },
+  tapToCropText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: "#FFFFFF",
+  },
+  modalCropBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.md,
+  },
+  modalCropHeader: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+  },
+  modalCropTitle: {
+    fontFamily: fontFamily.displayBold,
+    fontSize: 16,
+    color: "#FFFFFF",
+  },
+  modalCropDoneBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+  },
+  modalCropDoneBtnText: {
+    fontFamily: fontFamily.displayBold,
+    fontSize: 13,
+    color: "#FFFFFF",
+  },
+  modalCropViewport: {
+    width: "100%",
+    height: 240,
+    overflow: "hidden",
+    backgroundColor: "#0B0818",
+    borderRadius: radius.card,
+    position: "relative",
+  },
+  modalCropImageWrapper: {
+    width: "100%",
+    height: "100%",
+  },
+  modalCropImage: {
+    width: "100%",
+    height: "100%",
+  },
+  modalCropFrameOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: radius.card,
+  },
+  modalCropHintBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginTop: spacing.md,
+  },
+  modalCropHintText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: "#FFFFFF",
+  },
+  cropOverlayGrid: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 2,
+    borderColor: `${colors.primary}70`,
+    margin: spacing.xs,
+    borderRadius: radius.sm,
+  },
+  cornerHandle: {
+    position: "absolute",
+    width: 14,
+    height: 14,
+    borderColor: colors.primary,
+  },
+  topLeft: {
+    top: -2,
+    left: -2,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+  },
+  topRight: {
+    top: -2,
+    right: -2,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+  },
+  bottomLeft: {
+    bottom: -2,
+    left: -2,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+  },
+  bottomRight: {
+    bottom: -2,
+    right: -2,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
   },
 });

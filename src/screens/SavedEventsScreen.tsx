@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -19,8 +19,11 @@ export function SavedEventsScreen() {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const bookmarksRef = useRef(bookmarks);
+  bookmarksRef.current = bookmarks;
+
   const loadBookmarks = useCallback(async () => {
-    if (bookmarks.length === 0) {
+    if (bookmarksRef.current.length === 0) {
       setIsLoading(true);
     }
     try {
@@ -29,7 +32,7 @@ export function SavedEventsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [bookmarks.length]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -76,7 +79,7 @@ export function SavedEventsScreen() {
           event={item.event}
           bookmarked
           onToggleBookmark={() => handleRemove(item.event.id)}
-          onPress={() => navigation.navigate("EventDetail", { eventId: item.event.id })}
+          onPress={() => navigation.navigate("EventDetail", { eventId: item.event.id, initialEvent: item.event as any })}
         />
       )}
       ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}

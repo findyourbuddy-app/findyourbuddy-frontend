@@ -120,7 +120,7 @@ export function ForgotPasswordScreen() {
                 <Feather name="check-circle" size={48} color="#2ECC71" />
               </View>
               <Text style={styles.titleText}>
-                {language === "en" ? "Password Updated! 🎉" : "Şifreniz Güncellendi! 🎉"}
+                {language === "en" ? "Password Updated!" : "Şifreniz Güncellendi!"}
               </Text>
               <Text style={styles.helperText}>
                 {language === "en"

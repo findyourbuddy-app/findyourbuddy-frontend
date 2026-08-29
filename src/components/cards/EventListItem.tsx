@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,6 +9,8 @@ import { formatEventDate } from "../../utils/date";
 import type { Event } from "../../types";
 
 import { useAppTheme } from "../../context/ThemeContext";
+
+import { resolvePhotoUrl } from "../ui/Avatar";
 
 interface EventListItemProps {
   event: Event;
@@ -29,8 +32,10 @@ export function EventListItem({ event, bookmarked, onToggleBookmark, onPress, di
       accessibilityLabel={`${event.title}, ${formatEventDate(event.starts_at, language)}`}
     >
       <View style={styles.thumbnail}>
-        {event.image_url ? (
-          <Image source={{ uri: event.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        {event.creator_id && event.creator?.photo_url ? (
+          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={{ duration: 150 }} />
+        ) : event.image_url ? (
+          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={{ duration: 150 }} />
         ) : (
           <LinearGradient colors={category.gradient} style={styles.thumbnailIcon}>
             <Feather name={category.icon} size={22} color={colors.surface} />

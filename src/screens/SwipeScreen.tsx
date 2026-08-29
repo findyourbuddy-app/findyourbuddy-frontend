@@ -8,7 +8,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CompositeNavigationProp, RouteProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Avatar } from "../components/ui/Avatar";
+import { Image } from "expo-image";
+import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { SwipeCandidateCard } from "../components/cards/SwipeCandidateCard";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { MatchCelebrationModal } from "../components/overlays/MatchCelebrationModal";
@@ -19,13 +20,17 @@ import { createSwipe, getSwipeCandidates, getSwipeQuota } from "../api/swipes";
 import { activateBoost, createPurchaseCheckoutSession } from "../api/users";
 import type { SwipeCandidateFilters, SwipeQuota } from "../api/swipes";
 import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event, User, UserPublic } from "../types";
+import { formatEventDate } from "../utils/date";
+import { getCategoryMeta } from "../constants/categories";
 
 interface ActiveEvent {
   id: number;
   title: string;
+  location_name?: string | null;
 }
 
 // `listEvents` returns a fixed, date-sorted page -- an event the user is already
@@ -45,8 +50,6 @@ type SwipeNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<MainStackParamList>
 >;
 
-import { useAppTheme } from "../context/ThemeContext";
-
 export function SwipeScreen() {
   const navigation = useNavigation<SwipeNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -65,32 +68,96 @@ export function SwipeScreen() {
   const [eventPickerVisible, setEventPickerVisible] = useState(false);
   const [storeVisible, setStoreVisible] = useState(false);
   const [boostConfirmVisible, setBoostConfirmVisible] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<"system" | "user">("system");
   const [userSubTab, setUserSubTab] = useState<"birebir" | "group">("birebir");
   const [userGroupEvents, setUserGroupEvents] = useState<Event[]>([]);
-  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
-  const [isSwiping, setIsSwiping] = useState(false);
-
-  const systemEvents = useMemo(() => availableEvents.filter((event) => !event.creator_id), [availableEvents]);
-  const user1on1Events = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id) && !event.is_group_event), [availableEvents]);
-  const userGroupAttendingEvents = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id) && Boolean(event.is_group_event)), [availableEvents]);
-  const tabEvents = activeTab === "system" ? systemEvents : user1on1Events;
+  // Set when the user opened a specific group event to swipe ("Kankaları Gör").
+  // While set, the "group" sub-tab shows the candidate deck instead of the
+  // browse list; cleared by the exit button or switching tabs.
+  const [groupSwipeEvent, setGroupSwipeEvent] = useState<ActiveEvent | null>(null);
 
   useEffect(() => {
-    if (activeTab === "user" && userSubTab === "group") {
-      setIsLoadingGroups(true);
+    if (candidates.length > currentIndex + 1) {
+      const nextCandidate = candidates[currentIndex + 1];
+      if (nextCandidate) {
+        const primaryUrl = resolvePhotoUrl(nextCandidate.photo_url);
+        if (primaryUrl) Image.prefetch(primaryUrl);
+        nextCandidate.photos?.forEach((p) => {
+          const galleryUrl = resolvePhotoUrl(p.photo_url);
+          if (galleryUrl) Image.prefetch(galleryUrl);
+        });
+      }
+    }
+  }, [candidates, currentIndex]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+
+  // Only events the user has actually joined belong in the swipe-deck picker --
+  // picking used to double as an implicit "join", letting people swipe on any
+  // nearby system event whether or not they said they were going.
+  const systemEvents = useMemo(() => {
+    const nowMs = Date.now();
+    return availableEvents.filter((event) => {
+      if (event.creator_id) return false;
+      if (!event.is_attending) return false;
+      if (event.starts_at) {
+        const eventMs = new Date(event.starts_at).getTime();
+        // Remove expired events (older than 4 hours after start time)
+        if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
+      }
+      return true;
+    });
+  }, [availableEvents]);
+  const user1on1Events = useMemo(() => {
+    const nowMs = Date.now();
+    return availableEvents.filter((event) => {
+      if (!event.creator_id || event.is_group_event) return false;
+      if (!event.is_attending) return false;
+      if (event.starts_at) {
+        const eventMs = new Date(event.starts_at).getTime();
+        if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
+      }
+      return true;
+    });
+  }, [availableEvents]);
+  const userEvents = useMemo(
+    () => availableEvents.filter((event) => Boolean(event.creator_id) && !event.is_group_event),
+    [availableEvents]
+  );
+  const tabEvents = activeTab === "system" ? systemEvents : userEvents;
+
+  const userGroupEventsRef = useRef(userGroupEvents);
+  userGroupEventsRef.current = userGroupEvents;
+
+  // useFocusEffect (not useEffect) so returning to this tab -- e.g. from
+  // EventDetail after applying, or after the organizer approves a request --
+  // always shows the current attendance status instead of a stale one from
+  // whenever the tab was first opened. Runs silently in background if events exist.
+  useFocusEffect(
+    useCallback(() => {
+      if (!(activeTab === "user" && userSubTab === "group")) return;
+      let cancelled = false;
+      if (userGroupEventsRef.current.length === 0) {
+        setIsLoadingGroups(true);
+      }
       // origin="user" is required here -- without it, this shares its 50-item
       // budget with thousands of system events, which crowd out user/group
       // events almost entirely (the same pagination bug fixed earlier on Discover).
-      Promise.all([listEvents(undefined, true, 0, 50, "user"), listMyAttendingEvents(true).catch(() => [])])
+      Promise.all([listEvents(undefined, true, 0, 50, "user", true), listMyAttendingEvents(true).catch(() => [])])
         .then(([all, attending]) => {
+          if (cancelled) return;
           const merged = mergeEvents(all, attending);
           setUserGroupEvents(merged.filter((e) => Boolean(e.creator_id) && Boolean(e.is_group_event)));
         })
         .catch(() => {})
-        .finally(() => setIsLoadingGroups(false));
-    }
-  }, [activeTab, userSubTab]);
+        .finally(() => {
+          if (!cancelled) setIsLoadingGroups(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [activeTab, userSubTab])
+  );
 
   const refreshQuota = useCallback(() => {
     getSwipeQuota()
@@ -100,55 +167,191 @@ export function SwipeScreen() {
       });
   }, []);
 
+  // Silently top up the deck with newly-joined attendees -- only when the user
+  // is near the end, and only by APPENDING. The list ahead of the current card
+  // is never reordered or replaced, so the card never changes on its own.
+  useEffect(() => {
+    if (!activeEvent) return;
+    const eventId = activeEvent.id;
+    const interval = setInterval(() => {
+      if (candidatesRef.current.length - currentIndexRef.current > 3) return;
+      getSwipeCandidates(eventId, filters)
+        .then((list) => {
+          setCandidates((prev) => {
+            const known = new Set(prev.map((c) => c.id));
+            const additions = list.filter(
+              (c) => !known.has(c.id) && !swipedCandidateIdsRef.current.has(c.id)
+            );
+            return additions.length > 0 ? [...prev, ...additions] : prev;
+          });
+        })
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [activeEvent, filters]);
+
+  // Tracks which route.params.eventId has already been acted on. Without
+  // this, route.params keeps referring to whatever event the screen was
+  // originally opened with, and since this effect also reruns whenever
+  // `activeTab` changes (needed for its own fallback logic below), simply
+  // tapping the "Kullanıcı Etkinlikleri" tab button re-triggered the effect,
+  // saw the same stale route.params, and snapped the tab straight back to
+  // wherever that original event lived -- e.g. always back to "system".
+  const consumedEventIdRef = useRef<number | null>(null);
+  const consumedStoreParamsRef = useRef<typeof route.params>(undefined);
+  const hasInitialLoadedRef = useRef<boolean>(false);
+  // Fingerprint of the inputs the current deck was loaded for. A plain
+  // blur -> focus cycle (e.g. back from a candidate's profile) leaves this
+  // unchanged, so the deck stays as-is instead of refetching and flickering.
+  const loadedDeckKeyRef = useRef<string>("");
+  const candidatesRef = useRef(candidates);
+  candidatesRef.current = candidates;
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+  const swipedCandidateIdsRef = useRef<Set<number>>(new Set());
+
+  useFocusEffect(
+    useCallback(() => {
+      if (
+        route.params &&
+        "openStore" in route.params &&
+        route.params.openStore &&
+        route.params !== consumedStoreParamsRef.current
+      ) {
+        consumedStoreParamsRef.current = route.params;
+        setStoreVisible(true);
+      }
+    }, [route.params])
+  );
+
+  const availableEventsRef = useRef(availableEvents);
+  availableEventsRef.current = availableEvents;
+  const activeEventRef = useRef(activeEvent);
+  activeEventRef.current = activeEvent;
+  const groupSwipeEventRef = useRef(groupSwipeEvent);
+  groupSwipeEventRef.current = groupSwipeEvent;
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      const paramEventId =
+        route.params && "eventId" in route.params ? route.params.eventId : undefined;
+      const hasParamChange = paramEventId != null && paramEventId !== consumedEventIdRef.current;
+
+      // Keep the like / super-like counters honest on every return to the tab
+      // (e.g. after buying credits in the store).
+      refreshQuota();
+
+      // Same tab / filters / target as the loaded deck and cards still in hand:
+      // this is just a re-focus, so keep what's on screen (the 15s poller keeps
+      // candidates fresh) instead of a visible refetch.
+      const deckKey = JSON.stringify({ activeTab, filters, paramEventId });
+      if (
+        hasInitialLoadedRef.current &&
+        !hasParamChange &&
+        loadedDeckKeyRef.current === deckKey &&
+        candidatesRef.current.length > 0
+      ) {
+        return;
+      }
+      loadedDeckKeyRef.current = deckKey;
+      hasInitialLoadedRef.current = true;
 
       async function resolveActiveEvent(
         upcoming: Event[]
-      ): Promise<{ event: ActiveEvent | null; tab: "system" | "user" }> {
-        if (route.params) {
-          const matched = upcoming.find((event) => event.id === route.params!.eventId);
+      ): Promise<{ event: ActiveEvent | null; tab: "system" | "user"; subTab?: "birebir" | "group" }> {
+        if (route.params && "eventId" in route.params && route.params.eventId !== consumedEventIdRef.current) {
+          const { eventId, eventTitle } = route.params;
+          const isGroupParam = "isGroup" in route.params && route.params.isGroup;
+          consumedEventIdRef.current = eventId;
+          const matched = upcoming.find((event) => event.id === eventId);
+          // Trust the caller's isGroup flag first -- the event may be past the
+          // paginated list and so missing from `upcoming`.
+          if (isGroupParam || matched?.is_group_event) {
+            return {
+              event: { id: eventId, title: eventTitle },
+              tab: "user",
+              subTab: "group",
+            };
+          }
           return {
-            event: { id: route.params.eventId, title: route.params.eventTitle },
+            event: { id: eventId, title: eventTitle },
             tab: matched?.creator_id ? "user" : "system",
+            subTab: "birebir",
           };
+        }
+        // Keep an in-progress group swipe alive when this effect re-runs for
+        // an unrelated reason (screen re-focus, filters) rather than snapping
+        // activeEvent to some other event.
+        if (groupSwipeEventRef.current) {
+          return { event: groupSwipeEventRef.current, tab: "user", subTab: "group" };
         }
         // Group events have their own card list (userSubTab === "group") and are
         // never swiped via activeEvent -- excluding them here keeps this fallback
         // in sync with `user1on1Events`/`tabEvents`, so the "Birebir" tab can never
         // silently auto-select a group event that isn't even in the event picker.
-        const currentTabEvents = upcoming.filter((event) =>
-          activeTab === "system" ? !event.creator_id : Boolean(event.creator_id) && !event.is_group_event
-        );
-        const fallback = currentTabEvents[0];
-        return { event: fallback ? { id: fallback.id, title: fallback.title } : null, tab: activeTab };
+        const nowMs = Date.now();
+        const validEvents = upcoming.filter((event) => {
+          if (activeTab === "system") {
+            if (event.creator_id || !event.is_attending) return false;
+            if (event.starts_at) {
+              const eventMs = new Date(event.starts_at).getTime();
+              if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
+            }
+            return true;
+          }
+          return Boolean(event.creator_id) && !event.is_group_event;
+        });
+
+        let chosen = activeEventRef.current
+          ? validEvents.find((e) => e.id === activeEventRef.current?.id)
+          : null;
+
+        if (!chosen && validEvents.length > 0) {
+          chosen = validEvents[0];
+        }
+
+        return {
+          event: chosen ? { id: chosen.id, title: chosen.title, location_name: chosen.location_name } : null,
+          tab: activeTab,
+        };
       }
 
-      setIsLoading(true);
-      refreshQuota();
-      // Fetch system and user events separately (origin=system / origin=user) so
-      // neither crowds the other out of its 50-item budget -- otherwise system
-      // events (far more numerous) push nearly all user/1-on-1 events off this page.
+      if (candidates.length === 0) {
+        setIsLoading(true);
+      }
+      const targetOrigin = activeTab === "system" ? "system" : "user";
       Promise.all([
-        listEvents(undefined, true, 0, 50, "system"),
-        listEvents(undefined, true, 0, 50, "user"),
+        listEvents(undefined, true, 0, 25, targetOrigin),
         listMyAttendingEvents(true).catch(() => []),
       ])
-        .then(async ([systemEvts, userEvts, attending]) => {
+        .then(async ([tabEvts, attending]) => {
           if (cancelled) return;
-          const allEvents = mergeEvents(mergeEvents(systemEvts, userEvts), attending);
-          setAvailableEvents(allEvents);
-          const { event, tab } = await resolveActiveEvent(allEvents);
+          const allEvents = mergeEvents(tabEvts, attending);
+          setAvailableEvents((prev) => mergeEvents(prev, allEvents));
+          const { event, tab, subTab } = await resolveActiveEvent(allEvents);
           if (cancelled) return;
           setActiveTab(tab);
+          if (subTab) {
+            setUserSubTab(subTab);
+          }
+          if (subTab === "group" && event) {
+            setGroupSwipeEvent(event);
+          } else if (subTab === "birebir") {
+            setGroupSwipeEvent(null);
+          }
+          const isSameEvent = activeEventRef.current && event && activeEventRef.current.id === event.id;
           setActiveEvent(event);
-          setCurrentIndex(0);
-          if (event) {
-            const list = await getSwipeCandidates(event.id, filters);
-            if (!cancelled) setCandidates(list);
-          } else {
-            setCandidates([]);
+          if (!isSameEvent || hasParamChange) {
+            setCurrentIndex(0);
+          }
+          const list = await getSwipeCandidates(event ? event.id : undefined, filters);
+          if (!cancelled) {
+            const freshCandidates = list.filter((c) => !swipedCandidateIdsRef.current.has(c.id));
+            setCandidates(freshCandidates);
+            if (freshCandidates.length > 0 && (!isSameEvent || hasParamChange || currentIndex >= candidatesRef.current.length)) {
+              setCurrentIndex(0);
+            }
           }
         })
         .catch(() => {
@@ -170,8 +373,12 @@ export function SwipeScreen() {
   );
 
   function switchEvent(event: Event): void {
-    setActiveEvent({ id: event.id, title: event.title });
+    const nextActive = { id: event.id, title: event.title, location_name: event.location_name };
+    consumedEventIdRef.current = event.id;
+    activeEventRef.current = nextActive;
+    setActiveEvent(nextActive);
     setCurrentIndex(0);
+    setCandidates([]);
     setIsLoading(true);
     attendEvent(event.id).catch(() => {
       // Non-critical; worst case the attendee count doesn't reflect this visit yet.
@@ -187,54 +394,194 @@ export function SwipeScreen() {
       .finally(() => setIsLoading(false));
   }
 
+  async function handleSelectTab(nextTab: "system" | "user"): Promise<void> {
+    if (activeTab === nextTab) return;
+    setActiveTab(nextTab);
+    setCandidates([]);
+    setCurrentIndex(0);
+    setGroupSwipeEvent(null);
+    setIsLoading(true);
+
+    if (nextTab === "user") {
+      // Default 1-on-1 mode to General User Browsing (activeEvent = null)
+      setActiveEvent(null);
+      try {
+        const list = await getSwipeCandidates(0, filters);
+        setCandidates(list.filter((c) => !swipedCandidateIdsRef.current.has(c.id)));
+      } catch {
+        setCandidates([]);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    const targetEvent = systemEvents[0] || null;
+    if (targetEvent) {
+      setActiveEvent({ id: targetEvent.id, title: targetEvent.title, location_name: targetEvent.location_name });
+      try {
+        const list = await getSwipeCandidates(targetEvent.id, filters);
+        setCandidates(list.filter((c) => !swipedCandidateIdsRef.current.has(c.id)));
+      } catch {
+        setCandidates([]);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      try {
+        const evts = await listEvents(undefined, true, 0, 20, "system");
+        setAvailableEvents((prev) => mergeEvents(prev, evts));
+        const firstEvt = evts[0];
+        if (firstEvt) {
+          setActiveEvent({ id: firstEvt.id, title: firstEvt.title, location_name: firstEvt.location_name });
+          const list = await getSwipeCandidates(firstEvt.id, filters);
+          setCandidates(list.filter((c) => !swipedCandidateIdsRef.current.has(c.id)));
+        } else {
+          setActiveEvent(null);
+          setCandidates([]);
+        }
+      } catch {
+        setCandidates([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }
+
+  // Fully tear down the swipe deck. Exiting a group swipe used to only clear
+  // `groupSwipeEvent`, leaving `activeEvent` + `candidates` pointing at the
+  // group event -- so its candidates, action buttons and event pill leaked
+  // into the group list and the 1-on-1 tab, and the 15s poller kept refreshing
+  // them.
+  function resetSwipeDeck(): void {
+    setGroupSwipeEvent(null);
+    groupSwipeEventRef.current = null;
+    setActiveEvent(null);
+    activeEventRef.current = null;
+    setCandidates([]);
+    setCurrentIndex(0);
+    setIsLoading(false);
+  }
+
+  function selectGeneralSwipe(): void {
+    setActiveEvent(null);
+    setCurrentIndex(0);
+    setCandidates([]);
+    setIsLoading(true);
+    getSwipeCandidates(0, filters)
+      .then((list) => {
+        setCandidates(list.filter((c) => !swipedCandidateIdsRef.current.has(c.id)));
+      })
+      .catch(() => {
+        setCandidates([]);
+      })
+      .finally(() => setIsLoading(false));
+  }
+
   function openEventPicker(): void {
-    if (tabEvents.length <= 1) return;
     setEventPickerVisible(true);
   }
 
-  const eventPickerOptions = tabEvents.map((event) => ({
-    key: String(event.id),
-    label: event.title,
-    icon: "map-pin" as const,
-    onPress: () => switchEvent(event),
-  }));
+  const eventPickerOptions = useMemo(() => {
+    const list: Array<{
+      key: string;
+      label: string;
+      icon: "map-pin" | "globe";
+      onPress: () => void;
+    }> = [];
+
+    if (activeTab === "user") {
+      list.push({
+        key: "general_users",
+        label: language === "en" ? "Browse General Users" : "Genel Kullanıcılarda Gezin",
+        icon: "globe",
+        onPress: () => selectGeneralSwipe(),
+      });
+
+      user1on1Events.forEach((event) => {
+        list.push({
+          key: String(event.id),
+          label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
+          icon: "map-pin",
+          onPress: () => switchEvent(event),
+        });
+      });
+
+      list.push({
+        key: "discover_new_user_event",
+        label: language === "en" ? "Explore & Join New Events" : "Keşfet'ten Yeni Bire Bir Etkinlik Seç",
+        icon: "map-pin",
+        onPress: () => navigation.navigate("Discover"),
+      });
+    } else {
+      systemEvents.forEach((event) => {
+        list.push({
+          key: String(event.id),
+          label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
+          icon: "map-pin",
+          onPress: () => switchEvent(event),
+        });
+      });
+
+      list.push({
+        key: "discover_new_system_event",
+        label: language === "en" ? "Explore & Join New Events" : "Keşfet'ten Yeni Resmi Etkinlik Seç",
+        icon: "map-pin",
+        onPress: () => navigation.navigate("Discover"),
+      });
+    }
+
+    return list;
+  }, [activeTab, user1on1Events, systemEvents, language, navigation]);
 
   function handleApplyFilters(nextFilters: SwipeCandidateFilters): void {
     setFilters(nextFilters);
     setFiltersVisible(false);
   }
 
-  async function handleSwipe(direction: "like" | "pass" | "super_like"): Promise<void> {
-    if (isSwiping) return;
+  async function handleSwipe(direction: "like" | "pass" | "super_like"): Promise<User | null> {
     const target = candidates[currentIndex];
-    if (!activeEvent || !target) {
-      return;
+    if (!target) {
+      return null;
     }
-    setIsSwiping(true);
-    try {
-      const result = await createSwipe({ target_id: target.id, event_id: activeEvent.id, direction });
-      if (result.match_id !== null && result.matched_user !== null) {
-        setMatch({ id: result.match_id, user: result.matched_user });
-      }
-      setCurrentIndex((index) => index + 1);
-      refreshQuota();
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 429) {
-        const detail = error.response.data?.detail as string | undefined;
-        if (detail === "Daily super like limit reached") {
-          Alert.alert(
-            "Süper beğeni hakkın bitti",
-            "Bugünlük süper beğeni hakkın doldu, yarın tekrar dene ya da Premium'a geç."
-          );
-        } else {
-          Alert.alert("Günlük limit doldu", "Bugünlük beğeni hakkın bitti, yarın tekrar dene. Geçmeye devam edebilirsin.");
+    const targetId = target.id;
+    const eventId = activeEvent?.id;
+    swipedCandidateIdsRef.current.add(targetId);
+
+    // OPTIMISTIC UPDATE: Increment candidate index IMMEDIATELY for 0ms instant UI transition!
+    const nextIndex = currentIndex + 1;
+    setCurrentIndex(nextIndex);
+
+    createSwipe({ target_id: targetId, event_id: eventId, direction })
+      .then((result) => {
+        if (result.match_id !== null && result.matched_user !== null) {
+          setMatch({ id: result.match_id, user: result.matched_user });
         }
-      } else {
-        Alert.alert("Bir sorun oluştu", "Swipe kaydedilemedi. Lütfen tekrar dene.");
-      }
-    } finally {
-      setIsSwiping(false);
-    }
+      })
+      .catch((error) => {
+        if (axios.isAxiosError(error)) {
+          const status = error.response?.status;
+          const detail = error.response?.data?.detail as string | undefined;
+
+          if (status === 409 || status === 403 || detail?.includes("Already swiped")) {
+            return;
+          }
+
+          if (status === 429) {
+            if (detail === "Daily super like limit reached") {
+              Alert.alert(
+                "Süper beğeni hakkın bitti",
+                "Bugünlük süper beğeni hakkın doldu, yarın tekrar dene ya da Premium'a geç."
+              );
+            } else {
+              Alert.alert("Günlük limit doldu", "Bugünlük beğeni hakkın bitti, yarın tekrar dene. Geçmeye devam edebilirsin.");
+            }
+          }
+        }
+      })
+      .finally(() => refreshQuota());
+
+    return candidates[nextIndex] || null;
   }
 
   function goToMatchChat(): void {
@@ -252,7 +599,7 @@ export function SwipeScreen() {
     if (isBoosted) {
       const remainingSecs = Math.max(0, Math.floor((new Date(user.boosted_until!).getTime() - Date.now()) / 1000));
       const mins = Math.floor(remainingSecs / 60);
-      Alert.alert("Spotlight Aktif! 🚀", `Profilin şu an öne çıkarılmış durumda. Kalan süre: ${mins} dakika.`);
+      Alert.alert("Spotlight Aktif!", `Profilin şu an öne çıkarılmış durumda. Kalan süre: ${mins} dakika.`);
       return;
     }
 
@@ -270,7 +617,7 @@ export function SwipeScreen() {
       const updatedUser = await activateBoost();
       updateUser(updatedUser);
       Alert.alert(
-        language === "en" ? "Spotlight Started! 🚀" : "Spotlight Başlatıldı! 🚀",
+        language === "en" ? "Spotlight Started!" : "Spotlight Başlatıldı!",
         language === "en"
           ? "Your profile has been moved to the top for 60 minutes in your area!"
           : "Profilin 60 dakika boyunca bulunduğun bölgede en üste taşındı!"
@@ -302,8 +649,68 @@ export function SwipeScreen() {
     }
   }
 
+  function startGroupEventCandidatesSwipe(event: Event): void {
+    setGroupSwipeEvent(event);
+    setActiveEvent({ id: event.id, title: event.title, location_name: event.location_name });
+    setCurrentIndex(0);
+    setCandidates([]);
+    setIsLoading(true);
+    getSwipeCandidates(event.id, filters)
+      .then(setCandidates)
+      .catch(() =>
+        Alert.alert(
+          language === "en" ? "Error" : "Bir sorun oluştu",
+          language === "en" ? "Candidates could not be loaded. Please try again." : "Adaylar yüklenemedi. Lütfen tekrar dene."
+        )
+      )
+      .finally(() => setIsLoading(false));
+  }
+
+  async function handleGroupJoin(event: Event): Promise<void> {
+    if (event.is_attending) {
+      startGroupEventCandidatesSwipe(event);
+      return;
+    }
+    if (event.is_pending) return;
+
+    const isApproval = Boolean(event.creator_id && event.is_group_event);
+
+    setUserGroupEvents((prev) =>
+      prev.map((item) =>
+        item.id === event.id
+          ? {
+              ...item,
+              is_attending: !isApproval,
+              is_pending: isApproval,
+              attendee_count: item.attendee_count + 1,
+            }
+          : item
+      )
+    );
+
+    try {
+      const updated = await attendEvent(event.id);
+      setUserGroupEvents((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item))
+      );
+      if (updated.is_pending) {
+        Alert.alert(
+          language === "en" ? "Request Sent" : "İstek Gönderildi",
+          language === "en"
+            ? "Your request was sent to the organizer. You'll be notified once it's approved."
+            : "İsteğin organizatöre gönderildi. Onaylanınca bilgilendirileceksin."
+        );
+      }
+    } catch {
+      setUserGroupEvents((prev) =>
+        prev.map((item) => (item.id === event.id ? event : item))
+      );
+      Alert.alert("Bir sorun oluştu", "Etkinliğe katılamadın. Lütfen tekrar dene.");
+    }
+  }
+
   return (
-    <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
+    <View style={[styles.background, { backgroundColor: bgGradient[0], paddingBottom: 56 + insets.bottom }]}>
       <View style={[styles.headerRow, { marginTop: insets.top + spacing.md }]}>
         <View style={{ flex: 1, marginRight: spacing.md, gap: 2 }}>
           <Text style={typeScale.eyebrow}>{t("buddiesNearYou")}</Text>
@@ -353,7 +760,7 @@ export function SwipeScreen() {
       <View style={styles.tabRow}>
         <Pressable
           style={[styles.tabButton, activeTab === "system" && styles.tabButtonActive]}
-          onPress={() => setActiveTab("system")}
+          onPress={() => handleSelectTab("system")}
           accessibilityRole="button"
           accessibilityLabel={t("systemEvents")}
         >
@@ -363,7 +770,7 @@ export function SwipeScreen() {
         </Pressable>
         <Pressable
           style={[styles.tabButton, activeTab === "user" && styles.tabButtonActive]}
-          onPress={() => setActiveTab("user")}
+          onPress={() => handleSelectTab("user")}
           accessibilityRole="button"
           accessibilityLabel={t("userEvents")}
         >
@@ -372,47 +779,123 @@ export function SwipeScreen() {
           </Text>
         </Pressable>
       </View>
-
-      {activeTab === "user" ? (
-        <View style={styles.subTabRow}>
-          <Pressable
-            style={[styles.subTabButton, userSubTab === "birebir" && styles.subTabButtonActive]}
-            onPress={() => setUserSubTab("birebir")}
-          >
-            <Feather name="user" size={13} color={userSubTab === "birebir" ? colors.primary : colors.textSecondary} />
-            <Text style={[styles.subTabButtonText, userSubTab === "birebir" && styles.subTabButtonTextActive]}>
-              {language === "en" ? "1-on-1 Buddy" : "Birebir (1-on-1)"}
+      <View style={styles.subTabRow}>
+        {activeTab === "user" ? (
+          <>
+            <Pressable
+              style={[
+                styles.subTabButton,
+                userSubTab === "birebir" && styles.subTabButtonActive,
+                groupSwipeEvent && styles.subTabButtonLocked,
+              ]}
+              disabled={Boolean(groupSwipeEvent)}
+              onPress={() => {
+                if (userSubTab === "birebir") return;
+                resetSwipeDeck();
+                setUserSubTab("birebir");
+                selectGeneralSwipe();
+              }}
+            >
+              <Feather name="user" size={13} color={userSubTab === "birebir" ? colors.primary : colors.textSecondary} />
+              <Text style={[styles.subTabButtonText, userSubTab === "birebir" && styles.subTabButtonTextActive]}>
+                {language === "en" ? "1-on-1 Buddy" : "Birebir Eşleşme"}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.subTabButton,
+                userSubTab === "group" && styles.subTabButtonActive,
+                groupSwipeEvent && styles.subTabButtonLocked,
+              ]}
+              disabled={Boolean(groupSwipeEvent)}
+              onPress={() => {
+                resetSwipeDeck();
+                setUserSubTab("group");
+              }}
+            >
+              <Feather name="users" size={13} color={userSubTab === "group" ? colors.primary : colors.textSecondary} />
+              <Text style={[styles.subTabButtonText, userSubTab === "group" && styles.subTabButtonTextActive]}>
+                {language === "en" ? "Group Events" : "Grup Etkinlikleri"}
+              </Text>
+            </Pressable>
+          </>
+        ) : (
+          <View style={styles.systemSubTabPill}>
+            <Feather name="shield" size={13} color={colors.primary} />
+            <Text style={styles.systemSubTabPillText}>
+              {language === "en" ? "Official Events" : "Resmi Etkinlikler"}
             </Text>
-          </Pressable>
+          </View>
+        )}
+      </View>
+
+
+
+      {groupSwipeEvent ? (
+        <View style={styles.groupSwipeBar}>
+          <Feather name="users" size={14} color={colors.primary} />
+          <Text style={styles.groupSwipeBarText} numberOfLines={1}>
+            {groupSwipeEvent.title}
+          </Text>
           <Pressable
-            style={[styles.subTabButton, userSubTab === "group" && styles.subTabButtonActive]}
-            onPress={() => setUserSubTab("group")}
+            style={styles.groupSwipeExitBtn}
+            onPress={resetSwipeDeck}
+            accessibilityRole="button"
+            accessibilityLabel={language === "en" ? "Exit group matching" : "Grup eşleşmesinden çık"}
           >
-            <Feather name="users" size={13} color={userSubTab === "group" ? colors.primary : colors.textSecondary} />
-            <Text style={[styles.subTabButtonText, userSubTab === "group" && styles.subTabButtonTextActive]}>
-              {language === "en" ? "Group Events" : "Grup Etkinlikleri"}
+            <Feather name="log-out" size={12} color="#FFFFFF" />
+            <Text style={styles.groupSwipeExitBtnText}>
+              {language === "en" ? "Exit" : "Çık"}
             </Text>
           </Pressable>
         </View>
       ) : null}
 
-      {activeEvent && (activeTab !== "user" || userSubTab !== "group") ? (
+      {!(activeTab === "user" && userSubTab === "group" && !groupSwipeEvent) ? (
         <View style={styles.metaRow}>
-          <Pressable
-            style={styles.eventPill}
-            onPress={openEventPicker}
-            disabled={tabEvents.length <= 1}
-            accessibilityRole="button"
-            accessibilityLabel="Etkinlik değiştir"
-          >
-            <Feather name="map-pin" size={14} color={colors.primary} />
-            <Text style={styles.eventPillText}>{activeEvent.title}</Text>
-            {tabEvents.length > 1 ? (
+          {activeEvent ? (
+            <Pressable
+              style={styles.eventPill}
+              onPress={openEventPicker}
+              accessibilityRole="button"
+              accessibilityLabel="Etkinlik değiştir"
+            >
+              <Feather name="target" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText} numberOfLines={1}>
+                {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
+              </Text>
               <Feather name="chevron-down" size={12} color={colors.textSecondary} />
-            ) : null}
-          </Pressable>
+            </Pressable>
+          ) : activeTab === "system" ? (
+            <Pressable
+              style={styles.eventPill}
+              onPress={openEventPicker}
+              accessibilityRole="button"
+              accessibilityLabel="Keşfet'ten Etkinlik Seç"
+            >
+              <Feather name="compass" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText} numberOfLines={1}>
+                {language === "en" ? "Select Event" : "Etkinlik Seç"}
+              </Text>
+              <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+            </Pressable>
+          ) : (
+            <Pressable
+              style={styles.eventPill}
+              onPress={openEventPicker}
+              accessibilityRole="button"
+              accessibilityLabel="Genel Kullanıcılarda Geziniyorsun"
+            >
+              <Feather name="globe" size={14} color={colors.primary} />
+              <Text style={styles.eventPillText} numberOfLines={1}>
+                {language === "en" ? "Browsing General Users" : "Genel Kullanıcılarda Geziniyorsun"}
+              </Text>
+              <Feather name="chevron-down" size={12} color={colors.textSecondary} />
+            </Pressable>
+          )}
+
           {quota ? (
-            <Text style={styles.quotaText}>
+            <Text style={[styles.quotaText, !activeEvent && { marginLeft: "auto" }]}>
               {quota.is_premium
                 ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
                 : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}
@@ -423,8 +906,8 @@ export function SwipeScreen() {
         </View>
       ) : null}
 
-      <View style={styles.cardArea}>
-        {activeTab === "user" && userSubTab === "group" ? (
+      <View style={[styles.cardArea, (activeTab === "user" && userSubTab === "group" && !groupSwipeEvent) && { paddingBottom: 10 }]}>
+        {activeTab === "user" && userSubTab === "group" && !groupSwipeEvent ? (
           isLoadingGroups ? (
             <View style={styles.center}>
               <ActivityIndicator color={colors.primary} />
@@ -446,9 +929,13 @@ export function SwipeScreen() {
           ) : (
             <ScrollView contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
               {userGroupEvents.map((event) => (
-                <View key={event.id} style={styles.groupCardItem}>
+                <Pressable
+                  key={event.id}
+                  style={styles.groupCardItem}
+                  onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
+                >
                   <View style={styles.groupCardHeader}>
-                    <Text style={styles.groupCategoryPill}>{event.category}</Text>
+                    <Text style={styles.groupCategoryPill}>{getCategoryMeta(event.category, language).label}</Text>
                     <View style={styles.attendeesBadge}>
                       <Feather name="users" size={12} color={colors.primary} />
                       <Text style={styles.attendeesBadgeText}>
@@ -460,7 +947,15 @@ export function SwipeScreen() {
                   </View>
 
                   <Text style={styles.groupCardTitle}>{event.title}</Text>
-                  <Text style={styles.groupCardLocation}>📍 {event.location_name}</Text>
+                  
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginVertical: 2 }}>
+                    <Feather name="clock" size={13} color={colors.primary} />
+                    <Text style={[styles.groupCardLocation, { color: colors.textPrimary, fontFamily: fontFamily.bodySemiBold }]}>
+                      {formatEventDate(event.starts_at, language)}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.groupCardLocation}>{event.location_name}</Text>
 
                   <View style={styles.groupCardFooter}>
                     <View style={styles.creatorInfo}>
@@ -473,7 +968,7 @@ export function SwipeScreen() {
                         <Text style={styles.creatorNameText}>
                           {isPremium
                             ? (event.creator?.display_name ?? (language === "en" ? "User" : "Kullanıcı"))
-                            : (language === "en" ? "🔒 Hidden Organizer (Premium)" : "🔒 Gizli Oluşturan (Premium)")}
+                            : (language === "en" ? "Hidden Organizer (Premium)" : "Gizli Oluşturan (Premium)")}
                         </Text>
                         <Text style={styles.creatorSubText}>
                           {language === "en" ? "Event Organizer" : "Etkinlik Oluşturanı"}
@@ -481,18 +976,41 @@ export function SwipeScreen() {
                       </View>
                     </View>
 
-                    <Pressable
-                      style={styles.groupCardActionBtn}
-                      onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
-                    >
-                      <Text style={styles.groupCardActionText}>
-                        {event.is_attending
-                          ? (language === "en" ? "Details & Chat" : "Detaylar & Sohbet")
-                          : (language === "en" ? "Apply / Join" : "Başvur / Katıl")}
-                      </Text>
-                    </Pressable>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      {event.is_attending ? (
+                        <>
+                          <Pressable
+                            style={styles.groupCardActionBtn}
+                            onPress={() => startGroupEventCandidatesSwipe(event)}
+                          >
+                            <Text style={styles.groupCardActionText}>
+                              {language === "en" ? "View Buddies" : "Kankaları Gör"}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            style={[styles.groupCardActionBtn, { backgroundColor: colors.primaryMuted }]}
+                            onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
+                          >
+                            <Text style={[styles.groupCardActionText, { color: colors.textPrimary }]}>
+                              {language === "en" ? "Chat" : "Sohbet"}
+                            </Text>
+                          </Pressable>
+                        </>
+                      ) : (
+                        <Pressable
+                          style={[styles.groupCardActionBtn, event.is_pending && styles.groupCardActionBtnPending]}
+                          onPress={() => handleGroupJoin(event)}
+                        >
+                          <Text style={styles.groupCardActionText}>
+                            {event.is_pending
+                              ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
+                              : (language === "en" ? "Join" : "Katıl")}
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
                   </View>
-                </View>
+                </Pressable>
               ))}
             </ScrollView>
           )
@@ -500,91 +1018,82 @@ export function SwipeScreen() {
           <View style={styles.center}>
             <ActivityIndicator color={colors.primary} />
           </View>
-        ) : !activeEvent ? (
-          <View style={styles.center}>
-            {activeTab === "user" ? (
-              <>
-                <Text style={styles.emptyText}>
-                  {language === "en"
-                    ? "No 1-on-1 user events available to swipe in yet."
-                    : "Şu anda kaydırabileceğin bir birebir kullanıcı etkinliği yok."}
-                </Text>
-                <View style={{ marginTop: spacing.md }}>
-                  <PrimaryButton
-                    label={language === "en" ? "Find Events" : "Etkinlik Bul"}
-                    onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
-                  />
-                </View>
-              </>
-            ) : (
-              <Text style={styles.emptyText}>
-                {t("noUpcomingEventsChooseInDiscover")}
-              </Text>
-            )}
-          </View>
         ) : candidates[currentIndex] ? (
           <SwipeCandidateCard
+            key={candidates[currentIndex].id}
             candidate={candidates[currentIndex]}
             onSwipeLeft={() => handleSwipe("pass")}
             onSwipeRight={() => handleSwipe("like")}
             onSwipeUp={() => handleSwipe("super_like")}
-            onPressProfile={() =>
-              navigation.navigate("CandidateProfile", {
-                candidate: candidates[currentIndex],
-                onSwipeLeft: () => handleSwipe("pass"),
-                onSwipeRight: () => handleSwipe("like"),
-                onSwipeUp: () => handleSwipe("super_like"),
-              })
-            }
+            onShowHelp={() => setHelpVisible(true)}
+            onPressProfile={() => {
+              const activeCandidate = candidates[currentIndex];
+              if (!activeCandidate) return;
+              navigation.navigate("CandidateProfile", { candidate: activeCandidate });
+            }}
           />
         ) : (
           <View style={styles.center}>
             <Text style={styles.emptyText}>
-              {language === "en"
-                ? "No more candidates left for this event."
-                : "Bu etkinlik için başka aday kalmadı."}
+              {activeEvent
+                ? language === "en"
+                  ? "You've seen all candidates for this event!"
+                  : "Bu etkinlik için tüm ilgilenen adayları gördün!"
+                : language === "en"
+                ? "No active platform users available right now."
+                : "Şu anda görülecek başka platform kullanıcısı kalmadı."}
             </Text>
+            <View style={{ marginTop: spacing.md, width: "100%", gap: spacing.sm }}>
+              <PrimaryButton
+                label={language === "en" ? "Find Another Event" : "Başka Etkinlik Bul"}
+                onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
+              />
+              {activeEvent && activeTab === "user" ? (
+                <PrimaryButton
+                  label={language === "en" ? "Browse General Users" : "Genel Kullanıcılarda Gezin"}
+                  onPress={() => selectGeneralSwipe()}
+                />
+              ) : null}
+            </View>
           </View>
         )}
       </View>
-
-      {(activeTab !== "user" || userSubTab !== "group") && activeEvent && candidates[currentIndex] ? (
-        <View style={styles.actionRow}>
-          <Pressable
-            style={[styles.actionButton, styles.passButton]}
-            onPress={() => handleSwipe("pass")}
-            disabled={isSwiping}
-            accessibilityRole="button"
-            accessibilityLabel="Geç"
-          >
-            <Feather name="x" size={24} color={colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            style={[styles.actionButton, styles.superLikeButton]}
-            onPress={() => handleSwipe("super_like")}
-            disabled={isSwiping}
-            accessibilityRole="button"
-            accessibilityLabel="Süper beğen"
-          >
-            <Feather name="star" size={20} color={colors.surface} />
-          </Pressable>
-          <Pressable
-            style={[styles.actionButton, styles.likeButton]}
-            onPress={() => handleSwipe("like")}
-            disabled={isSwiping}
-            accessibilityRole="button"
-            accessibilityLabel="Beğen"
-          >
-            <Feather name="heart" size={24} color={colors.surface} />
-          </Pressable>
-        </View>
-      ) : null}
 
       <MatchCelebrationModal
         matchedUser={match?.user ?? null}
         onSendMessage={goToMatchChat}
         onDismiss={() => setMatch(null)}
       />
+
+      <Modal
+        visible={helpVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHelpVisible(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setHelpVisible(false)}>
+          <Pressable style={styles.helpCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={[typeScale.h1, { textAlign: "center" }]}>
+              {language === "en" ? "How to swipe" : "Nasıl Kaydırılır?"}
+            </Text>
+            <View style={styles.helpRow}>
+              <Feather name="arrow-right" size={18} color={colors.primary} />
+              <Text style={styles.helpText}>{language === "en" ? "Right — Like" : "Sağa kaydır — Beğen"}</Text>
+            </View>
+            <View style={styles.helpRow}>
+              <Feather name="arrow-left" size={18} color={colors.textSecondary} />
+              <Text style={styles.helpText}>{language === "en" ? "Left — Pass" : "Sola kaydır — Geç"}</Text>
+            </View>
+            <View style={styles.helpRow}>
+              <Feather name="arrow-up" size={18} color="#2E7FC9" />
+              <Text style={styles.helpText}>{language === "en" ? "Up — Super Like" : "Yukarı kaydır — Süper Beğeni"}</Text>
+            </View>
+            <Pressable style={styles.closeBtn} onPress={() => setHelpVisible(false)}>
+              <Text style={styles.closeBtnText}>{t("close")}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <SwipeFiltersModal
         visible={filtersVisible}
@@ -622,7 +1131,7 @@ export function SwipeScreen() {
                   <View style={[styles.storeIconWrapper, { backgroundColor: "rgba(241, 196, 15, 0.15)" }]}>
                     <Feather name="zap" size={18} color="#F1C40F" />
                   </View>
-                  <View>
+                  <View style={styles.storeItemTextColumn}>
                     <Text style={styles.storeItemTitle}>{t("oneSpotlight")}</Text>
                     <Text style={styles.storeItemDesc}>{t("spotlightBoostDesc")}</Text>
                   </View>
@@ -637,7 +1146,7 @@ export function SwipeScreen() {
                   <View style={[styles.storeIconWrapper, { backgroundColor: "rgba(46, 127, 201, 0.15)" }]}>
                     <Feather name="star" size={18} color="#2E7FC9" />
                   </View>
-                  <View>
+                  <View style={styles.storeItemTextColumn}>
                     <Text style={styles.storeItemTitle}>{t("fiveSuperLikes")}</Text>
                     <Text style={styles.storeItemDesc}>{t("superLikesDesc")}</Text>
                   </View>
@@ -652,7 +1161,7 @@ export function SwipeScreen() {
                   <View style={[styles.storeIconWrapper, { backgroundColor: "rgba(108, 92, 231, 0.15)" }]}>
                     <Feather name="heart" size={18} color={colors.primary} />
                   </View>
-                  <View>
+                  <View style={styles.storeItemTextColumn}>
                     <Text style={styles.storeItemTitle}>{t("fiftyExtraSwipes")}</Text>
                     <Text style={styles.storeItemDesc}>{t("extraSwipesDesc")}</Text>
                   </View>
@@ -718,7 +1227,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
-    paddingBottom: 60,
+    // paddingBottom is applied inline (56 + safe-area inset) so the card clears
+    // the floating tab bar.
     gap: spacing.xs,
   },
   headerRow: {
@@ -767,7 +1277,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    flexWrap: "wrap",
+    minHeight: 36,
     gap: spacing.sm,
   },
   eventPill: {
@@ -779,11 +1289,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
+    flexShrink: 1,
+    maxWidth: "62%",
   },
   eventPillText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: 13,
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   quotaText: {
     fontFamily: fontFamily.bodyMedium,
@@ -793,6 +1306,26 @@ const styles = StyleSheet.create({
   cardArea: {
     flex: 1,
     marginVertical: 2,
+    paddingBottom: spacing.xs,
+  },
+  helpCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    width: "100%",
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md,
+  },
+  helpRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  helpText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 14,
+    color: colors.textPrimary,
   },
   center: {
     flex: 1,
@@ -805,42 +1338,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textSecondary,
     textAlign: "center",
-  },
-  actionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xl,
-    marginTop: 2,
-    marginBottom: 4,
-    paddingVertical: 0,
-  },
-  actionButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  passButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.surface,
-  },
-  superLikeButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#2E7FC9",
-  },
-  likeButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primary,
   },
   likesReceivedButton: {
     backgroundColor: "#FF2E93",
@@ -939,6 +1436,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
   },
+  storeItemTextColumn: {
+    flex: 1,
+  },
   purchaseBtn: {
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
@@ -1022,6 +1522,38 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.sm,
   },
+  groupSwipeBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.primaryMuted,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  groupSwipeBarText: {
+    flex: 1,
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
+  },
+  groupSwipeExitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.accentRed,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+  },
+  groupSwipeExitBtnText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 11,
+    color: "#FFFFFF",
+  },
   subTabButton: {
     flex: 1,
     flexDirection: "row",
@@ -1038,6 +1570,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryMuted,
     borderColor: colors.primary,
   },
+  subTabButtonLocked: {
+    opacity: 0.4,
+  },
   subTabButtonText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
@@ -1046,6 +1581,23 @@ const styles = StyleSheet.create({
   subTabButtonTextActive: {
     color: colors.primary,
     fontFamily: fontFamily.bodySemiBold,
+  },
+  systemSubTabPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryMuted,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  systemSubTabPillText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
   },
   groupCardItem: {
     backgroundColor: colors.surface,
@@ -1130,6 +1682,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.pill,
+  },
+  groupCardActionBtnPending: {
+    backgroundColor: colors.textSecondary,
   },
   groupCardActionText: {
     fontFamily: fontFamily.bodySemiBold,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Alert } from "../utils/alert";
 import * as Location from "expo-location";
 import { Feather } from "@expo/vector-icons";
@@ -20,10 +20,11 @@ import { LocationPickerModal } from "../components/overlays/LocationPickerModal"
 import { createBookmark, deleteBookmark, listMyBookmarks } from "../api/bookmarks";
 import { reverseGeocode } from "../api/geocoding";
 import type { GeocodingResult } from "../api/geocoding";
-import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
+import { getFastCurrentLocation, hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { attendEvent, listEvents, recordBulkEventImpressions } from "../api/events";
 import { formatEventDate } from "../utils/date";
 import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
 import { CATEGORIES, getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, spacing, typeScale, radius, shadows } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
@@ -75,8 +76,6 @@ function isSmartMatch(text: string, query: string): boolean {
   return queryTokens.every((token) => normText.includes(token));
 }
 
-import { useAppTheme } from "../context/ThemeContext";
-
 export function DiscoverScreen() {
   const navigation = useNavigation<DiscoverNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -84,7 +83,8 @@ export function DiscoverScreen() {
   const { t, accentColor, bgGradient, language } = useAppTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [originFilter, setOriginFilter] = useState<"all" | "system" | "user">("all");
+  const [originFilter, setOriginFilter] = useState<"system" | "user" | "my_created" | null>(null);
+  const [hasCreatedEvents, setHasCreatedEvents] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -116,7 +116,7 @@ export function DiscoverScreen() {
     if (!isMapView) return;
     let cancelled = false;
     setIsLoadingMapEvents(true);
-    listEvents(selectedCategory ?? undefined, true, 0, 200, originFilter === "all" ? undefined : originFilter)
+    listEvents(selectedCategory ?? undefined, true, 0, 200, (originFilter === "my_created" ? undefined : originFilter) || undefined)
       .then((result) => {
         if (!cancelled) setMapEvents(result);
       })
@@ -132,7 +132,13 @@ export function DiscoverScreen() {
   }, [isMapView, selectedCategory, originFilter]);
 
   const filteredMapEvents = useMemo(() => {
-    const list = mapEvents.filter((event) => hasValidCoordinates(event.latitude, event.longitude));
+    // Only events the user has actually joined show up as selectable pins --
+    // showing every nearby system event regardless of attendance made the
+    // map misleading (looked like the user could act on events they never
+    // signed up for).
+    const list = mapEvents.filter(
+      (event) => event.is_attending && hasValidCoordinates(event.latitude, event.longitude)
+    );
 
     if (mapDateFilter === "all") return list;
     const now = new Date();
@@ -153,29 +159,24 @@ export function DiscoverScreen() {
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted" || cancelled) return;
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        if (cancelled) return;
-        setUserCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
-
-        // 1. Try local city/district resolver first
-        const districtCity = await resolveCityDistrict(position.coords.latitude, position.coords.longitude);
-        if (cancelled) return;
-        if (districtCity) {
-          setCityLabel(districtCity);
-          return;
-        }
-
-        // 2. Fallback to reverseGeocode API
-        const result = await reverseGeocode(position.coords.latitude, position.coords.longitude);
-        if (cancelled) return;
-        if (result && result.display_name) {
-          setCityLabel(shortenPlaceLabel(result.display_name));
+        if (status === "granted") {
+          const position = await getFastCurrentLocation();
+          if (position && !cancelled) {
+            setUserCoords({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+            const label = await resolveCityDistrict(
+              position.coords.latitude,
+              position.coords.longitude
+            );
+            if (label && !cancelled) {
+              setCityLabel(label);
+            }
+          }
         }
       } catch {
-        // Best-effort; defaults stay in place.
+        // Best-effort; falls back to default center if location disabled
       }
     })();
     return () => {
@@ -187,14 +188,13 @@ export function DiscoverScreen() {
     setIsCityPickerVisible(true);
   }
 
-  async function handleCitySelect(result: GeocodingResult): Promise<void> {
+  function handleLocationSelected(result: GeocodingResult): void {
     if (!isPremium) {
-      setIsCityPickerVisible(false);
       Alert.alert(
-        language === "en" ? "✈️ Travel Passport (Custom Location)" : "✈️ Pasaport (Sanal Konum Seçimi)",
+        language === "en" ? "Premium Feature" : "Premium Özellik",
         language === "en"
-          ? "Teleporting to custom cities and picking manual locations is exclusive to ⭐ Premium members!"
-          : "Farklı şehirlerdeki etkinlikleri keşfetmek ve özel sanal konum seçmek ⭐ Premium üyelere özeldir!",
+          ? "Teleporting to custom cities and picking manual locations is exclusive to Premium members!"
+          : "Farklı şehirlerdeki etkinlikleri keşfetmek ve özel sanal konum seçmek Premium üyelere özeldir!",
         [
           { text: t("cancel"), style: "cancel" },
           {
@@ -224,12 +224,13 @@ export function DiscoverScreen() {
     if (result.display_name) {
       setCityLabel(shortenPlaceLabel(result.display_name));
     } else {
-      const label = await resolveCityDistrict(lat, lon);
-      if (label) {
-        setCityLabel(label);
-      } else {
-        setCityLabel(`${lat.toFixed(2)}, ${lon.toFixed(2)}`);
-      }
+      resolveCityDistrict(lat, lon).then((label) => {
+        if (label) {
+          setCityLabel(label);
+        } else {
+          setCityLabel(`${lat.toFixed(2)}, ${lon.toFixed(2)}`);
+        }
+      });
     }
   }
 
@@ -252,7 +253,11 @@ export function DiscoverScreen() {
         Alert.alert("Konum İzni Gerekli", "Etkinlikleri mesafeye göre sıralayabilmek için konum izni vermen gerekiyor.");
         return;
       }
-      const position = await Location.getCurrentPositionAsync({});
+      const position = await getFastCurrentLocation();
+      if (!position) {
+        Alert.alert("Konum Alınamadı", "Konumunuz alınırken bir sorun oluştu.");
+        return;
+      }
       setUserCoords({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
@@ -299,9 +304,6 @@ export function DiscoverScreen() {
   const sortedEvents = useMemo(() => {
     if (events.length === 0) return [];
 
-    // originFilter is applied server-side (see loadEvents) since client-side
-    // filtering over a date-sorted page would never surface user events
-    // once enough system events (there can be thousands) sort before them.
     let list = [...events];
     if (searchQuery.trim()) {
       list = list.filter(
@@ -311,33 +313,44 @@ export function DiscoverScreen() {
           isSmartMatch(e.location_name ?? "", searchQuery) ||
           isSmartMatch(e.category ?? "", searchQuery)
       );
-    } else if (selectedCategory) {
-      const targetCategory = selectedCategory.toLowerCase();
-      list = list.filter((e) => e.category?.toLowerCase() === targetCategory);
     }
 
-    if (sortBy === "distance" && userCoords) {
-      return list.sort((a, b) => {
+    // Priority sort: Applied / Joined / Created events ALWAYS come first at the very top of the list!
+    list.sort((a, b) => {
+      const isPriorityA = Boolean(a.is_attending || a.is_pending || (user && a.creator_id === user.id));
+      const isPriorityB = Boolean(b.is_attending || b.is_pending || (user && b.creator_id === user.id));
+      if (isPriorityA !== isPriorityB) {
+        return isPriorityA ? -1 : 1;
+      }
+
+      if (sortBy === "distance" && userCoords) {
         const distA = getDistanceInKm(a.latitude, a.longitude, userCoords.latitude, userCoords.longitude);
         const distB = getDistanceInKm(b.latitude, b.longitude, userCoords.latitude, userCoords.longitude);
         return distA - distB;
-      });
-    }
-    if (sortBy === "popularity") {
-      return list.sort((a, b) => b.attendee_count - a.attendee_count);
-    }
-    // Default: Sort by date
-    return list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-  }, [events, selectedCategory, searchQuery, sortBy, userCoords, getDistanceInKm]);
+      }
+      if (sortBy === "popularity") {
+        return b.attendee_count - a.attendee_count;
+      }
+      // Default: Sort by date
+      return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    });
+
+    return list;
+  }, [events, searchQuery, sortBy, userCoords, getDistanceInKm, user]);
 
   const loadEventsRequestIdRef = useRef(0);
 
-  const loadEvents = useCallback(async (category: string | null, origin: "system" | "user" | null) => {
+  const loadEvents = useCallback(async (category: string | null, origin: "system" | "user" | "my_created" | null) => {
     const requestId = ++loadEventsRequestIdRef.current;
     setHasMore(true);
     try {
-      // Fetch batch of events for fast category filtering
-      const result = await listEvents(category ?? undefined, true, 0, 100, origin ?? undefined);
+      let result: Event[] = [];
+      if (origin === "my_created") {
+        const { listMyCreatedEvents } = require("../api/events");
+        result = await listMyCreatedEvents(true);
+      } else {
+        result = await listEvents(category ?? undefined, true, 0, 100, origin ?? undefined);
+      }
       if (requestId !== loadEventsRequestIdRef.current) return;
       setEvents(result);
       setHasMore(result.length === 100);
@@ -365,7 +378,9 @@ export function DiscoverScreen() {
     setIsLoadingMore(true);
     try {
       const currentLength = events.length;
-      const result = await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT, originFilter === "all" ? undefined : originFilter);
+      const result = originFilter === "my_created"
+        ? []
+        : await listEvents(selectedCategory ?? undefined, true, currentLength, LIMIT, originFilter || undefined);
       setEvents((prev) => {
         const existingIds = new Set(prev.map((event) => event.id));
         const deduped = result.filter((event) => !existingIds.has(event.id));
@@ -385,29 +400,43 @@ export function DiscoverScreen() {
       const bookmarks = await listMyBookmarks();
       setBookmarkedIds(new Set(bookmarks.map((bookmark) => bookmark.event.id)));
     } catch {
-      // Bookmarks are a non-critical enhancement; failing to load them shouldn't
-      // block the events list itself.
+      // Bookmarks are a non-critical enhancement
     }
   }, []);
 
+  const checkCreatedEvents = useCallback(async () => {
+    try {
+      const { listMyCreatedEvents } = require("../api/events");
+      const created = await listMyCreatedEvents(true);
+      setHasCreatedEvents(Boolean(created && created.length > 0));
+    } catch {
+      setHasCreatedEvents(false);
+    }
+  }, []);
+
+  const hasInitialLoadedRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
-      loadEvents(selectedCategory, originFilter === "all" ? null : originFilter);
+      if (!hasInitialLoadedRef.current) {
+        hasInitialLoadedRef.current = true;
+        loadEvents(selectedCategory, originFilter);
+      }
       loadBookmarks();
-      // selectedCategory/originFilter intentionally omitted: chip taps already trigger their own reload
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loadEvents, loadBookmarks])
+      checkCreatedEvents();
+    }, [loadEvents, loadBookmarks, checkCreatedEvents, selectedCategory, originFilter])
   );
 
   function handleSelectCategory(slug: string): void {
     const next = selectedCategory === slug ? null : slug;
     setSelectedCategory(next);
-    loadEvents(next, originFilter === "all" ? null : originFilter);
+    loadEvents(next, originFilter);
   }
 
-  function handleSelectOrigin(next: "all" | "system" | "user"): void {
-    setOriginFilter(next);
-    loadEvents(selectedCategory, next === "all" ? null : next);
+  function handleSelectOrigin(next: "system" | "user" | "my_created" | null): void {
+    const target = originFilter === next ? null : next;
+    setOriginFilter(target);
+    loadEvents(selectedCategory, target);
   }
 
   async function toggleBookmark(eventId: number): Promise<void> {
@@ -446,7 +475,14 @@ export function DiscoverScreen() {
   }
 
   function goToSwipe(event: Event): void {
-    navigation.navigate("Swipe", { eventId: event.id, eventTitle: event.title });
+    // Both 1-on-1 and group events land on the Swipe screen; isGroup tells
+    // SwipeScreen to open the group candidate deck (only that event's
+    // attendees, with an "exit" bar) instead of the 1-on-1 flow.
+    navigation.navigate("Swipe", {
+      eventId: event.id,
+      eventTitle: event.title,
+      isGroup: Boolean(event.is_group_event),
+    });
   }
 
   async function handlePressJoin(event: Event): Promise<void> {
@@ -454,19 +490,28 @@ export function DiscoverScreen() {
       goToSwipe(event);
       return;
     }
+    if (event.is_pending) return;
     try {
       const updated = await attendEvent(event.id);
       // Stay put so the button visibly flips to "Kankaları Gör" instead of
       // yanking the user straight into Swipe before they've even confirmed
       // they're going -- same fix as EventDetailScreen's attend flow.
       setEvents((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      if (updated.is_pending) {
+        Alert.alert(
+          language === "en" ? "Request Sent" : "İstek Gönderildi",
+          language === "en"
+            ? "Your request was sent to the organizer. You'll be notified once it's approved."
+            : "İsteğin organizatöre gönderildi. Onaylanınca bilgilendirileceksin."
+        );
+      }
     } catch {
       Alert.alert("Bir sorun oluştu", "Etkinliğe katılamadın. Lütfen tekrar dene.");
     }
   }
 
   function goToDetail(event: Event): void {
-    navigation.navigate("EventDetail", { eventId: event.id });
+    navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any });
   }
 
   const filteredEvents = useMemo(() => {
@@ -520,7 +565,7 @@ export function DiscoverScreen() {
       data={isMapView ? [] : rest}
       keyExtractor={(event) => String(event.id)}
       refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={() => loadEvents(selectedCategory, originFilter === "all" ? null : originFilter)} />
+        <RefreshControl refreshing={isRefreshing} onRefresh={() => loadEvents(selectedCategory, originFilter)} />
       }
       onEndReached={isMapView ? undefined : loadMoreEvents}
       onEndReachedThreshold={0.4}
@@ -623,7 +668,7 @@ export function DiscoverScreen() {
                                   </View>
                                 </View>
                                 <Text style={styles.dropdownItemSub} numberOfLines={1}>
-                                  📍 {event.location_name} · 🕒 {formatEventDate(event.starts_at, language)}
+                                  {event.location_name} · {formatEventDate(event.starts_at, language)}
                                 </Text>
                               </View>
                               <Feather name="chevron-right" size={18} color={colors.textSecondary} />
@@ -636,12 +681,15 @@ export function DiscoverScreen() {
                 ) : null}
               </View>
 
-              <View style={[styles.chipList, { flexDirection: "row", gap: spacing.xs }]}>
-                <Chip
-                  label={t("all")}
-                  active={originFilter === "all"}
-                  onPress={() => handleSelectOrigin("all")}
-                />
+              <View style={styles.filterCluster}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                directionalLockEnabled={true}
+                nestedScrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ flexDirection: "row", paddingVertical: 2, paddingHorizontal: 2 }}
+              >
                 <Chip
                   label={t("systemEvents")}
                   active={originFilter === "system"}
@@ -652,22 +700,31 @@ export function DiscoverScreen() {
                   active={originFilter === "user"}
                   onPress={() => handleSelectOrigin("user")}
                 />
-              </View>
+                <Chip
+                  label={language === "en" ? "My Hosted Events" : "Başlattıklarım"}
+                  active={originFilter === "my_created"}
+                  onPress={() => handleSelectOrigin("my_created")}
+                />
+              </ScrollView>
 
-              <FlatList
+              {/* Category Chips Scroller */}
+              <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                data={CATEGORIES}
-                keyExtractor={(category) => category.slug}
-                renderItem={({ item }) => (
+                directionalLockEnabled={true}
+                nestedScrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ flexDirection: "row", paddingVertical: 2, paddingHorizontal: 2 }}
+              >
+                {CATEGORIES.map((item) => (
                   <Chip
+                    key={item.slug}
                     label={language === "en" ? item.labelEn : item.label}
                     active={selectedCategory === item.slug}
                     onPress={() => handleSelectCategory(item.slug)}
                   />
-                )}
-                style={styles.chipList}
-              />
+                ))}
+              </ScrollView>
 
               <Pressable
                 style={styles.aiMatchingBanner}
@@ -689,6 +746,7 @@ export function DiscoverScreen() {
                   </View>
                 </LinearGradient>
               </Pressable>
+              </View>
 
               {/* Sub-Header Location & Map View Controls Row */}
               <View style={styles.subHeaderControlsRow}>
@@ -711,14 +769,14 @@ export function DiscoverScreen() {
               {isMapView ? (
                 <View style={styles.mapCanvasContainer}>
                   <View style={styles.mapHeaderRow}>
-                    <Text style={styles.mapCanvasTitle}>📍 {t("map")} ({filteredMapEvents.length})</Text>
+                    <Text style={styles.mapCanvasTitle}>{t("map")} ({filteredMapEvents.length})</Text>
                     {isLoadingMapEvents ? <ActivityIndicator size="small" color={accentColor} /> : null}
                   </View>
-                  <View style={styles.mapDateFilterRow}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mapDateFilterRow}>
                     <Chip label={t("all")} active={mapDateFilter === "all"} onPress={() => setMapDateFilter("all")} />
                     <Chip label={t("today")} active={mapDateFilter === "today"} onPress={() => setMapDateFilter("today")} />
                     <Chip label={t("thisWeek")} active={mapDateFilter === "week"} onPress={() => setMapDateFilter("week")} />
-                  </View>
+                  </ScrollView>
                   <EventsMapView
                     events={filteredMapEvents}
                     centerLatitude={userCoords?.latitude ?? 41.0082}
@@ -728,6 +786,16 @@ export function DiscoverScreen() {
                     selectedEventId={selectedMapEvent?.id ?? null}
                     height={380}
                   />
+
+                  {!isLoadingMapEvents && filteredMapEvents.length === 0 && (
+                    <View style={styles.mapEmptyState}>
+                      <Text style={styles.mapEmptyStateText}>
+                        {language === "en"
+                          ? "You haven't joined any events yet."
+                          : "Henüz katıldığınız bir etkinlik yok."}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* Selected Event Callout Overlay - Tapping card opens details directly */}
                   {selectedMapEvent && (
@@ -752,10 +820,10 @@ export function DiscoverScreen() {
                         </View>
                         <Text style={styles.calloutTitle} numberOfLines={1}>{selectedMapEvent.title}</Text>
                         <Text style={styles.calloutText} numberOfLines={1}>
-                          📍 {selectedMapEvent.location_name} {getEventDistanceLabel(selectedMapEvent) ? `· 📏 ${getEventDistanceLabel(selectedMapEvent)}` : ""}
+                          {selectedMapEvent.location_name} {getEventDistanceLabel(selectedMapEvent) ? `· ${getEventDistanceLabel(selectedMapEvent)}` : ""}
                         </Text>
                         <Text style={styles.calloutSubText}>
-                          🕒 {formatEventDate(selectedMapEvent.starts_at, language)} · 👥 {selectedMapEvent.attendee_count} {language === "en" ? "Attendees" : "Katılımcı"}
+                          {formatEventDate(selectedMapEvent.starts_at, language)} · {selectedMapEvent.attendee_count} {language === "en" ? "Attendees" : "Katılımcı"}
                         </Text>
                         <View style={[styles.calloutDetailBtnRow, { backgroundColor: accentColor }]}>
                           <Text style={styles.calloutDetailBtnText}>
@@ -800,9 +868,7 @@ export function DiscoverScreen() {
               ? `${getCategoryMeta(selectedCategory).label} kategorisinde şu an etkinlik yok. Başka bir kategori dener misin?`
               : originFilter === "user"
                 ? "Şu an kullanıcıların oluşturduğu bir etkinlik yok."
-                : originFilter === "system"
-                  ? "Şu an sistem etkinliği yok."
-                  : "Şu an gösterilecek etkinlik yok. Daha sonra tekrar kontrol et!"}
+                : "Şu an sistem etkinliği yok."}
           </Text>
         ) : null
       }
@@ -820,6 +886,10 @@ export function DiscoverScreen() {
           </View>
         );
       }}
+      removeClippedSubviews={true}
+      maxToRenderPerBatch={8}
+      initialNumToRender={6}
+      windowSize={5}
     />
     <OptionPickerModal
       visible={sortPickerVisible}
@@ -830,7 +900,7 @@ export function DiscoverScreen() {
     />
     <LocationPickerModal
       visible={isCityPickerVisible}
-      onSelect={handleCitySelect}
+      onSelect={handleLocationSelected}
       onDismiss={() => setIsCityPickerVisible(false)}
       initialLatitude={userCoords?.latitude}
       initialLongitude={userCoords?.longitude}
@@ -850,7 +920,7 @@ const styles = StyleSheet.create({
   },
   headerArea: {
     paddingTop: spacing.xl,
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   topRow: {
     flexDirection: "row",
@@ -948,6 +1018,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
   },
+  mapEmptyState: {
+    padding: spacing.md,
+    alignItems: "center",
+  },
+  mapEmptyStateText: {
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+  },
   mapCalloutCard: {
     backgroundColor: colors.surface,
     padding: spacing.md,
@@ -993,8 +1073,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.surface,
   },
+  filterCluster: {
+    gap: spacing.xs,
+  },
   aiMatchingBanner: {
-    marginTop: spacing.md,
     borderRadius: radius.card,
     overflow: "hidden",
     ...shadows.card,
@@ -1156,5 +1238,30 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     alignItems: "center",
     marginTop: spacing.xs,
+  },
+  segmentedContainer: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: radius.pill,
+    padding: 3,
+    marginVertical: spacing.xs,
+  },
+  segmentTab: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+  },
+  segmentTabActive: {
+    backgroundColor: colors.primary,
+  },
+  segmentText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  segmentTextActive: {
+    color: colors.surface,
   },
 });

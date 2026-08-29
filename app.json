@@ -15,11 +15,15 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Görüntülü arama yapabilmek için kameraya erişim izni gerekiyor.",
         "NSMicrophoneUsageDescription": "Sesli ve görüntülü arama yapabilmek için mikrofona erişim izni gerekiyor.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.findyourbuddy.app",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png"

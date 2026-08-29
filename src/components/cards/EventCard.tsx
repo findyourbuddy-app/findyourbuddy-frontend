@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -11,6 +11,8 @@ import { formatEventDate, isToday } from "../../utils/date";
 import type { Event } from "../../types";
 
 import { useAppTheme } from "../../context/ThemeContext";
+
+import { resolvePhotoUrl } from "../ui/Avatar";
 
 interface EventCardProps {
   event: Event;
@@ -42,10 +44,10 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
   return (
     <Pressable style={styles.card} onPress={onPress} disabled={!onPress}>
       <View style={styles.banner}>
-        {event.image_url ? (
-          <Image source={{ uri: event.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
-        ) : event.creator?.photo_url ? (
-          <Image source={{ uri: event.creator.photo_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        {event.creator_id && event.creator?.photo_url ? (
+          <Image source={{ uri: resolvePhotoUrl(event.creator.photo_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={{ duration: 150 }} />
+        ) : event.image_url ? (
+          <Image source={{ uri: resolvePhotoUrl(event.image_url) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={{ duration: 150 }} />
         ) : (
           <LinearGradient colors={category.gradient} style={StyleSheet.absoluteFill}>
             <View style={styles.bannerIcon}>
@@ -98,8 +100,15 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
           </View>
         ) : null}
         <PrimaryButton
-          label={event.is_attending ? t("seeBuddiesBtn") : t("imGoingToThisEvent")}
+          label={
+            event.is_attending
+              ? t("seeBuddiesBtn")
+              : event.is_pending
+              ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
+              : t("imGoingToThisEvent")
+          }
           onPress={onPressJoin}
+          disabled={event.is_pending}
         />
       </View>
     </Pressable>

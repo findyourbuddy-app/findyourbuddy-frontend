@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TextInput, View, Modal, ActivityIndicator } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View, Modal, ActivityIndicator, Pressable } from "react-native";
+import { Image } from "expo-image";
 import { Alert } from "../utils/alert";
-import { Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -13,11 +13,12 @@ import {
 } from "expo-audio";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Avatar } from "../components/ui/Avatar";
+import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { Chip } from "../components/ui/Chip";
 import { IconSectionHeader } from "../components/ui/IconSectionHeader";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { VoiceNotePlayer } from "../components/ui/VoiceNotePlayer";
+import { UniversityAutocomplete } from "../components/ui/UniversityAutocomplete";
 import { OptionPickerModal } from "../components/overlays/OptionPickerModal";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
 import { PhotoVerificationModal } from "../components/overlays/PhotoVerificationModal";
@@ -27,12 +28,13 @@ import type { GeocodingResult } from "../api/geocoding";
 import {
   deleteGalleryPhoto,
   listMyPhotos,
-  toUploadFile,
   updateCurrentUser,
   uploadGalleryPhoto,
   uploadProfilePhoto,
+  uploadVoiceNote,
 } from "../api/users";
 import { useAuth } from "../context/AuthContext";
+import { useAppTheme } from "../context/ThemeContext";
 import { apiClient } from "../api/client";
 import { LANGUAGES_LIST } from "../constants/languages";
 import { BIO_SUGGESTIONS, PROMPT_SUGGESTIONS } from "../constants/prompts";
@@ -52,8 +54,6 @@ const MAX_GALLERY_PHOTOS = 6;
 
 type EditProfileNavigationProp = NativeStackNavigationProp<MainStackParamList, "EditProfile">;
 
-import { useAppTheme } from "../context/ThemeContext";
-
 export function EditProfileScreen() {
   const navigation = useNavigation<EditProfileNavigationProp>();
   const { user, updateUser, justRegistered, clearJustRegistered } = useAuth();
@@ -72,6 +72,8 @@ export function EditProfileScreen() {
   const [displayName, setDisplayName] = useState(user?.display_name ?? "");
   const [occupation, setOccupation] = useState(user?.occupation ?? "");
   const [university, setUniversity] = useState(user?.university ?? "");
+  const [classYear, setClassYear] = useState(user?.class_year ?? "");
+  const [classYearPickerVisible, setClassYearPickerVisible] = useState(false);
   const [zodiacSign, setZodiacSign] = useState(user?.zodiac_sign ?? "");
   const [gender, setGender] = useState(user?.gender ?? "");
   const [lookingFor, setLookingFor] = useState(user?.looking_for ?? "");
@@ -97,6 +99,17 @@ export function EditProfileScreen() {
     { key: "Balık", tr: "Balık", en: "Pisces" },
   ];
 
+  const CLASS_YEAR_OPTIONS = [
+    { key: "Hazırlık", tr: "Hazırlık", en: "Prep Year" },
+    { key: "1. Sınıf", tr: "1. Sınıf", en: "1st Year" },
+    { key: "2. Sınıf", tr: "2. Sınıf", en: "2nd Year" },
+    { key: "3. Sınıf", tr: "3. Sınıf", en: "3rd Year" },
+    { key: "4. Sınıf", tr: "4. Sınıf", en: "4th Year" },
+    { key: "Yüksek Lisans", tr: "Yüksek Lisans", en: "Master's" },
+    { key: "Doktora", tr: "Doktora", en: "PhD" },
+    { key: "Mezun", tr: "Mezun", en: "Graduate" },
+  ];
+
   const GENDER_OPTIONS = [
     { key: "Kadın", tr: "Kadın", en: "Female" },
     { key: "Erkek", tr: "Erkek", en: "Male" },
@@ -105,12 +118,22 @@ export function EditProfileScreen() {
   ];
 
   const LOOKING_FOR_OPTIONS = [
-    { key: "Kahve & Sohbet", tr: "Kahve & Sohbet", en: "Coffee & Chat" },
-    { key: "Spor Arkadaşı", tr: "Spor Arkadaşı", en: "Workout Buddy" },
-    { key: "Konser Kankası", tr: "Konser Kankası", en: "Concert Buddy" },
-    { key: "Yeni Şehirde Rehber", tr: "Yeni Şehirde Rehber", en: "City Guide" },
-    { key: "Sadece Eğlence", tr: "Sadece Eğlence", en: "Just Having Fun" },
-    { key: "Uzun Vadeli Dostluk", tr: "Uzun Vadeli Dostluk", en: "Long-term Friendship" },
+    { key: "Kahve & Sohbet", tr: "Kahve & Sohbet ☕", en: "Coffee & Chat ☕" },
+    { key: "Spor Arkadaşı", tr: "Spor Arkadaşı 🏋️‍♂️", en: "Workout Buddy 🏋️‍♂️" },
+    { key: "Konser & Festival", tr: "Konser & Festival 🎶", en: "Concert & Festival 🎶" },
+    { key: "Ders & Çalışma", tr: "Ders & Çalışma Ekürisi 📚", en: "Study Buddy 📚" },
+    { key: "Seyahat & Gezi", tr: "Seyahat & Gezi Ortağı ✈️", en: "Travel & Trip Partner ✈️" },
+    { key: "Yazılım & Proje", tr: "Yazılım & Proje Ortaklığı 💻", en: "Coding & Project Partner 💻" },
+    { key: "Oyun & E-Spor", tr: "Oyun & E-Spor Kankası 🎮", en: "Gaming & E-Sports Buddy 🎮" },
+    { key: "Sanat & Müze", tr: "Sanat & Müze Gezisi 🎨", en: "Art & Museum Visits 🎨" },
+    { key: "Gece Hayatı & Parti", tr: "Gece Hayatı & Parti 🥳", en: "Nightlife & Party 🥳" },
+    { key: "Yeni Şehirde Çevre", tr: "Yeni Şehirde Çevre / Rehber 🗺️", en: "New City Friends & Guide 🗺️" },
+    { key: "Doğa Yürüyüşü & Kamp", tr: "Doğa Yürüyüşü & Kamp 🏕️", en: "Hiking & Camping 🏕️" },
+    { key: "Yemek & Gurme", tr: "Yemek & Gurme Keşfi 🍕", en: "Food & Foodie Buddy 🍕" },
+    { key: "Fotoğraf & Video", tr: "Fotoğraf & Video Çekimi 📸", en: "Photography & Content 📸" },
+    { key: "Dil Pratiği", tr: "Dil Pratiği (Language Exchange) 🗣️", en: "Language Exchange 🗣️" },
+    { key: "Uzun Vadeli Dostluk", tr: "Uzun Vadeli Dostluk 🤝", en: "Long-term Friendship 🤝" },
+    { key: "Sadece Eğlence", tr: "Sadece Eğlence & Aktivite 🎉", en: "Just Fun & Activities 🎉" },
   ];
 
   const POLITICAL_OPTIONS = [
@@ -137,6 +160,12 @@ export function EditProfileScreen() {
     key: item.key,
     label: language === "en" ? item.en : item.tr,
     onPress: () => setZodiacSign(item.key),
+  }));
+
+  const classYearOptions = CLASS_YEAR_OPTIONS.map((item) => ({
+    key: item.key,
+    label: language === "en" ? item.en : item.tr,
+    onPress: () => setClassYear(item.key),
   }));
 
   const genderOptions = GENDER_OPTIONS.map((item) => ({
@@ -196,6 +225,10 @@ export function EditProfileScreen() {
       } else {
         next.add(fieldKey);
       }
+      const hiddenArray = Array.from(next);
+      updateCurrentUser({ hidden_fields: hiddenArray })
+        .then((updatedUser) => updateUser(updatedUser))
+        .catch(() => {});
       return next;
     });
   }
@@ -235,7 +268,7 @@ export function EditProfileScreen() {
       setCurrentLocationLabel(label);
 
       Alert.alert(
-        language === "en" ? "Location Updated 📍" : "Konum Güncellendi 📍",
+        language === "en" ? "Location Updated" : "Konum Güncellendi",
         language === "en"
           ? `Your position has been automatically updated to ${label}.`
           : `Konumunuz otomatik olarak ${label} olarak güncellendi!`
@@ -363,7 +396,7 @@ export function EditProfileScreen() {
           language === "en" ? "Camera Permission Required" : "Kamera İzni Gerekli",
           language === "en"
             ? "A live selfie from the front camera is required for Blue Checkmark verification. Please grant camera permission."
-            : "Mavi Tik 🔵 doğrulaması için ön kamera ile anlık selfie çekilmesi zorunludur. Lütfen kamera iznini onaylayın."
+            : "Mavi Tik doğrulaması için ön kamera ile anlık selfie çekilmesi zorunludur. Lütfen kamera iznini onaylayın."
         );
         return;
       }
@@ -391,7 +424,7 @@ export function EditProfileScreen() {
       if (res.data?.verified) {
         updateUser({ ...uploadedUser, is_verified: true });
         Alert.alert(
-          language === "en" ? "Verification Successful! 🔵" : "Doğrulama Başarılı! 🔵",
+          language === "en" ? "Verification Successful!" : "Doğrulama Başarılı!",
           language === "en"
             ? `${res.data.message || "Your profile has been verified!"}\n\nA confirmation email has been sent to ${user.email}.`
             : `${res.data.message || "Profiliniz başarıyla doğrulandı!"}\n\nE-posta adresinize (${user.email}) doğrulama onay mesajı gönderilmiştir.`
@@ -427,12 +460,17 @@ export function EditProfileScreen() {
       return;
     }
 
+    const previousPhoto = user?.photo_url;
     setIsUploadingPhoto(true);
     setError(null);
+    if (user) updateUser({ ...user, photo_url: asset.uri });
+
     try {
       const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? "photo.jpg";
-      updateUser(await uploadProfilePhoto(asset.uri, fileName));
+      const uploaded = await uploadProfilePhoto(asset.uri, fileName);
+      updateUser(uploaded);
     } catch {
+      if (user) updateUser({ ...user, photo_url: previousPhoto ?? null });
       setError("Fotoğraf yüklenemedi, tekrar dener misin?");
     } finally {
       setIsUploadingPhoto(false);
@@ -511,14 +549,9 @@ export function EditProfileScreen() {
     if (!recordedUri) return;
     setIsSaving(true);
     try {
-      const formData = new FormData();
-      formData.append("file", await toUploadFile(recordedUri, "voice_note.m4a"));
-
-      const res = await apiClient.post<User>("/users/me/voice-note", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      updateUser(res.data);
-      setVoiceNoteUrl(res.data.voice_note_url);
+      const updatedUser = await uploadVoiceNote(recordedUri);
+      updateUser(updatedUser);
+      setVoiceNoteUrl(updatedUser.voice_note_url);
       setShowRecorderModal(false);
       Alert.alert("Başarılı", "Ses tanıtımın başarıyla kaydedildi.");
     } catch {
@@ -551,6 +584,7 @@ export function EditProfileScreen() {
   }
 
   async function handleSave(): Promise<void> {
+    if (isSaving) return;
     setError(null);
 
     if (!displayName.trim()) {
@@ -578,6 +612,7 @@ export function EditProfileScreen() {
         date_of_birth: birthDateIso,
         occupation: occupation.trim() ? occupation.trim() : undefined,
         university: university.trim() ? university.trim() : null,
+        class_year: classYear ? classYear : null,
         zodiac_sign: zodiacSign ? zodiacSign : null,
         gender: gender ? gender : null,
         height: height.trim() ? Number(height.trim()) : null,
@@ -603,10 +638,16 @@ export function EditProfileScreen() {
   }
 
   return (
-    <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+      <ScrollView
+        style={[styles.background, { backgroundColor: bgGradient[0] }]}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
       {justRegistered ? (
         <View style={styles.welcomeHeader}>
-          <Text style={typeScale.h1}>Hoş geldin, {user.display_name}! 👋</Text>
+          <Text style={typeScale.h1}>Hoş geldin, {user.display_name}!</Text>
           <Text style={styles.welcomeSubtitle}>
             Sana en uygun etkinlikleri ve kankaları önerebilmemiz için birkaç bilgiye
             ihtiyacımız var. 1 dakikanı alır.
@@ -696,7 +737,7 @@ export function EditProfileScreen() {
         <View style={styles.galleryGrid}>
           {photos.map((photo) => (
             <View key={photo.id} style={styles.galleryTile}>
-              <Image source={{ uri: photo.photo_url }} style={styles.galleryImage} />
+              <Image source={{ uri: resolvePhotoUrl(photo.photo_url) ?? undefined }} style={styles.galleryImage} contentFit="cover" />
               <Pressable
                 style={styles.galleryRemove}
                 onPress={() => handleDeleteGalleryPhoto(photo)}
@@ -743,14 +784,39 @@ export function EditProfileScreen() {
           />
         </View>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>{t("universityOrSchool")}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={language === "en" ? "e.g. Istanbul University" : "Örn. İstanbul Üniversitesi"}
-            placeholderTextColor={colors.textSecondary}
+          <View style={styles.fieldHeaderWithPrivacy}>
+            <Text style={styles.fieldLabel}>{t("universityOrSchool")}</Text>
+            <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("university")}>
+              <Feather name={hiddenFields.has("university") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("university") ? colors.accentRed : colors.primary} />
+              <Text style={[styles.privacyBtnText, hiddenFields.has("university") && { color: colors.accentRed }]}>
+                {hiddenFields.has("university") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Görünür" : "Görünür")}
+              </Text>
+            </Pressable>
+          </View>
+          <UniversityAutocomplete
             value={university}
             onChangeText={setUniversity}
+            language={language}
           />
+        </View>
+        <View style={styles.field}>
+          <View style={styles.fieldHeaderWithPrivacy}>
+            <Text style={styles.fieldLabel}>{language === "en" ? "Class / Graduation" : "Sınıf / Mezuniyet"}</Text>
+            <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("class_year")}>
+              <Feather name={hiddenFields.has("class_year") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("class_year") ? colors.accentRed : colors.primary} />
+              <Text style={[styles.privacyBtnText, hiddenFields.has("class_year") && { color: colors.accentRed }]}>
+                {hiddenFields.has("class_year") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Visible" : "Görünür")}
+              </Text>
+            </Pressable>
+          </View>
+          <Pressable style={styles.inputPressable} onPress={() => setClassYearPickerVisible(true)}>
+            <Text style={[styles.inputText, !classYear && { color: colors.textSecondary }]}>
+              {classYear
+                ? (language === "en" ? CLASS_YEAR_OPTIONS.find((item) => item.key === classYear)?.en : CLASS_YEAR_OPTIONS.find((item) => item.key === classYear)?.tr) ?? classYear
+                : (language === "en" ? "Select..." : "Seç...")}
+            </Text>
+            <Feather name="book-open" size={16} color={colors.textSecondary} />
+          </Pressable>
         </View>
       </View>
 
@@ -807,17 +873,30 @@ export function EditProfileScreen() {
               </Text>
             </Pressable>
           </View>
-          <Pressable style={styles.inputPressable} onPress={() => setPoliticalPickerVisible(true)}>
-            <Text style={[styles.inputText, !politicalViews && { color: colors.textSecondary }]}>
-              {politicalViews
-                ? (POLITICAL_OPTIONS.find((item) => item.key === politicalViews)
-                    ? (language === "en" ? POLITICAL_OPTIONS.find((item) => item.key === politicalViews)?.en : POLITICAL_OPTIONS.find((item) => item.key === politicalViews)?.tr)
-                    : politicalViews)
-                : (language === "en" ? "Select political views (Optional)..." : "Siyasi görüşün (İsteğe bağlı)...")}
-            </Text>
-            <Feather name="compass" size={16} color={colors.textSecondary} />
-          </Pressable>
+          <TextInput
+            style={styles.input}
+            placeholder={language === "en" ? "Type or select political view..." : "Siyasi görüşünü yaz veya aşağıdan seç..."}
+            placeholderTextColor={colors.textSecondary}
+            value={politicalViews ?? ""}
+            onChangeText={setPoliticalViews}
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.xs }}>
+            <View style={{ flexDirection: "row", gap: spacing.xs }}>
+              {POLITICAL_OPTIONS.map((item) => (
+                <Pressable
+                  key={item.key}
+                  style={[styles.chip, politicalViews === item.key && styles.chipActive]}
+                  onPress={() => setPoliticalViews(item.key)}
+                >
+                  <Text style={[styles.chipText, politicalViews === item.key && styles.chipTextActive]}>
+                    {language === "en" ? item.en : item.tr}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
         </View>
+
         <View style={styles.field}>
           <View style={styles.fieldHeaderWithPrivacy}>
             <Text style={styles.fieldLabel}>{language === "en" ? "Beliefs & Philosophy" : "İnanç & Dünya Görüşü"}</Text>
@@ -828,35 +907,60 @@ export function EditProfileScreen() {
               </Text>
             </Pressable>
           </View>
-          <Pressable style={styles.inputPressable} onPress={() => setBeliefsPickerVisible(true)}>
-            <Text style={[styles.inputText, !beliefs && { color: colors.textSecondary }]}>
-              {beliefs
-                ? (BELIEF_OPTIONS.find((item) => item.key === beliefs)
-                    ? (language === "en" ? BELIEF_OPTIONS.find((item) => item.key === beliefs)?.en : BELIEF_OPTIONS.find((item) => item.key === beliefs)?.tr)
-                    : beliefs)
-                : (language === "en" ? "Select belief / philosophy (Optional)..." : "İnanç veya felsefen (İsteğe bağlı)...")}
-            </Text>
-            <Feather name="heart" size={16} color={colors.textSecondary} />
-          </Pressable>
+          <TextInput
+            style={styles.input}
+            placeholder={language === "en" ? "Type or select belief..." : "İnanç/felsefeni yaz veya aşağıdan seç..."}
+            placeholderTextColor={colors.textSecondary}
+            value={beliefs ?? ""}
+            onChangeText={setBeliefs}
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.xs }}>
+            <View style={{ flexDirection: "row", gap: spacing.xs }}>
+              {BELIEF_OPTIONS.map((item) => (
+                <Pressable
+                  key={item.key}
+                  style={[styles.chip, beliefs === item.key && styles.chipActive]}
+                  onPress={() => setBeliefs(item.key)}
+                >
+                  <Text style={[styles.chipText, beliefs === item.key && styles.chipTextActive]}>
+                    {language === "en" ? item.en : item.tr}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
         </View>
+
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>{t("lookingForIntention")}</Text>
-          <Pressable style={styles.inputPressable} onPress={() => setLookingForPickerVisible(true)}>
-            <Text style={[styles.inputText, !lookingFor && { color: colors.textSecondary }]}>
-              {lookingFor
-                ? (LOOKING_FOR_OPTIONS.find((item) => item.key === lookingFor)
-                    ? (language === "en" ? LOOKING_FOR_OPTIONS.find((item) => item.key === lookingFor)?.en : LOOKING_FOR_OPTIONS.find((item) => item.key === lookingFor)?.tr)
-                    : lookingFor)
-                : (language === "en" ? "Select intention..." : "Uygulamada ne aradığını belirt...")}
-            </Text>
-            <Feather name="target" size={16} color={colors.textSecondary} />
-          </Pressable>
+          <TextInput
+            style={styles.input}
+            placeholder={language === "en" ? "Type or select what you're looking for..." : "Ne aradığını yaz veya aşağıdan seç..."}
+            placeholderTextColor={colors.textSecondary}
+            value={lookingFor ?? ""}
+            onChangeText={setLookingFor}
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.xs }}>
+            <View style={{ flexDirection: "row", gap: spacing.xs }}>
+              {LOOKING_FOR_OPTIONS.map((item) => (
+                <Pressable
+                  key={item.key}
+                  style={[styles.chip, lookingFor === item.key && styles.chipActive]}
+                  onPress={() => setLookingFor(item.key)}
+                >
+                  <Text style={[styles.chipText, lookingFor === item.key && styles.chipTextActive]}>
+                    {language === "en" ? item.en : item.tr}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
         </View>
       </View>
 
       {/* Languages Spoken Card */}
       <View style={[styles.groupCard, styles.cardAccentTeal]}>
-        <IconSectionHeader icon="globe" color="#2FA88B" label={language === "en" ? "Languages Spoken 🌐" : "Bildiği Diller 🌐"} />
+        <IconSectionHeader icon="globe" color="#2FA88B" label={language === "en" ? "Languages Spoken" : "Bildiği Diller"} />
         <View style={styles.chipGrid}>
           {LANGUAGES_LIST.map((lang) => {
             const active = selectedLanguages.has(lang.code);
@@ -877,7 +981,7 @@ export function EditProfileScreen() {
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>{t("funDetailPrompt")}</Text>
           <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
-            {language === "en" ? "💡 Tap a suggestion to start:" : "💡 Örnek bir başlığa tıklayarak başla:"}
+            {language === "en" ? "Tap a suggestion to start:" : "Örnek bir başlığa tıklayarak başla:"}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
             <View style={{ flexDirection: "row", gap: spacing.xs }}>
@@ -921,7 +1025,7 @@ export function EditProfileScreen() {
             </Text>
           </View>
           <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
-            {language === "en" ? "💡 Tap a suggestion to fill bio:" : "💡 Biyografi örneğine tıklayarak doldur:"}
+            {language === "en" ? "Tap a suggestion to fill bio:" : "Biyografi örneğine tıklayarak doldur:"}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
             <View style={{ flexDirection: "row", gap: spacing.xs }}>
@@ -991,7 +1095,7 @@ export function EditProfileScreen() {
       <View style={[styles.groupCard, styles.cardAccentPink]}>
         <IconSectionHeader icon="mic" color="#D9427F" label={language === "en" ? "Voice Intro" : "Ses Tanıtımı"} />
         {voiceNoteUrl ? (
-          <VoiceNotePlayer audioUrl={voiceNoteUrl} onDelete={handleDeleteVoiceNote} />
+          <VoiceNotePlayer audioUrl={resolvePhotoUrl(voiceNoteUrl)} onDelete={handleDeleteVoiceNote} />
         ) : (
           <Pressable style={styles.voiceNotePlaceholder} onPress={() => setShowRecorderModal(true)}>
             <Feather name="mic" size={20} color={colors.primary} />
@@ -1009,7 +1113,7 @@ export function EditProfileScreen() {
           </Text>
         </View>
         <PrimaryButton
-          label={isLocatingCurrent ? (language === "en" ? "Updating GPS..." : "GPS Konum Alınıyor...") : (language === "en" ? "📍 Update Current Location (GPS)" : "📍 Anlık Konumumu Otomatik Güncelle (GPS)")}
+          label={isLocatingCurrent ? (language === "en" ? "Updating GPS..." : "GPS Konum Alınıyor...") : (language === "en" ? "Update Current Location (GPS)" : "Anlık Konumumu Otomatik Güncelle (GPS)")}
           onPress={handleAutoUpdateCurrentLocation}
           variant="accent"
         />
@@ -1028,12 +1132,12 @@ export function EditProfileScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.settingsMenuTitle}>
                 {user.is_verified
-                  ? (language === "en" ? "Verified Profile 🔵" : "Mavi Tik Onaylı Profil 🔵")
-                  : (language === "en" ? "Verify Profile 🔵" : "Profilini Doğrula 🔵")}
+                  ? (language === "en" ? "Verified Profile" : "Mavi Tik Onaylı Profil")
+                  : (language === "en" ? "Verify Profile" : "Profilini Doğrula")}
               </Text>
               <Text style={styles.settingsMenuSub}>
                 {user.is_verified
-                  ? (language === "en" ? "Your account is verified with Blue Checkmark 🔵" : "Hesabınız Mavi Tik 🔵 ile onaylanmıştır")
+                  ? (language === "en" ? "Your account is verified with Blue Checkmark" : "Hesabınız Mavi Tik ile onaylanmıştır")
                   : user.verification_status === "rejected"
                   ? (language === "en" ? "Verification rejected. Tap to retake live selfie" : "Doğrulama reddedildi. Yeniden canlı selfie çekmek için tıkla")
                   : user.verification_status === "pending"
@@ -1147,6 +1251,14 @@ export function EditProfileScreen() {
       />
 
       <OptionPickerModal
+        visible={classYearPickerVisible}
+        title={language === "en" ? "Select Class / Graduation" : "Sınıf / Mezuniyet Seç"}
+        options={classYearOptions}
+        selectedKey={classYear}
+        onDismiss={() => setClassYearPickerVisible(false)}
+      />
+
+      <OptionPickerModal
         visible={genderPickerVisible}
         title="Cinsiyetini Seç"
         options={genderOptions}
@@ -1187,6 +1299,7 @@ export function EditProfileScreen() {
         onClose={() => setPhotoVerificationVisible(false)}
       />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1380,6 +1493,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
+  },
+  chip: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  chipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  chipText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  chipTextActive: {
+    color: colors.surface,
   },
   error: {
     fontFamily: fontFamily.bodyMedium,

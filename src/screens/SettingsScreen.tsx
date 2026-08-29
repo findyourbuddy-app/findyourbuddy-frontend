@@ -8,8 +8,10 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { Badge } from "../components/ui/Badge";
+import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
+import type { GeocodingResult } from "../api/geocoding";
 import { registerDeviceToken, unregisterDeviceToken } from "../api/notifications";
-import { deleteCurrentUser, exportMyData } from "../api/users";
+import { deleteCurrentUser, exportMyData, updateCurrentUser } from "../api/users";
 import { createCheckoutSession } from "../api/subscriptions";
 import { useAuth } from "../context/AuthContext";
 import { getExpoPushToken } from "../utils/pushNotifications";
@@ -43,7 +45,7 @@ export function SettingsScreen() {
   const handleVerifyPress = () => {
     if (!user) return;
     if (user.is_verified || user.verification_status === "verified") {
-      Alert.alert("Profil Doğrulanmış 🔵", "Profilin zaten doğrulanmış. Mavi tikin keyfini çıkar!");
+      Alert.alert("Profil Doğrulanmış", "Profilin zaten doğrulanmış. Mavi tikin keyfini çıkar!");
     } else {
       setVerificationModalVisible(true);
     }
@@ -170,10 +172,10 @@ export function SettingsScreen() {
   function handleToggleGhostMode(val: boolean) {
     if (!isPremium && val) {
       Alert.alert(
-        language === "en" ? "⭐ Premium Ghost Mode" : "⭐ Premium Gizli Mod",
+        language === "en" ? "Premium Ghost Mode" : "Premium Gizli Mod",
         language === "en"
           ? "Ghost Mode allows you to browse profiles invisibly! Upgrade to Premium to enable."
-          : "Gizli Mod (Ghost Mode 👻) sayesinde profillerde tamamen gizli gezebilirsin! Açmak için Premium'a yükselt.",
+          : "Gizli Mod (Ghost Mode) sayesinde profillerde tamamen gizli gezebilirsin! Açmak için Premium'a yükselt.",
         [
           { text: t("cancel"), style: "cancel" },
           { text: t("upgradeToPremium"), onPress: handleUpgrade },
@@ -184,13 +186,15 @@ export function SettingsScreen() {
     setIsGhostMode(val);
   }
 
+  const [locationPickerVisible, setLocationPickerVisible] = useState(false);
+
   function handlePassportPress() {
     if (!isPremium) {
       Alert.alert(
-        language === "en" ? "✈️ Premium Passport" : "✈️ Premium Pasaport",
+        language === "en" ? "Premium Passport" : "Premium Pasaport",
         language === "en"
           ? "Travel Passport lets you teleport to any city in the world to find buddies! Upgrade to Premium."
-          : "Pasaport (Passport ✈️) özelliğiyle Türkiye'nin veya dünyanın istediğin şehrine ışınlanıp oradaki kankalarla eşleşebilirsin! Premium'a yükselt.",
+          : "Pasaport (Passport) özelliğiyle Türkiye'nin veya dünyanın istediğin şehrine ışınlanıp oradaki kankalarla eşleşebilirsin! Premium'a yükselt.",
         [
           { text: t("cancel"), style: "cancel" },
           { text: t("upgradeToPremium"), onPress: handleUpgrade },
@@ -198,10 +202,30 @@ export function SettingsScreen() {
       );
       return;
     }
-    Alert.alert(
-      language === "en" ? "✈️ Passport Active" : "✈️ Pasaport Modu",
-      language === "en" ? "You can teleport to any city from the Discover map!" : "Işınlanmak istediğin şehri Keşfet haritasından veya arama çubuğundan seçebilirsin!"
-    );
+    setLocationPickerVisible(true);
+  }
+
+  async function handleLocationSelect(result: GeocodingResult) {
+    try {
+      const updated = await updateCurrentUser({
+        latitude: result.latitude,
+        longitude: result.longitude,
+      });
+      updateUser(updated);
+      Alert.alert(
+        language === "en" ? "Location Updated" : "Konum Güncellendi",
+        language === "en"
+          ? "Your location has been updated successfully!"
+          : "Sanal konumunuz / anlık konumunuz başarıyla kaydedildi!"
+      );
+    } catch {
+      Alert.alert(
+        language === "en" ? "Error" : "Hata",
+        language === "en" ? "Failed to update location." : "Konum güncellenemedi."
+      );
+    } finally {
+      setLocationPickerVisible(false);
+    }
   }
 
   return (
@@ -354,7 +378,7 @@ export function SettingsScreen() {
       {/* Privacy & Special Power-Ups Card */}
       <View style={styles.card}>
         <Text style={typeScale.eyebrow}>
-          {language === "en" ? "Privacy & Power-Ups 👑" : "Gizlilik & Özel Yetenekler 👑"}
+          {language === "en" ? "Privacy & Power-Ups" : "Gizlilik & Özel Yetenekler"}
         </Text>
 
         <Pressable style={styles.notifModuleBox} onPress={handlePassportPress}>
@@ -364,7 +388,7 @@ export function SettingsScreen() {
           <View style={{ flex: 1, gap: 2 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
               <Text style={styles.notifTitle}>
-                {language === "en" ? "Travel Passport ✈️" : "Sanal Konum / Pasaport ✈️"}
+                {language === "en" ? "Travel Passport" : "Sanal Konum / Pasaport"}
               </Text>
               {!isPremium && <Text style={{ fontSize: 10 }}>👑</Text>}
             </View>
@@ -384,7 +408,7 @@ export function SettingsScreen() {
           <View style={{ flex: 1, gap: 2 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
               <Text style={styles.notifTitle}>
-                {language === "en" ? "Ghost Mode 👻" : "Gizli Gezinme (Ghost Mode 👻)"}
+                {language === "en" ? "Ghost Mode" : "Gizli Gezinme (Ghost Mode)"}
               </Text>
               {!isPremium && <Text style={{ fontSize: 10 }}>👑</Text>}
             </View>
@@ -474,6 +498,14 @@ export function SettingsScreen() {
         isEnabled={isGhostMode}
         onToggle={handleToggleGhostMode}
         onClose={() => setStealthModalVisible(false)}
+      />
+
+      <LocationPickerModal
+        visible={locationPickerVisible}
+        onSelect={handleLocationSelect}
+        onDismiss={() => setLocationPickerVisible(false)}
+        initialLatitude={user?.latitude ?? undefined}
+        initialLongitude={user?.longitude ?? undefined}
       />
     </ScrollView>
   );

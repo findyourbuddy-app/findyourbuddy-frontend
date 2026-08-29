@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
+import { colors, fontFamily, radius, spacing } from "../theme";
 import type { AuthStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Legal">;
@@ -44,7 +44,7 @@ Son güncelleme: bu metin, FindYourBuddy'nin fiilen işlediği veri kategorileri
 2. İşlenen Kişisel Veri Kategorileri ve Biyometrik Veri Açık Rızası (KVKK m.6)
 • Kimlik ve iletişim bilgileri: ad, e-posta, doğum tarihi, meslek
 • Profil bilgileri: fotoğraflar, ilgi alanları, biyografi, ses tanıtım kaydı
-• Biyometrik Veri İşleme (Açık Rıza Bağlamında - KVKK m.6): Profil doğrulama (Mavi Tık 🔵) işlemi sırasında yüklediğiniz anlık özçekim (selfie) fotoğrafı ve yüz karşılaştırma verisi, yalnızca profilinizin gerçek bir bireye ait olduğunu doğrulamak amacıyla açık rızanıza istinaden Novita AI (Qwen Vision LLM) yapay zeka servisi aracılığıyla işlenir ve doğrulama tamamlandıktan hemen sonra saklanmaz veya işlenmez.
+• Biyometrik Veri İşleme (Açık Rıza Bağlamında - KVKK m.6): Profil doğrulama (Mavi Tık) işlemi sırasında yüklediğiniz anlık özçekim (selfie) fotoğrafı ve yüz karşılaştırma verisi, yalnızca profilinizin gerçek bir bireye ait olduğunu doğrulamak amacıyla açık rızanıza istinaden Novita AI (Qwen Vision LLM) yapay zeka servisi aracılığıyla işlenir ve doğrulama tamamlandıktan hemen sonra saklanmaz veya işlenmez.
 • Konum verisi: etkinlik eşleştirmesi için yaklaşık/anlık konum
 • Kullanım verisi: kaydırma (swipe) geçmişi, eşleşmeler, etkinlik katılım bildirimleri
 • İletişim içeriği: eşleşilen kullanıcılarla yapılan sohbet mesajları
@@ -146,10 +146,6 @@ export function LegalScreen({ route }: Props) {
   const isTerms = route.params.kind === "terms";
   const { bgGradient, language, setLanguage } = useAppTheme();
 
-  const title = isTerms
-    ? (language === "en" ? "Terms of Service" : "Kullanım Şartları")
-    : (language === "en" ? "Privacy Policy" : "Gizlilik Politikası");
-
   const contentText = isTerms
     ? (language === "en" ? TERMS_TEXT_EN : TERMS_TEXT)
     : (language === "en" ? PRIVACY_TEXT_EN : PRIVACY_TEXT);
@@ -157,7 +153,6 @@ export function LegalScreen({ route }: Props) {
   return (
     <ScrollView style={[styles.background, { backgroundColor: bgGradient[0] }]} contentContainerStyle={styles.content}>
       <View style={styles.topRow}>
-        <Text style={typeScale.h1}>{title}</Text>
         <Pressable
           style={styles.langPill}
           onPress={() => setLanguage(language === "tr" ? "en" : "tr")}
@@ -187,7 +182,7 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
   },
   langPill: {
     flexDirection: "row",

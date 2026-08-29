@@ -1,17 +1,117 @@
 import { Platform } from "react-native";
 import { apiClient } from "./client";
+import { API_BASE_URL, AUTH_TOKEN_STORAGE_KEY } from "../constants/config";
+import { getToken } from "../utils/tokenStorage";
 import type { User, UserPhoto, UserUpdate } from "../types";
 
 // RN's FormData polyfill understands { uri, name, type } on native, but on
 // web FormData is the real browser API and needs an actual Blob/File --
 // passing the RN-style object there silently produces an empty upload.
-export async function toUploadFile(uri: string, fileName: string): Promise<Blob> {
-  if (Platform.OS === "web") {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    return new File([blob], fileName, { type: blob.type || "image/jpeg" });
+export async function toUploadFile(
+  uri: string,
+  rawFileName: string,
+  mimeType?: string
+): Promise<Blob> {
+  let normalizedUri = (uri || "").split("?")[0];
+  if (Platform.OS === "android" && !normalizedUri.startsWith("file://") && !normalizedUri.startsWith("content://")) {
+    normalizedUri = `file://${normalizedUri}`;
   }
-  return { uri, name: fileName, type: "image/jpeg" } as unknown as Blob;
+
+  const cleanName = (rawFileName.split("?")[0] || "file.jpg").replace(/[^a-zA-Z0-9._-]/g, "_");
+  const lower = cleanName.toLowerCase();
+  let type = mimeType || "image/jpeg";
+  let ext = ".jpg";
+
+  if (lower.endsWith(".png")) {
+    ext = ".png";
+    if (!mimeType) type = "image/png";
+  } else if (lower.endsWith(".webp")) {
+    ext = ".webp";
+    if (!mimeType) type = "image/webp";
+  } else if (lower.endsWith(".m4a")) {
+    ext = ".m4a";
+    if (!mimeType) type = "audio/m4a";
+  } else if (lower.endsWith(".mp3")) {
+    ext = ".mp3";
+    if (!mimeType) type = "audio/mpeg";
+  } else if (lower.endsWith(".wav")) {
+    ext = ".wav";
+    if (!mimeType) type = "audio/wav";
+  } else if (lower.endsWith(".caf")) {
+    ext = ".caf";
+    if (!mimeType) type = "audio/caf";
+  } else if (lower.endsWith(".3gp")) {
+    ext = ".3gp";
+    if (!mimeType) type = "audio/3gpp";
+  }
+
+  const baseName = cleanName.substring(0, cleanName.lastIndexOf(".")) || cleanName;
+  const fileName = `${baseName.slice(0, 30)}${ext}`;
+
+  if (Platform.OS === "web") {
+    const response = await fetch(normalizedUri);
+    const blob = await response.blob();
+    return new File([blob], fileName, { type: mimeType || blob.type || type });
+  }
+  return { uri: normalizedUri, name: fileName, type } as unknown as Blob;
+}
+
+// Use XMLHttpRequest on native mobile for 100% reliable multipart FormData uploads
+export async function postMultipart<T>(path: string, formData: FormData): Promise<T> {
+  let auth =
+    (apiClient.defaults.headers.common as any)?.Authorization ||
+    (apiClient.defaults.headers.common as any)?.["Authorization"];
+  if (!auth) {
+    const storedToken = await getToken(AUTH_TOKEN_STORAGE_KEY);
+    if (storedToken) {
+      auth = `Bearer ${storedToken}`;
+    }
+  }
+
+  if (Platform.OS === "web") {
+    return apiClient
+      .post<T>(path, formData, { timeout: 60000 })
+      .then((res) => res.data);
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const cleanBase = API_BASE_URL.replace(/\/+$/, "");
+    const cleanPath = path.replace(/^\/+/, "");
+    xhr.open("POST", `${cleanBase}/${cleanPath}`);
+    if (auth) {
+      xhr.setRequestHeader("Authorization", String(auth));
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data as T);
+        } catch {
+          reject(new Error("Sunucudan geçersiz yanıt alındı."));
+        }
+      } else {
+        let errorMsg = `Sunucu hatası (${xhr.status})`;
+        try {
+          const errJson = JSON.parse(xhr.responseText);
+          if (errJson.detail) {
+            errorMsg = typeof errJson.detail === "string" ? errJson.detail : errJson.detail[0]?.msg || errorMsg;
+          }
+        } catch {
+          if (xhr.responseText) errorMsg = xhr.responseText;
+        }
+        reject(new Error(errorMsg));
+      }
+    };
+    xhr.onerror = () => {
+      reject(new Error("Fotoğraf sunucuya iletilemedi. Lütfen bağlantını kontrol et."));
+    };
+    xhr.ontimeout = () => {
+      reject(new Error("Fotoğraf yükleme zaman aşımına uğradı."));
+    };
+    xhr.timeout = 60000;
+    xhr.send(formData as any);
+  });
 }
 
 export function getCurrentUser(): Promise<User> {
@@ -29,11 +129,7 @@ export function deleteCurrentUser(): Promise<void> {
 export async function uploadProfilePhoto(uri: string, fileName: string): Promise<User> {
   const formData = new FormData();
   formData.append("file", await toUploadFile(uri, fileName));
-  const headers = Platform.OS === "web" ? { "Content-Type": "multipart/form-data" } : undefined;
-
-  return apiClient
-    .post<User>("/users/me/photo", formData, { headers })
-    .then((res) => res.data);
+  return postMultipart<User>("/users/me/photo", formData);
 }
 
 export function listMyPhotos(): Promise<UserPhoto[]> {
@@ -43,11 +139,7 @@ export function listMyPhotos(): Promise<UserPhoto[]> {
 export async function uploadGalleryPhoto(uri: string, fileName: string): Promise<UserPhoto> {
   const formData = new FormData();
   formData.append("file", await toUploadFile(uri, fileName));
-  const headers = Platform.OS === "web" ? { "Content-Type": "multipart/form-data" } : undefined;
-
-  return apiClient
-    .post<UserPhoto>("/users/me/photos", formData, { headers })
-    .then((res) => res.data);
+  return postMultipart<UserPhoto>("/users/me/photos", formData);
 }
 
 export function deleteGalleryPhoto(photoId: number): Promise<void> {
@@ -77,12 +169,13 @@ export function createPurchaseCheckoutSession(
 export async function uploadMedia(uri: string, fileName: string): Promise<{ url: string }> {
   const formData = new FormData();
   formData.append("file", await toUploadFile(uri, fileName));
+  return postMultipart<{ url: string }>("/users/me/media", formData);
+}
 
-  return apiClient
-    .post<{ url: string }>("/users/me/media", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
-    .then((res) => res.data);
+export async function uploadVoiceNote(uri: string): Promise<User> {
+  const formData = new FormData();
+  formData.append("file", await toUploadFile(uri, "voice_note.m4a", "audio/m4a"));
+  return postMultipart<User>("/users/me/voice-note", formData);
 }
 
 export function verifyPhotoWithVision(selfiePhotoUrl: string): Promise<{ verified: boolean; message: string }> {
@@ -91,4 +184,8 @@ export function verifyPhotoWithVision(selfiePhotoUrl: string): Promise<{ verifie
       selfie_photo_url: selfiePhotoUrl,
     })
     .then((res) => res.data);
+}
+
+export function getUserById(userId: number): Promise<User> {
+  return apiClient.get<User>(`/users/${userId}`).then((res) => res.data);
 }

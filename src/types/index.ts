@@ -14,6 +14,7 @@ export interface User {
   date_of_birth: string | null;
   occupation: string | null;
   university: string | null;
+  class_year: string | null;
   zodiac_sign: string | null;
   gender: string | null;
   height: number | null;
@@ -42,6 +43,7 @@ export interface User {
   phone_number?: string | null;
   phone_verified: boolean;
   is_verified?: boolean;
+  event_title?: string | null;
 }
 
 export interface UserUpdate {
@@ -49,6 +51,7 @@ export interface UserUpdate {
   date_of_birth?: string;
   occupation?: string;
   university?: string | null;
+  class_year?: string | null;
   zodiac_sign?: string | null;
   gender?: string | null;
   height?: number | null;
@@ -107,8 +110,10 @@ export interface Event {
   created_at: string;
   attendee_count: number;
   is_attending: boolean;
+  is_pending: boolean;
   is_checked_in: boolean;
   is_ticket_verified: boolean;
+  has_rated?: boolean;
 }
 
 export interface EventPublicSummary {
@@ -131,6 +136,7 @@ export interface EventCreate {
   max_attendees?: number | null;
   is_paid?: boolean;
   ticket_price?: number | null;
+  image_url?: string | null;
 }
 
 export interface EventCreationQuota {
@@ -144,7 +150,7 @@ export type SwipeDirection = "like" | "pass" | "super_like";
 
 export interface SwipeCreate {
   target_id: number;
-  event_id: number;
+  event_id?: number | null;
   direction: SwipeDirection;
 }
 
@@ -152,7 +158,7 @@ export interface Swipe {
   id: number;
   swiper_id: number;
   target_id: number;
-  event_id: number;
+  event_id?: number | null;
   direction: SwipeDirection;
   created_at: string;
   match_id: number | null;
@@ -177,15 +183,25 @@ export interface Message {
   content: string;
   message_type?: "text" | "image" | "gif";
   media_url?: string | null;
+  // Natural pixel dimensions of media_url, so the bubble can size to the
+  // photo's aspect ratio without waiting for it to download.
+  media_width?: number | null;
+  media_height?: number | null;
   is_read: boolean;
   created_at: string;
   reactions?: Record<string, string>;
+  // Optimistic-send bookkeeping: the local temp id echoed back through
+  // Firestore so the snapshot listener can drop the right placeholder.
+  client_temp_id?: string | null;
 }
 
 export interface MessageCreate {
   content: string;
   message_type?: "text" | "image" | "gif";
   media_url?: string | null;
+  media_width?: number | null;
+  media_height?: number | null;
+  client_temp_id?: string | null;
 }
 
 export type ReportReason = "harassment" | "spam" | "fake_profile" | "inappropriate_content" | "other";
@@ -214,6 +230,10 @@ export interface Notification {
   title: string;
   body: string;
   is_read: boolean;
+  event_id?: number | null;
+  match_id?: number | null;
+  notification_type?: string | null;
+  data?: Record<string, any> | null;
   created_at: string;
 }
 
@@ -234,6 +254,7 @@ export interface Match {
   event_title?: string | null;
   event_category?: string | null;
   event_is_group?: boolean;
+  event_creator_id?: number | null;
   user_a_id: number;
   user_b_id: number;
   score: number;
