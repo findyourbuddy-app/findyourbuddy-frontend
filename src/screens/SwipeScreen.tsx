@@ -437,7 +437,7 @@ export function SwipeScreen() {
     if (activeTab === "user") {
       list.push({
         key: "general_users",
-        label: language === "en" ? "Browse General Users 🌍" : "Genel Kullanıcılarda Gezin 🌍",
+        label: language === "en" ? "Browse General Users" : "Genel Kullanıcılarda Gezin",
         icon: "globe",
         onPress: () => selectGeneralSwipe(),
       });
@@ -950,33 +950,11 @@ export function SwipeScreen() {
           <View style={styles.center}>
             <ActivityIndicator color={colors.primary} />
           </View>
-        ) : !activeEvent ? (
-          <View style={styles.center}>
-            {activeTab === "user" ? (
-              <>
-                <Text style={styles.emptyText}>
-                  {language === "en"
-                    ? "No 1-on-1 user events available to swipe in yet."
-                    : "Şu anda kaydırabileceğin bir birebir kullanıcı etkinliği yok."}
-                </Text>
-                <View style={{ marginTop: spacing.md }}>
-                  <PrimaryButton
-                    label={language === "en" ? "Find Events" : "Etkinlik Bul"}
-                    onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
-                  />
-                </View>
-              </>
-            ) : (
-              <Text style={styles.emptyText}>
-                {t("noUpcomingEventsChooseInDiscover")}
-              </Text>
-            )}
-          </View>
         ) : candidates[currentIndex] ? (
           <SwipeCandidateCard
             key={candidates[currentIndex].id}
             candidate={candidates[currentIndex]}
-            activeEventTitle={activeEvent?.title}
+            activeEventTitle={activeEvent?.title ?? (language === "en" ? "General Users" : "Genel Kullanıcılar")}
             onSwipeLeft={() => handleSwipe("pass")}
             onSwipeRight={() => handleSwipe("like")}
             onSwipeUp={() => handleSwipe("super_like")}
@@ -985,7 +963,7 @@ export function SwipeScreen() {
               if (!activeCandidate) return;
               navigation.navigate("CandidateProfile", {
                 candidate: activeCandidate,
-                eventTitle: groupSwipeEvent?.title,
+                eventTitle: groupSwipeEvent?.title ?? activeEvent?.title,
                 onExitGroupSwipe: groupSwipeEvent
                   ? () => {
                       setGroupSwipeEvent(null);
@@ -1001,34 +979,31 @@ export function SwipeScreen() {
         ) : (
           <View style={styles.center}>
             <Text style={styles.emptyText}>
-              {language === "en"
-                ? "You've seen all interested candidates for this event! 🎉"
-                : "Bu etkinlik için tüm ilgilenen adayları gördün! 🎉"}
+              {activeEvent
+                ? language === "en"
+                  ? "You've seen all candidates for this event!"
+                  : "Bu etkinlik için tüm ilgilenen adayları gördün!"
+                : language === "en"
+                ? "No active platform users available right now."
+                : "Şu anda görülecek başka platform kullanıcısı kalmadı."}
             </Text>
             <View style={{ marginTop: spacing.md, width: "100%", gap: spacing.sm }}>
-              {activeTab === "system" ? (
+              <PrimaryButton
+                label={language === "en" ? "Find Another Event" : "Başka Etkinlik Bul"}
+                onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
+              />
+              {activeEvent ? (
                 <PrimaryButton
-                  label={language === "en" ? "Select New System Event in Discover" : "Keşfet'ten Yeni Sistem Etkinliği Seç"}
-                  onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
+                  label={language === "en" ? "Browse General Users" : "Genel Kullanıcılarda Gezin"}
+                  onPress={() => selectGeneralSwipe()}
                 />
-              ) : (
-                <>
-                  <PrimaryButton
-                    label={language === "en" ? "General Browse (All Nearby)" : "Etkinlik Seçmeden Genel Gezin (Tüm Çevre)"}
-                    onPress={() => selectGeneralSwipe()}
-                  />
-                  <PrimaryButton
-                    label={language === "en" ? "Select New Event in Discover" : "Keşfet'ten Yeni Etkinlik Seç"}
-                    onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
-                  />
-                </>
-              )}
+              ) : null}
             </View>
           </View>
         )}
       </View>
 
-      {activeEvent && candidates[currentIndex] && (activeTab !== "user" || userSubTab !== "group" || groupSwipeEvent) ? (
+      {candidates[currentIndex] && (activeTab !== "user" || userSubTab !== "group" || groupSwipeEvent) ? (
         <View style={styles.actionRow}>
           <Pressable
             style={[styles.actionButton, styles.passButton]}
