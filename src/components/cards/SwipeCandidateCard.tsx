@@ -205,81 +205,72 @@ export function SwipeCandidateCard({
       </Animated.View>
 
       <LinearGradient
-        colors={["transparent", "rgba(15,10,40,0.9)"]}
+        colors={["transparent", "rgba(10,5,30,0.85)"]}
         style={styles.overlay}
         pointerEvents="box-none"
       >
-
-        <View style={styles.nameRow}>
-          <Text style={styles.name}>
-            {candidate.display_name}
-            {candidate.age ? `, ${candidate.age}` : ""}
-          </Text>
-          {candidate.is_verified && (
-            <View style={styles.verifiedBadge}>
-              <Feather name="check" size={10} color="#FFF" />
-            </View>
-          )}
-          {candidate.trust_score > 0 && (
-            <View style={styles.trustBadge}>
-              <Feather name="shield" size={10} color="#FFF" />
-              <Text style={styles.trustBadgeText}>Güvenilir Buddy</Text>
-            </View>
-          )}
-          <Pressable
-            style={styles.infoBadgeBtn}
-            onPress={onPressProfile}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={language === "en" ? "View profile" : "Profili görüntüle"}
-          >
-            <Feather name="info" size={14} color="#FFF" />
-          </Pressable>
-        </View>
-
-
-        {locationName ? (
-          <View style={styles.locationRow}>
-            <Feather name="map-pin" size={12} color="rgba(255,255,255,0.9)" />
-            <Text style={styles.locationText}>{locationName}</Text>
-          </View>
-        ) : null}
-
-        {showEventBadge ? (
-          <View style={styles.eventContextRow}>
-            <Feather name="calendar" size={12} color="#FFD700" />
-            <Text style={styles.eventContextText} numberOfLines={1}>
-              {language === "en" ? "Selected Event: " : "Seçili Etkinlik: "}
-              {rawEventTitle}
+        <Pressable onPress={onPressProfile} style={{ gap: 3 }}>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>
+              {candidate.display_name}
+              {candidate.age ? `, ${candidate.age}` : ""}
             </Text>
-          </View>
-        ) : null}
-
-        <View style={styles.lookingForRow}>
-          <Feather name="message-circle" size={12} color="#4DEEEA" />
-          <Text style={styles.lookingForText} numberOfLines={1}>
-            {language === "en" ? "Looking for: " : "Aradığı Arkadaşlık İlişkisi: "}
-            {candidate.looking_for || (language === "en" ? "Event Buddy & Chat" : "Etkinlik Arkadaşı & Sohbet")}
-          </Text>
-        </View>
-
-        {candidate.bio || candidate.about_me_prompt ? (
-          <View style={styles.bioBox}>
-            <Text style={styles.bioText} numberOfLines={2}>
-              "{candidate.bio || candidate.about_me_prompt}"
-            </Text>
-          </View>
-        ) : null}
-
-        {candidate.interests.length > 0 ? (
-          <View style={styles.chipRow}>
-            {candidate.interests.slice(0, 3).map((interest) => (
-              <View key={interest} style={styles.chip}>
-                <Text style={styles.chipText}>{getInterestLabel(interest, language)}</Text>
+            {candidate.is_verified && (
+              <View style={styles.verifiedBadge}>
+                <Feather name="check" size={10} color="#FFF" />
               </View>
-            ))}
+            )}
+            {candidate.trust_score > 0 && (
+              <View style={styles.trustBadge}>
+                <Feather name="shield" size={10} color="#FFF" />
+                <Text style={styles.trustBadgeText}>Güvenilir Buddy</Text>
+              </View>
+            )}
           </View>
-        ) : null}
+
+          {locationName ? (
+            <View style={styles.locationRow}>
+              <Feather name="map-pin" size={11} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.locationText}>{locationName}</Text>
+            </View>
+          ) : null}
+
+          {showEventBadge ? (
+            <View style={styles.eventContextRow}>
+              <Feather name="calendar" size={11} color="#FFD700" />
+              <Text style={styles.eventContextText} numberOfLines={1}>
+                {language === "en" ? "Selected Event: " : "Seçili Etkinlik: "}
+                {rawEventTitle}
+              </Text>
+            </View>
+          ) : null}
+
+          <View style={styles.lookingForRow}>
+            <Feather name="message-circle" size={11} color="#4DEEEA" />
+            <Text style={styles.lookingForText} numberOfLines={1}>
+              {language === "en" ? "Looking for: " : "Aradığı Arkadaşlık İlişkisi: "}
+              {candidate.looking_for || (language === "en" ? "Event Buddy & Chat" : "Etkinlik Arkadaşı & Sohbet")}
+            </Text>
+          </View>
+
+          {candidate.bio || candidate.about_me_prompt ? (
+            <View style={styles.bioBox}>
+              <Text style={styles.bioText} numberOfLines={1}>
+                "{candidate.bio || candidate.about_me_prompt}"
+              </Text>
+            </View>
+          ) : null}
+
+          {candidate.interests.length > 0 ? (
+            <View style={styles.chipRow}>
+              {candidate.interests.slice(0, 3).map((interest) => (
+                <View key={interest} style={styles.chip}>
+                  <Text style={styles.chipText}>{getInterestLabel(interest, language)}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </Pressable>
       </LinearGradient>
 
       <PhotoLightboxModal
@@ -357,8 +348,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    padding: spacing.lg,
-    gap: spacing.sm,
+    padding: spacing.md,
+    gap: 2,
   },
   nameRow: {
     flexDirection: "row",
@@ -367,13 +358,13 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: fontFamily.displayBold,
-    fontSize: 22,
+    fontSize: 19,
     color: colors.surface,
   },
   verifiedBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: "#1DA1F2",
     alignItems: "center",
     justifyContent: "center",
@@ -394,15 +385,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#FFF",
   },
-  infoBadgeBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: "auto",
-  },
   eventLocationPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -411,40 +393,36 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 201, 60, 0.2)",
     borderWidth: 1,
     borderColor: "rgba(255, 201, 60, 0.4)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     borderRadius: radius.pill,
     marginTop: -2,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   eventLocationPillText: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: 12,
+    fontSize: 11,
     color: "#FFC93C",
     flexShrink: 1,
   },
   locationRow: {
-
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginTop: -2,
-    marginBottom: 2,
   },
   locationText: {
     fontFamily: fontFamily.bodyMedium,
-    fontSize: 13,
+    fontSize: 12,
     color: "rgba(255, 255, 255, 0.95)",
   },
   eventContextRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginBottom: 2,
   },
   eventContextText: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: 13,
+    fontSize: 12,
     color: "#FFD700",
     flexShrink: 1,
   },
@@ -452,11 +430,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginBottom: 2,
   },
   lookingForText: {
     fontFamily: fontFamily.bodyMedium,
-    fontSize: 13,
+    fontSize: 12,
     color: "rgba(255, 255, 255, 0.95)",
     flexShrink: 1,
   },
@@ -467,9 +444,8 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     backgroundColor: colors.primary,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 2,
     borderRadius: radius.pill,
-    marginBottom: 2,
   },
   eventPillText: {
     fontFamily: fontFamily.bodyMedium,
@@ -479,33 +455,35 @@ const styles = StyleSheet.create({
   },
   bioBox: {
     backgroundColor: "rgba(0, 0, 0, 0.35)",
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
     borderRadius: radius.sm,
-    borderLeftWidth: 3,
+    borderLeftWidth: 2,
     borderLeftColor: colors.primary,
+    marginTop: 1,
   },
   bioText: {
     fontFamily: fontFamily.body,
-    fontSize: 13,
+    fontSize: 12,
     fontStyle: "italic",
     color: "rgba(255, 255, 255, 0.95)",
-    lineHeight: 18,
+    lineHeight: 16,
   },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.xs,
+    gap: 4,
+    marginTop: 2,
   },
   chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: radius.pill,
     backgroundColor: "rgba(255,255,255,0.2)",
   },
   chipText: {
     fontFamily: fontFamily.bodyMedium,
-    fontSize: 12,
+    fontSize: 11,
     color: colors.surface,
   },
 });
