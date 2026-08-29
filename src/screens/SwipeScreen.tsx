@@ -420,6 +420,21 @@ export function SwipeScreen() {
     }
   }
 
+  // Fully tear down the swipe deck. Exiting a group swipe used to only clear
+  // `groupSwipeEvent`, leaving `activeEvent` + `candidates` pointing at the
+  // group event -- so its candidates, action buttons and event pill leaked
+  // into the group list and the 1-on-1 tab, and the 15s poller kept refreshing
+  // them.
+  function resetSwipeDeck(): void {
+    setGroupSwipeEvent(null);
+    groupSwipeEventRef.current = null;
+    setActiveEvent(null);
+    activeEventRef.current = null;
+    setCandidates([]);
+    setCurrentIndex(0);
+    setIsLoading(false);
+  }
+
   function selectGeneralSwipe(): void {
     setActiveEvent(null);
     setCurrentIndex(0);
@@ -740,10 +755,17 @@ export function SwipeScreen() {
         {activeTab === "user" ? (
           <>
             <Pressable
-              style={[styles.subTabButton, userSubTab === "birebir" && styles.subTabButtonActive]}
+              style={[
+                styles.subTabButton,
+                userSubTab === "birebir" && styles.subTabButtonActive,
+                groupSwipeEvent && styles.subTabButtonLocked,
+              ]}
+              disabled={Boolean(groupSwipeEvent)}
               onPress={() => {
+                if (userSubTab === "birebir") return;
+                resetSwipeDeck();
                 setUserSubTab("birebir");
-                setGroupSwipeEvent(null);
+                selectGeneralSwipe();
               }}
             >
               <Feather name="user" size={13} color={userSubTab === "birebir" ? colors.primary : colors.textSecondary} />
@@ -752,10 +774,15 @@ export function SwipeScreen() {
               </Text>
             </Pressable>
             <Pressable
-              style={[styles.subTabButton, userSubTab === "group" && styles.subTabButtonActive]}
+              style={[
+                styles.subTabButton,
+                userSubTab === "group" && styles.subTabButtonActive,
+                groupSwipeEvent && styles.subTabButtonLocked,
+              ]}
+              disabled={Boolean(groupSwipeEvent)}
               onPress={() => {
+                resetSwipeDeck();
                 setUserSubTab("group");
-                setGroupSwipeEvent(null);
               }}
             >
               <Feather name="users" size={13} color={userSubTab === "group" ? colors.primary : colors.textSecondary} />
@@ -784,7 +811,7 @@ export function SwipeScreen() {
           </Text>
           <Pressable
             style={styles.groupSwipeExitBtn}
-            onPress={() => setGroupSwipeEvent(null)}
+            onPress={resetSwipeDeck}
             accessibilityRole="button"
             accessibilityLabel={language === "en" ? "Exit group matching" : "Grup eşleşmesinden çık"}
           >
@@ -967,7 +994,6 @@ export function SwipeScreen() {
           <SwipeCandidateCard
             key={candidates[currentIndex].id}
             candidate={candidates[currentIndex]}
-            activeEventTitle={activeEvent?.title ?? (language === "en" ? "General Users" : "Genel Kullanıcılar")}
             onSwipeLeft={() => handleSwipe("pass")}
             onSwipeRight={() => handleSwipe("like")}
             onSwipeUp={() => handleSwipe("super_like")}
@@ -979,7 +1005,7 @@ export function SwipeScreen() {
                 eventTitle: groupSwipeEvent?.title ?? activeEvent?.title,
                 onExitGroupSwipe: groupSwipeEvent
                   ? () => {
-                      setGroupSwipeEvent(null);
+                      resetSwipeDeck();
                       navigation.goBack();
                     }
                   : undefined,
@@ -1541,6 +1567,9 @@ const styles = StyleSheet.create({
   subTabButtonActive: {
     backgroundColor: colors.primaryMuted,
     borderColor: colors.primary,
+  },
+  subTabButtonLocked: {
+    opacity: 0.4,
   },
   subTabButtonText: {
     fontFamily: fontFamily.bodyMedium,

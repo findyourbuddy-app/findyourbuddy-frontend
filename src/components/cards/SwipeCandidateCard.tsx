@@ -8,11 +8,9 @@ import { getInterestLabel } from "../../constants/interests";
 import { hasValidCoordinates, resolveCityDistrict } from "../../utils/location";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 import type { User } from "../../types";
-import { PhotoLightboxModal } from "../overlays/PhotoLightboxModal";
 
 interface SwipeCandidateCardProps {
   candidate: User;
-  activeEventTitle?: string;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
   onSwipeUp: () => void;
@@ -41,7 +39,6 @@ import { useAppTheme } from "../../context/ThemeContext";
 
 export function SwipeCandidateCard({
   candidate,
-  activeEventTitle,
   onSwipeLeft,
   onSwipeRight,
   onSwipeUp,
@@ -50,7 +47,6 @@ export function SwipeCandidateCard({
   const { language } = useAppTheme();
   const photoUrls = candidatePhotoUrls(candidate);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [lightboxVisible, setLightboxVisible] = useState(false);
   const [cardWidth, setCardWidth] = useState(0);
   const [locationName, setLocationName] = useState<string | null>(null);
   const position = useRef(new Animated.ValueXY()).current;
@@ -60,15 +56,6 @@ export function SwipeCandidateCard({
       resolveCityDistrict(candidate.latitude, candidate.longitude).then(setLocationName);
     }
   }, [candidate.latitude, candidate.longitude]);
-
-  const rawEventTitle = activeEventTitle || candidate.event_title;
-  const isGeneralUsersTitle = Boolean(
-    rawEventTitle &&
-    (rawEventTitle.toLowerCase().includes("genel kullanıcılard") ||
-     rawEventTitle.toLowerCase().includes("general user") ||
-     rawEventTitle.toLowerCase().includes("genel kullanıcı"))
-  );
-  const showEventBadge = Boolean(rawEventTitle && !isGeneralUsersTitle && rawEventTitle.trim().length > 0);
 
   function handleLayout(event: LayoutChangeEvent): void {
     setCardWidth(event.nativeEvent.layout.width);
@@ -101,9 +88,8 @@ export function SwipeCandidateCard({
           Math.abs(gesture.dx) > TAP_MOVE_THRESHOLD || Math.abs(gesture.dy) > TAP_MOVE_THRESHOLD;
         if (!movedEnough) {
           const tapX = evt.nativeEvent.locationX;
-          // Left/right edges browse photos (when there's more than one); tapping
-          // the photo itself zooms it. Opening the full profile now goes through
-          // the dedicated info badge instead of eating most of the card's tap area.
+          // Left/right edges browse photos (when there's more than one); a tap
+          // anywhere else opens the full profile.
           if (photoUrls.length > 1 && cardWidth > 0 && tapX < cardWidth * 0.25) {
             goToPhoto(-1);
           } else if (photoUrls.length > 1 && cardWidth > 0 && tapX > cardWidth * 0.75) {
@@ -223,7 +209,6 @@ export function SwipeCandidateCard({
             {candidate.trust_score > 0 && (
               <View style={styles.trustBadge}>
                 <Feather name="shield" size={10} color="#FFF" />
-                <Text style={styles.trustBadgeText}>Güvenilir Buddy</Text>
               </View>
             )}
           </View>
@@ -235,23 +220,14 @@ export function SwipeCandidateCard({
             </View>
           ) : null}
 
-          {showEventBadge ? (
-            <View style={styles.eventContextRow}>
-              <Feather name="calendar" size={11} color="#FFD700" />
-              <Text style={styles.eventContextText} numberOfLines={1}>
-                {language === "en" ? "Selected Event: " : "Seçili Etkinlik: "}
-                {rawEventTitle}
+          {candidate.looking_for ? (
+            <View style={styles.lookingForRow}>
+              <Feather name="message-circle" size={11} color="#4DEEEA" />
+              <Text style={styles.lookingForText} numberOfLines={1}>
+                {candidate.looking_for}
               </Text>
             </View>
           ) : null}
-
-          <View style={styles.lookingForRow}>
-            <Feather name="message-circle" size={11} color="#4DEEEA" />
-            <Text style={styles.lookingForText} numberOfLines={1}>
-              {language === "en" ? "Looking for: " : "Aradığı Arkadaşlık İlişkisi: "}
-              {candidate.looking_for || (language === "en" ? "Event Buddy & Chat" : "Etkinlik Arkadaşı & Sohbet")}
-            </Text>
-          </View>
 
           {candidate.bio || candidate.about_me_prompt ? (
             <View style={styles.bioBox}>
@@ -272,13 +248,6 @@ export function SwipeCandidateCard({
           ) : null}
         </Pressable>
       </LinearGradient>
-
-      <PhotoLightboxModal
-        visible={lightboxVisible}
-        photos={photoUrls}
-        initialIndex={activeIndex}
-        onClose={() => setLightboxVisible(false)}
-      />
     </Animated.View>
   );
 }
@@ -371,19 +340,13 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   trustBadge: {
-    flexDirection: "row",
-    alignItems: "center",
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: "#2E7D32",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-    gap: 3,
-    marginLeft: 6,
-  },
-  trustBadgeText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 10,
-    color: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
   },
   eventLocationPill: {
     flexDirection: "row",
@@ -414,17 +377,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 12,
     color: "rgba(255, 255, 255, 0.95)",
-  },
-  eventContextRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  eventContextText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 12,
-    color: "#FFD700",
-    flexShrink: 1,
   },
   lookingForRow: {
     flexDirection: "row",
