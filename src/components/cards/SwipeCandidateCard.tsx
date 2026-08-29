@@ -61,6 +61,15 @@ export function SwipeCandidateCard({
     }
   }, [candidate.latitude, candidate.longitude]);
 
+  const rawEventTitle = activeEventTitle || candidate.event_title;
+  const isGeneralUsersTitle = Boolean(
+    rawEventTitle &&
+    (rawEventTitle.toLowerCase().includes("genel kullanıcılard") ||
+     rawEventTitle.toLowerCase().includes("general user") ||
+     rawEventTitle.toLowerCase().includes("genel kullanıcı"))
+  );
+  const showEventBadge = Boolean(rawEventTitle && !isGeneralUsersTitle && rawEventTitle.trim().length > 0);
+
   function handleLayout(event: LayoutChangeEvent): void {
     setCardWidth(event.nativeEvent.layout.width);
   }
@@ -236,12 +245,12 @@ export function SwipeCandidateCard({
           </View>
         ) : null}
 
-        {activeEventTitle || candidate.event_title ? (
+        {showEventBadge ? (
           <View style={styles.eventContextRow}>
             <Feather name="calendar" size={12} color="#FFD700" />
             <Text style={styles.eventContextText} numberOfLines={1}>
               {language === "en" ? "Selected Event: " : "Seçili Etkinlik: "}
-              {activeEventTitle || candidate.event_title}
+              {rawEventTitle}
             </Text>
           </View>
         ) : null}
