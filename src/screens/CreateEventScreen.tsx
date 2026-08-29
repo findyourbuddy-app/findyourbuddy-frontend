@@ -313,7 +313,7 @@ export function CreateEventScreen() {
         location_name: locationName.trim(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
-        starts_at: startsAt.toISOString().replace("Z", ""),
+        starts_at: `${startsAt.getFullYear()}-${String(startsAt.getMonth() + 1).padStart(2, "0")}-${String(startsAt.getDate()).padStart(2, "0")}T${String(startsAt.getHours()).padStart(2, "0")}:${String(startsAt.getMinutes()).padStart(2, "0")}:00`,
         is_group_event: isGroupEvent,
         max_attendees: isGroupEvent && maxAttendees.trim() ? parseInt(maxAttendees, 10) : null,
         is_paid: isPaid,

@@ -236,11 +236,21 @@ export function SwipeCandidateCard({
           </View>
         ) : null}
 
+        {activeEventTitle || candidate.event_title ? (
+          <View style={styles.eventContextRow}>
+            <Feather name="calendar" size={12} color="#FFD700" />
+            <Text style={styles.eventContextText} numberOfLines={1}>
+              {language === "en" ? "Selected Event: " : "Seçili Etkinlik: "}
+              {activeEventTitle || candidate.event_title}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.lookingForRow}>
           <Feather name="message-circle" size={12} color="#4DEEEA" />
           <Text style={styles.lookingForText} numberOfLines={1}>
             {language === "en" ? "Looking for: " : "Aradığı İletişim: "}
-            {candidate.looking_for || activeEventTitle || candidate.event_title || (language === "en" ? "Event Buddy & Chat" : "Etkinlik Arkadaşı & Sohbet")}
+            {candidate.looking_for || (language === "en" ? "Event Buddy & Chat" : "Etkinlik Arkadaşı & Sohbet")}
           </Text>
         </View>
 
@@ -416,6 +426,18 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 13,
     color: "rgba(255, 255, 255, 0.95)",
+  },
+  eventContextRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 2,
+  },
+  eventContextText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: "#FFD700",
+    flexShrink: 1,
   },
   lookingForRow: {
     flexDirection: "row",

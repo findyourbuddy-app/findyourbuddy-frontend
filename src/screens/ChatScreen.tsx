@@ -50,6 +50,23 @@ function messagesRenderEqual(a: Message, b: Message): boolean {
   );
 }
 
+// Last-seen messages per recently opened thread, so re-opening a chat paints
+// instantly from memory instead of flashing a spinner while the network and
+// Firestore reconnect.
+type CachedThread = { historical: Message[]; live: Message[] };
+const threadCache = new Map<number, CachedThread>();
+const THREAD_CACHE_LIMIT = 15;
+
+function cacheThread(matchId: number, patch: Partial<CachedThread>): void {
+  const existing = threadCache.get(matchId) ?? { historical: [], live: [] };
+  threadCache.delete(matchId);
+  threadCache.set(matchId, { ...existing, ...patch });
+  if (threadCache.size > THREAD_CACHE_LIMIT) {
+    const oldest = threadCache.keys().next().value;
+    if (oldest !== undefined) threadCache.delete(oldest);
+  }
+}
+
 export function ChatScreen({ route }: Props) {
   const insets = useSafeAreaInsets();
   const { matchId, otherUserId, otherUserName, otherUserPhoto, needsFeedback, isGroupEvent, eventCreatorId, eventTitle, eventId } = route.params;
@@ -57,8 +74,12 @@ export function ChatScreen({ route }: Props) {
   const { user } = useAuth();
   const { refreshUnread } = useMessagesContext();
   const { t, language, accentColor, bgGradient } = useAppTheme();
-  const [historicalMessages, setHistoricalMessages] = useState<Message[]>([]);
-  const [liveMessages, setLiveMessages] = useState<Message[]>([]);
+  const [historicalMessages, setHistoricalMessages] = useState<Message[]>(
+    () => threadCache.get(matchId)?.historical ?? []
+  );
+  const [liveMessages, setLiveMessages] = useState<Message[]>(
+    () => threadCache.get(matchId)?.live ?? []
+  );
   const [draft, setDraft] = useState("");
   const [selectedImage, setSelectedImage] = useState<
     { uri: string; name?: string; type?: string; width?: number; height?: number } | null
@@ -547,21 +568,23 @@ export function ChatScreen({ route }: Props) {
     openGroupMembersModal,
   ]);
 
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(() => !threadCache.get(matchId));
 
   // Firestore only carries messages sent after the real-time chat migration --
   // older conversation history lives in Postgres and needs a one-time fetch so
   // it doesn't appear to have "disappeared".
   useEffect(() => {
-    setHistoricalMessages([]);
-    setLiveMessages([]);
+    const cached = threadCache.get(matchId);
+    setHistoricalMessages(cached?.historical ?? []);
+    setLiveMessages(cached?.live ?? []);
     setSelectedImage(null);
     setDraft("");
-    setIsInitialLoading(true);
+    setIsInitialLoading(!cached);
 
     listMessages(matchId)
       .then((history) => {
         setHistoricalMessages(history);
+        cacheThread(matchId, { historical: history });
         setIsInitialLoading(false);
       })
       .catch(() => {
@@ -573,7 +596,8 @@ export function ChatScreen({ route }: Props) {
   useEffect(() => {
     if (!user) return;
 
-    setLiveMessages([]);
+    // Don't blank the list here -- it's already seeded from cache (or empty),
+    // and the first snapshot below replaces it. Clearing caused a flash.
     setErrorText(null);
     const messagesRef = collection(db, "matches", String(matchId), "messages");
     const q = query(messagesRef, orderBy("created_at", "asc"));
@@ -687,15 +711,34 @@ export function ChatScreen({ route }: Props) {
     // tear down and rebuild the listener (that briefly clears the message list).
   }, [matchId, user?.id]);
 
+  // Keep the thread cache warm with the delivered messages (never the
+  // session-local optimistic temps) so re-opening this chat paints instantly.
+  useEffect(() => {
+    const delivered = liveMessages.filter(
+      (m) => !(typeof m.id === "string" && m.id.startsWith("temp_"))
+    );
+    cacheThread(matchId, { live: delivered });
+  }, [matchId, liveMessages]);
+
   // Merge Firestore live messages (authoritative for everything sent since the
   // real-time migration) with Postgres history (older messages Firestore never
   // carried) and optimistic temp placeholders.
   const messages = useMemo(() => {
-    const signatureOf = (msg: Message): string => {
+    // Normalise timezone-less (Postgres) and Z-suffixed (Firestore) strings to
+    // the same UTC instant. Firestore/temp strings already carry a zone.
+    const tsOf = (msg: Message): number => {
+      const iso = msg.created_at || "";
+      const withZone = /Z$|[+-]\d{2}:\d{2}$/.test(iso) ? iso : `${iso}Z`;
+      return new Date(withZone).getTime() || 0;
+    };
+
+    // Identity of a message independent of which store it came from and of any
+    // clock skew between them -- so the Postgres copy and the Firestore copy of
+    // one message collapse to one row ("mesaj çift oluyor").
+    const contentSig = (msg: Message): string => {
       const msgType = msg.message_type || "text";
-      const contentKey = msgType === "text" ? (msg.content || "").trim() : (msg.media_url || "").trim();
-      const timeSlot = Math.floor((new Date(msg.created_at).getTime() || 0) / 60000);
-      return `${msg.sender_id}|${msgType}|${contentKey}|${timeSlot}`;
+      const key = msgType === "text" ? (msg.content || "").trim() : (msg.media_url || "").trim();
+      return `${msg.sender_id}|${msgType}|${key}`;
     };
 
     const fulfilledTempIds = new Set<string>();
@@ -704,35 +747,27 @@ export function ChatScreen({ route }: Props) {
     }
 
     const result: Message[] = [];
-    // How many real live messages carry each signature -- history may only
-    // backfill the surplus, so a genuine repeat ("ok" / "ok") isn't collapsed.
-    const liveSignatureCounts = new Map<string, number>();
+    const seenIds = new Set<string>();
+    const liveSigs = new Set<string>();
 
     for (const msg of liveMessages) {
       const isTemp = typeof msg.id === "string" && msg.id.startsWith("temp_");
       if (isTemp && fulfilledTempIds.has(msg.id as string)) continue;
-      if (!isTemp) {
-        const sig = signatureOf(msg);
-        liveSignatureCounts.set(sig, (liveSignatureCounts.get(sig) ?? 0) + 1);
-      }
+      if (seenIds.has(String(msg.id))) continue;
+      seenIds.add(String(msg.id));
+      if (!isTemp) liveSigs.add(contentSig(msg));
       result.push(msg);
     }
 
-    const consumed = new Map<string, number>();
+    // Backfill only history the live stream doesn't already carry.
     for (const msg of historicalMessages) {
-      const sig = signatureOf(msg);
-      const covered = liveSignatureCounts.get(sig) ?? 0;
-      const used = consumed.get(sig) ?? 0;
-      if (used < covered) {
-        consumed.set(sig, used + 1);
-        continue;
-      }
+      if (seenIds.has(String(msg.id)) || liveSigs.has(contentSig(msg))) continue;
+      seenIds.add(String(msg.id));
       result.push(msg);
     }
 
-    return result.sort(
-      (a, b) => (new Date(a.created_at).getTime() || 0) - (new Date(b.created_at).getTime() || 0)
-    );
+    const tsCache = new Map<Message, number>(result.map((m) => [m, tsOf(m)]));
+    return result.sort((a, b) => (tsCache.get(a) ?? 0) - (tsCache.get(b) ?? 0));
   }, [historicalMessages, liveMessages]);
 
   // The message list renders `inverted`, so it needs newest-first data.
@@ -1032,7 +1067,7 @@ export function ChatScreen({ route }: Props) {
           initialNumToRender={15}
           maxToRenderPerBatch={10}
           windowSize={7}
-          removeClippedSubviews={true}
+          removeClippedSubviews={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           renderItem={renderMessage}
