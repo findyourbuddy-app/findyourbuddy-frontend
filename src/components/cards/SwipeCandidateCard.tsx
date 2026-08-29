@@ -206,11 +206,6 @@ export function SwipeCandidateCard({
                 <Feather name="check" size={10} color="#FFF" />
               </View>
             )}
-            {candidate.trust_score > 0 && (
-              <View style={styles.trustBadge}>
-                <Feather name="shield" size={10} color="#FFF" />
-              </View>
-            )}
           </View>
 
           {locationName ? (
@@ -335,15 +330,6 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     backgroundColor: "#1DA1F2",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 4,
-  },
-  trustBadge: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#2E7D32",
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 4,
