@@ -28,7 +28,7 @@ import { FormattedHtmlText } from "../components/ui/FormattedHtmlText";
 import { getCategoryMeta } from "../constants/categories";
 import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import { cleanHtmlText } from "../utils/text";
-import { formatEventDate } from "../utils/date";
+import { formatEventDate, parseApiDate } from "../utils/date";
 import { getFastCurrentLocation, hasValidCoordinates } from "../utils/location";
 import { useAuth } from "../context/AuthContext";
 import type { MainStackParamList } from "../navigation/RootNavigator";
@@ -216,7 +216,7 @@ export function EventDetailScreen({ route }: Props) {
     try {
       // 1. STRICT TIME WINDOW CHECK (1 hour before start time up to 3 hours after start time)
       const nowMs = Date.now();
-      const eventStartMs = new Date(event.starts_at).getTime();
+      const eventStartMs = parseApiDate(event.starts_at).getTime();
       const oneHourBeforeMs = eventStartMs - 60 * 60 * 1000;
       const threeHoursAfterMs = eventStartMs + 3 * 60 * 60 * 1000;
 
@@ -660,7 +660,7 @@ export function EventDetailScreen({ route }: Props) {
             )}
 
             {/* Rating button ONLY appears after check-in OR after event starts, and can only be used 1 time */}
-            {event.is_checked_in || new Date(event.starts_at) <= new Date() ? (
+            {event.is_checked_in || parseApiDate(event.starts_at) <= new Date() ? (
               event.has_rated ? (
                 <View style={styles.alreadyRatedBadge}>
                   <Feather name="check-circle" size={16} color={colors.primary} />

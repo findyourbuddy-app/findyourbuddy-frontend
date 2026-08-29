@@ -313,7 +313,10 @@ export function CreateEventScreen() {
         location_name: locationName.trim(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
-        starts_at: `${startsAt.getFullYear()}-${String(startsAt.getMonth() + 1).padStart(2, "0")}-${String(startsAt.getDate()).padStart(2, "0")}T${String(startsAt.getHours()).padStart(2, "0")}:${String(startsAt.getMinutes()).padStart(2, "0")}:00`,
+        // Send a real UTC instant; the backend stores UTC wall-clock and the
+        // app converts back to local on display. Sending local components here
+        // made every event read back shifted by the device's UTC offset.
+        starts_at: startsAt.toISOString(),
         is_group_event: isGroupEvent,
         max_attendees: isGroupEvent && maxAttendees.trim() ? parseInt(maxAttendees, 10) : null,
         is_paid: isPaid,

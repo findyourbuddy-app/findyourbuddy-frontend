@@ -3,7 +3,13 @@ import { Modal, View, Text, StyleSheet, Pressable, ActivityIndicator, FlatList }
 import { Feather } from "@expo/vector-icons";
 import { colors, fontFamily, radius, spacing, typeScale, shadows } from "../../theme";
 import { Avatar } from "../ui/Avatar";
-import { getMyDoubleBuddy, disbandDoubleBuddy, inviteDoubleBuddy, type DoubleBuddyPair } from "../../api/doubleBuddy";
+import {
+  getMyDoubleBuddy,
+  disbandDoubleBuddy,
+  inviteDoubleBuddy,
+  respondToDoubleBuddyInvite,
+  type DoubleBuddyPair,
+} from "../../api/doubleBuddy";
 import { listMyMatches } from "../../api/matches";
 import type { Match } from "../../types";
 import { Alert } from "../../utils/alert";
@@ -12,13 +18,15 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   language?: string;
+  onChange?: () => void;
 }
 
-export function DoubleBuddyModal({ visible, onClose, language = "tr" }: Props) {
+export function DoubleBuddyModal({ visible, onClose, language = "tr", onChange }: Props) {
   const [pair, setPair] = useState<DoubleBuddyPair | null>(null);
   const [loading, setLoading] = useState(false);
   const [matches, setMatches] = useState<Match[]>([]);
   const [invitingId, setInvitingId] = useState<number | null>(null);
+  const [responding, setResponding] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -35,15 +43,41 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr" }: Props) {
     }
   }, [visible]);
 
+  async function handleRespond(accept: boolean): Promise<void> {
+    if (!pair) return;
+    setResponding(true);
+    try {
+      const result = await respondToDoubleBuddyInvite(pair.id, accept);
+      setPair(result);
+      onChange?.();
+      if (!result) {
+        listMyMatches().then(setMatches).catch(() => setMatches([]));
+      }
+    } catch {
+      Alert.alert(
+        language === "en" ? "Error" : "Hata",
+        language === "en" ? "Could not respond to the invite." : "Davete yanıt verilemedi."
+      );
+    } finally {
+      setResponding(false);
+    }
+  }
+
   async function handleInvite(partnerId: number): Promise<void> {
     setInvitingId(partnerId);
     try {
       const result = await inviteDoubleBuddy(partnerId);
       setPair(result);
-    } catch {
+      onChange?.();
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
       Alert.alert(
         language === "en" ? "Error" : "Hata",
-        language === "en" ? "Could not send Double Buddy invite." : "Double Buddy daveti gönderilemedi."
+        typeof detail === "string" && detail
+          ? detail
+          : language === "en"
+          ? "Could not send Double Buddy invite."
+          : "Double Buddy daveti gönderilemedi."
       );
     } finally {
       setInvitingId(null);
@@ -65,6 +99,8 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr" }: Props) {
             try {
               await disbandDoubleBuddy();
               setPair(null);
+              onChange?.();
+              listMyMatches().then(setMatches).catch(() => setMatches([]));
               Alert.alert("Başarılı", "Çiftli mod kapatıldı.");
             } catch {
               Alert.alert("Hata", "Çiftli mod kapatılamadı.");
@@ -93,6 +129,64 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr" }: Props) {
 
           {loading ? (
             <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: spacing.xl }} />
+          ) : pair && pair.status === "pending" && pair.is_incoming ? (
+            <View style={styles.activePairBox}>
+              <Text style={styles.activePairTitle}>
+                {language === "en" ? "Double Buddy Invite" : "Double Buddy Daveti"}
+              </Text>
+              <View style={styles.partnerRow}>
+                <Avatar name={pair.partner_name} photoUrl={pair.partner_photo} size={48} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.partnerName}>{pair.partner_name}</Text>
+                  <Text style={styles.partnerStatus}>
+                    {language === "en"
+                      ? "wants to pair up with you for events"
+                      : "seninle etkinlikler için ikili olmak istiyor"}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.inviteActions}>
+                <Pressable
+                  style={[styles.inviteBtn, styles.rejectBtn]}
+                  onPress={() => handleRespond(false)}
+                  disabled={responding}
+                >
+                  <Text style={styles.rejectBtnText}>{language === "en" ? "Decline" : "Reddet"}</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.inviteBtn, styles.acceptBtn]}
+                  onPress={() => handleRespond(true)}
+                  disabled={responding}
+                >
+                  {responding ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.acceptBtnText}>{language === "en" ? "Accept" : "Kabul Et"}</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          ) : pair && pair.status === "pending" ? (
+            <View style={styles.activePairBox}>
+              <Text style={styles.activePairTitle}>
+                {language === "en" ? "Invite Sent" : "Davet Gönderildi"}
+              </Text>
+              <View style={styles.partnerRow}>
+                <Avatar name={pair.partner_name} photoUrl={pair.partner_photo} size={48} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.partnerName}>{pair.partner_name}</Text>
+                  <Text style={styles.partnerStatus}>
+                    {language === "en" ? "Waiting for their answer" : "Yanıtı bekleniyor"}
+                  </Text>
+                </View>
+              </View>
+              <Pressable style={styles.disbandBtn} onPress={handleDisband}>
+                <Feather name="x" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                <Text style={styles.disbandBtnText}>
+                  {language === "en" ? "Cancel Invite" : "Daveti İptal Et"}
+                </Text>
+              </Pressable>
+            </View>
           ) : pair ? (
             <View style={styles.activePairBox}>
               <Text style={styles.activePairTitle}>
@@ -225,6 +319,36 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 13,
     color: "#FFF",
+  },
+  inviteActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  inviteBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    minHeight: 40,
+  },
+  acceptBtn: {
+    backgroundColor: colors.primary,
+  },
+  acceptBtnText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: "#FFF",
+  },
+  rejectBtn: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  rejectBtnText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   infoBox: {
     gap: spacing.md,

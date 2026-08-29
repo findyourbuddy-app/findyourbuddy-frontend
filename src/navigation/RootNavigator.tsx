@@ -81,7 +81,7 @@ export type MainStackParamList = {
     callType: "voice" | "video";
   };
   AIRecommendations: undefined;
-  Profile: undefined;
+  Profile: { openDoubleBuddy?: boolean } | undefined;
   EditProfile: undefined;
   ViewProfile: undefined;
   MyPhotos: undefined;

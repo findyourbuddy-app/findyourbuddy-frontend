@@ -27,7 +27,7 @@ import type { MainStackParamList, MainTabParamList } from "../navigation/RootNav
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { Match } from "../types";
 import { Alert } from "../utils/alert";
-import { isToday } from "../utils/date";
+import { isToday, parseApiDate } from "../utils/date";
 
 type MessagesNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, "Messages">,
@@ -61,31 +61,37 @@ export function MessagesScreen() {
     }, [loadMatches])
   );
 
-  async function openUserProfile(userId: number): Promise<void> {
-    try {
-      const { getUserById } = require("../api/users");
-      const fetchedUser = await getUserById(userId);
-      if (fetchedUser) {
-        navigation.navigate("CandidateProfile", { candidate: fetchedUser });
+  const openUserProfile = useCallback(
+    async (userId: number): Promise<void> => {
+      try {
+        const { getUserById } = require("../api/users");
+        const fetchedUser = await getUserById(userId);
+        if (fetchedUser) {
+          navigation.navigate("CandidateProfile", { candidate: fetchedUser });
+        }
+      } catch {
+        Alert.alert("Hata", "Kullanıcı profili açılırken bir sorun oluştu.");
       }
-    } catch {
-      Alert.alert("Hata", "Kullanıcı profili açılırken bir sorun oluştu.");
-    }
-  }
+    },
+    [navigation]
+  );
 
-  function openChat(match: Match): void {
-    navigation.navigate("Chat", {
-      matchId: match.id,
-      otherUserId: match.other_user.id,
-      otherUserName: match.other_user.display_name,
-      otherUserPhoto: match.other_user.photo_url,
-      needsFeedback: match.needs_feedback,
-      eventTitle: match.event_title || undefined,
-      isGroupEvent: match.event_is_group || false,
-      eventCreatorId: match.event_creator_id || undefined,
-      eventId: match.event_id || undefined,
-    });
-  }
+  const openChat = useCallback(
+    (match: Match): void => {
+      navigation.navigate("Chat", {
+        matchId: match.id,
+        otherUserId: match.other_user.id,
+        otherUserName: match.other_user.display_name,
+        otherUserPhoto: match.other_user.photo_url,
+        needsFeedback: match.needs_feedback,
+        eventTitle: match.event_title || undefined,
+        isGroupEvent: match.event_is_group || false,
+        eventCreatorId: match.event_creator_id || undefined,
+        eventId: match.event_id || undefined,
+      });
+    },
+    [navigation]
+  );
 
   const [chatTypeFilter, setChatTypeFilter] = useState<"all" | "matches" | "direct" | "group">("all");
 
@@ -117,8 +123,8 @@ export function MessagesScreen() {
     }
 
     list.sort((a, b) => {
-      const timeA = a.last_message ? new Date(a.last_message.created_at).getTime() : new Date(a.created_at).getTime();
-      const timeB = b.last_message ? new Date(b.last_message.created_at).getTime() : new Date(b.created_at).getTime();
+      const timeA = parseApiDate(a.last_message ? a.last_message.created_at : a.created_at).getTime();
+      const timeB = parseApiDate(b.last_message ? b.last_message.created_at : b.created_at).getTime();
       return timeB - timeA;
     });
 
@@ -158,7 +164,26 @@ export function MessagesScreen() {
     });
   }, [displayMatches, query]);
 
-  const newMatches = matches.filter((match) => !match.event_is_group && isToday(match.created_at));
+  const newMatches = useMemo(
+    () => matches.filter((match) => !match.event_is_group && isToday(match.created_at)),
+    [matches]
+  );
+
+  const currentUserId = user ? user.id : 0;
+  const keyExtractor = useCallback((match: Match) => String(match.id), []);
+  const renderItem = useCallback(
+    ({ item }: { item: Match }) => (
+      <View style={styles.chatItemWrapper}>
+        <ChatListItem
+          match={item}
+          currentUserId={currentUserId}
+          onPress={openChat}
+          onPressAvatar={openUserProfile}
+        />
+      </View>
+    ),
+    [currentUserId, openChat, openUserProfile]
+  );
 
   const unreadCount = useMemo(
     () =>
@@ -174,10 +199,10 @@ export function MessagesScreen() {
         style={[styles.background, { backgroundColor: bgGradient[0] }]}
         contentContainerStyle={styles.list}
         data={displayMatches}
-        keyExtractor={(match) => String(match.id)}
+        keyExtractor={keyExtractor}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
         windowSize={5}
         ListHeaderComponent={
           <View style={[styles.headerArea, { paddingTop: insets.top + spacing.md }]}>
@@ -299,16 +324,7 @@ export function MessagesScreen() {
         ListEmptyComponent={
           <Text style={styles.emptyText}>{t("noMatchesYetFindEvents")}</Text>
         }
-        renderItem={({ item }) => (
-          <View style={styles.chatItemWrapper}>
-            <ChatListItem
-              match={item}
-              currentUserId={user ? user.id : 0}
-              onPress={() => openChat(item)}
-              onPressAvatar={() => openUserProfile(item.other_user.id)}
-            />
-          </View>
-        )}
+        renderItem={renderItem}
         removeClippedSubviews={true}
       />
     </View>

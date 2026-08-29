@@ -22,7 +22,8 @@ import { reverseGeocode } from "../api/geocoding";
 import type { GeocodingResult } from "../api/geocoding";
 import { getFastCurrentLocation, hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 import { attendEvent, listEvents, recordBulkEventImpressions } from "../api/events";
-import { formatEventDate } from "../utils/date";
+import { listMyNotifications } from "../api/notifications";
+import { formatEventDate, parseApiDate } from "../utils/date";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { CATEGORIES, getCategoryMeta } from "../constants/categories";
@@ -85,6 +86,7 @@ export function DiscoverScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [originFilter, setOriginFilter] = useState<"system" | "user" | "my_created" | null>(null);
   const [hasCreatedEvents, setHasCreatedEvents] = useState(false);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -148,7 +150,7 @@ export function DiscoverScreen() {
     } else {
       cutoff.setDate(cutoff.getDate() + 7);
     }
-    return list.filter((event) => new Date(event.starts_at) <= cutoff);
+    return list.filter((event) => parseApiDate(event.starts_at) <= cutoff);
   }, [mapEvents, mapDateFilter]);
 
 
@@ -332,7 +334,7 @@ export function DiscoverScreen() {
         return b.attendee_count - a.attendee_count;
       }
       // Default: Sort by date
-      return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+      return parseApiDate(a.starts_at).getTime() - parseApiDate(b.starts_at).getTime();
     });
 
     return list;
@@ -414,6 +416,15 @@ export function DiscoverScreen() {
     }
   }, []);
 
+  const checkUnreadNotifications = useCallback(async () => {
+    try {
+      const list = await listMyNotifications();
+      setHasUnreadNotifications(list.some((n) => !n.is_read));
+    } catch {
+      // Non-critical; the bell just keeps its current state.
+    }
+  }, []);
+
   const hasInitialLoadedRef = useRef(false);
 
   useFocusEffect(
@@ -424,7 +435,11 @@ export function DiscoverScreen() {
       }
       loadBookmarks();
       checkCreatedEvents();
-    }, [loadEvents, loadBookmarks, checkCreatedEvents, selectedCategory, originFilter])
+      checkUnreadNotifications();
+      // Keep the bell honest while the user sits on this screen.
+      const interval = setInterval(checkUnreadNotifications, 30000);
+      return () => clearInterval(interval);
+    }, [loadEvents, loadBookmarks, checkCreatedEvents, checkUnreadNotifications, selectedCategory, originFilter])
   );
 
   function handleSelectCategory(slug: string): void {
@@ -537,7 +552,7 @@ export function DiscoverScreen() {
     const now = Date.now();
     const nearTermWindowMs = 7 * 24 * 60 * 60 * 1000;
     const nearTerm = list.filter(
-      (event) => new Date(event.starts_at).getTime() - now <= nearTermWindowMs
+      (event) => parseApiDate(event.starts_at).getTime() - now <= nearTermWindowMs
     );
     const candidates = nearTerm.length > 0 ? nearTerm : list;
     const featuredEvent = candidates.reduce((best, event) =>
@@ -598,11 +613,15 @@ export function DiscoverScreen() {
               </Pressable>
               <Pressable
                 style={styles.iconButton}
-                onPress={() => navigation.navigate("Notifications")}
+                onPress={() => {
+                  setHasUnreadNotifications(false);
+                  navigation.navigate("Notifications");
+                }}
                 accessibilityRole="button"
                 accessibilityLabel="Bildirimler"
               >
                 <Feather name="bell" size={18} color={colors.textPrimary} />
+                {hasUnreadNotifications ? <View style={styles.notificationDot} /> : null}
               </Pressable>
             </View>
           </View>
@@ -970,6 +989,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
+  },
+  notificationDot: {
+    position: "absolute",
+    top: 7,
+    right: 7,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: colors.accentRed,
+    borderWidth: 1.5,
+    borderColor: colors.surface,
   },
   title: {
     marginTop: spacing.sm,

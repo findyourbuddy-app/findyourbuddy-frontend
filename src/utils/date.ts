@@ -105,6 +105,28 @@ export function formatMemberSince(iso: string, lang: LanguageKey = "tr"): string
   return `${TURKISH_MONTHS_SHORT[date.getMonth()]} ${date.getFullYear()}'den beri üye`;
 }
 
+export function formatQuotaReset(iso: string, lang: LanguageKey = "tr"): string {
+  const date = parseApiDate(iso);
+  const diffMs = date.getTime() - Date.now();
+  if (diffMs <= 60_000) {
+    return lang === "en" ? "in a moment" : "birazdan";
+  }
+  const totalMinutes = Math.round(diffMs / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours < 1) {
+    return lang === "en" ? `in ${minutes} min` : `${minutes} dk sonra`;
+  }
+  if (hours < 12) {
+    return lang === "en" ? `in ${hours}h ${minutes}min` : `${hours} sa ${minutes} dk sonra`;
+  }
+  const timeStr = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const day = isTomorrow(iso)
+    ? lang === "en" ? "tomorrow" : "yarın"
+    : lang === "en" ? "today" : "bugün";
+  return lang === "en" ? `${day} at ${timeStr}` : `${day} ${timeStr}`;
+}
+
 export function formatEventDate(iso: string, lang: LanguageKey = "tr"): string {
   const date = parseApiDate(iso);
   const timeStr = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
