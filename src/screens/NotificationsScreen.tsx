@@ -69,7 +69,11 @@ export function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadNotifications();
-      markMyNotificationsRead().catch(() => {});
+      markMyNotificationsRead()
+        .then(() => {
+          setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+        })
+        .catch(() => {});
       const interval = setInterval(() => {
         loadNotifications();
       }, 15000);
