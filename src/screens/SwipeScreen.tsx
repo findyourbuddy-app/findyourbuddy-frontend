@@ -196,6 +196,10 @@ export function SwipeScreen() {
   const consumedEventIdRef = useRef<number | null>(null);
   const consumedStoreParamsRef = useRef<typeof route.params>(undefined);
   const hasInitialLoadedRef = useRef<boolean>(false);
+  // Fingerprint of the inputs the current deck was loaded for. A plain
+  // blur -> focus cycle (e.g. back from a candidate's profile) leaves this
+  // unchanged, so the deck stays as-is instead of refetching and flickering.
+  const loadedDeckKeyRef = useRef<string>("");
   const candidatesRef = useRef(candidates);
   candidatesRef.current = candidates;
   const swipedCandidateIdsRef = useRef<Set<number>>(new Set());
@@ -224,8 +228,23 @@ export function SwipeScreen() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      const hasParamChange = route.params && "eventId" in route.params && route.params.eventId !== consumedEventIdRef.current;
+      const paramEventId =
+        route.params && "eventId" in route.params ? route.params.eventId : undefined;
+      const hasParamChange = paramEventId != null && paramEventId !== consumedEventIdRef.current;
 
+      // Same tab / filters / target as the loaded deck and cards still in hand:
+      // this is just a re-focus, so keep what's on screen (the 15s poller keeps
+      // candidates fresh) instead of a visible refetch.
+      const deckKey = JSON.stringify({ activeTab, filters, paramEventId });
+      if (
+        hasInitialLoadedRef.current &&
+        !hasParamChange &&
+        loadedDeckKeyRef.current === deckKey &&
+        candidatesRef.current.length > 0
+      ) {
+        return;
+      }
+      loadedDeckKeyRef.current = deckKey;
       hasInitialLoadedRef.current = true;
 
       async function resolveActiveEvent(
@@ -681,7 +700,7 @@ export function SwipeScreen() {
   }
 
   return (
-    <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
+    <View style={[styles.background, { backgroundColor: bgGradient[0], paddingBottom: 56 + insets.bottom }]}>
       <View style={[styles.headerRow, { marginTop: insets.top + spacing.md }]}>
         <View style={{ flex: 1, marginRight: spacing.md, gap: 2 }}>
           <Text style={typeScale.eyebrow}>{t("buddiesNearYou")}</Text>
@@ -1179,7 +1198,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
-    paddingBottom: 60,
+    // paddingBottom is applied inline (56 + safe-area inset) so the card clears
+    // the floating tab bar.
     gap: spacing.xs,
   },
   headerRow: {
@@ -1257,7 +1277,7 @@ const styles = StyleSheet.create({
   cardArea: {
     flex: 1,
     marginVertical: 2,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.xs,
   },
   center: {
     flex: 1,

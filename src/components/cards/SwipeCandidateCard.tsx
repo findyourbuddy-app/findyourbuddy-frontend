@@ -179,10 +179,11 @@ export function SwipeCandidateCard({
         </View>
       ) : null}
 
-      {/* There is no super-like button anymore, so hint the swipe-up gesture. */}
-      <View style={styles.superHint} pointerEvents="none">
-        <Feather name="chevrons-up" size={12} color="#FFFFFF" />
-        <Text style={styles.superHintText}>{language === "en" ? "Super Like" : "Süper Beğen"}</Text>
+      {/* No action buttons anymore -- hint the main gesture. */}
+      <View style={styles.swipeHint} pointerEvents="none">
+        <Feather name="heart" size={10} color="#FFFFFF" />
+        <Text style={styles.swipeHintText}>{language === "en" ? "Swipe right" : "Sağa kaydır"}</Text>
+        <Feather name="chevrons-right" size={12} color="#FFFFFF" />
       </View>
 
       <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]} pointerEvents="none">
@@ -274,19 +275,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.xs,
   },
-  superHint: {
+  swipeHint: {
     position: "absolute",
     top: spacing.md,
     right: spacing.md,
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "rgba(46, 127, 201, 0.92)",
+    backgroundColor: "rgba(0, 0, 0, 0.42)",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radius.pill,
   },
-  superHintText: {
+  swipeHintText: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: 10,
     color: "#FFFFFF",
