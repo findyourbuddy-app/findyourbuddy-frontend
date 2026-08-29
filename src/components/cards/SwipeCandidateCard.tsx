@@ -17,7 +17,7 @@ interface SwipeCandidateCardProps {
   onPressProfile: () => void;
 }
 
-const FALLBACK_GRADIENT: [string, string] = ["#B8AEE8", "#6C4CF1"];
+const FALLBACK_GRADIENT: [string, string] = ["#9385D8", "#5B41CE"];
 const DRAG_THRESHOLD_X = 100;
 const DRAG_THRESHOLD_Y = 120;
 const TAP_MOVE_THRESHOLD = 6;
@@ -281,31 +281,32 @@ const styles = StyleSheet.create({
   stamp: {
     position: "absolute",
     top: spacing.xxl,
-    borderWidth: 3,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.92)",
     borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
   stampLike: {
     left: spacing.lg,
-    borderColor: colors.accentGreen,
+    backgroundColor: colors.accentGreen,
     transform: [{ rotate: "-12deg" }],
   },
   stampPass: {
     right: spacing.lg,
-    borderColor: colors.accentRed,
+    backgroundColor: colors.accentRed,
     transform: [{ rotate: "12deg" }],
   },
   stampSuper: {
     alignSelf: "center",
     left: "50%",
     marginLeft: -60,
-    borderColor: "#2E7FC9",
+    backgroundColor: "#2E7FC9",
   },
   stampText: {
     fontFamily: fontFamily.displayBold,
     fontSize: 24,
-    color: colors.surface,
+    color: "#FFFFFF",
   },
   overlay: {
     position: "absolute",
