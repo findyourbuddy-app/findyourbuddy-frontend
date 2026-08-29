@@ -46,14 +46,12 @@ export function CandidateProfileScreen({ route }: Props) {
       if (url) Image.prefetch(url).catch(() => {});
     });
 
-    Promise.all([
-      getUserById(candidate.id).catch(() => null),
-      getUserUpcomingEvents(candidate.id).catch(() => []),
-    ]).then(([fullUser, events]) => {
-      if (cancelled) return;
-      if (fullUser) {
+    // Fire independently -- the profile fields (bio, voice note, interests...)
+    // must not wait for the slower upcoming-events call before they render.
+    getUserById(candidate.id)
+      .then((fullUser) => {
+        if (cancelled || !fullUser) return;
         setProfile((prev) => ({ ...prev, ...fullUser }));
-        // Prefetch fullUser gallery photos so they appear seamlessly at the exact same time
         if (fullUser.photo_url) {
           const url = resolvePhotoUrl(fullUser.photo_url);
           if (url) Image.prefetch(url).catch(() => {});
@@ -62,9 +60,14 @@ export function CandidateProfileScreen({ route }: Props) {
           const url = resolvePhotoUrl(p.photo_url);
           if (url) Image.prefetch(url).catch(() => {});
         });
-      }
-      setUpcomingEvents(events);
-    });
+      })
+      .catch(() => {});
+
+    getUserUpcomingEvents(candidate.id)
+      .then((events) => {
+        if (!cancelled) setUpcomingEvents(events);
+      })
+      .catch(() => {});
 
     return () => {
       cancelled = true;
@@ -78,14 +81,6 @@ export function CandidateProfileScreen({ route }: Props) {
       resolveCityDistrict(profile.latitude, profile.longitude).then(setLocationName);
     }
   }, [profile.latitude, profile.longitude]);
-
-  useEffect(() => {
-    getUserUpcomingEvents(profile.id)
-      .then(setUpcomingEvents)
-      .catch(() => {
-        // Best-effort; the section just stays hidden if this fails.
-      });
-  }, [profile.id]);
 
   const [lightboxData, setLightboxData] = useState<{ url: string; photos: string[] } | null>(null);
 
