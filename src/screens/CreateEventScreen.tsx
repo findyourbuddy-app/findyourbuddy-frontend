@@ -147,9 +147,7 @@ export function CreateEventScreen() {
   const [maxAttendees, setMaxAttendees] = useState("10");
   const [isPaid, setIsPaid] = useState(false);
   const [ticketPrice, setTicketPrice] = useState("");
-  const [coverOption, setCoverOption] = useState<"category" | "profile">("category");
   const [selectedStockUrl, setSelectedStockUrl] = useState<string | null>(null);
-  const [isCropModalVisible, setIsCropModalVisible] = useState(false);
 
   const currentCategoryMeta = useMemo(() => {
     return CATEGORIES.find((c) => c.slug === category);
@@ -305,7 +303,7 @@ export function CreateEventScreen() {
 
     setIsSaving(true);
     try {
-      const imageUrlToSave = coverOption === "category" ? activeStockUrl : undefined;
+      const imageUrlToSave = activeStockUrl;
 
       await createEvent({
         title: title.trim(),
@@ -421,84 +419,35 @@ export function CreateEventScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>
-          {language === "en" ? "Cover Photo Choice" : "Kapak Görseli Seçimi"}
-        </Text>
-        <View style={styles.chipGrid}>
-          <Chip
-            label={language === "en" ? "Category Cover Photo" : "Kategori Görseli"}
-            active={coverOption === "category"}
-            onPress={() => setCoverOption("category")}
+        <View style={styles.coverPreviewCard}>
+          <Image
+            source={{ uri: activeStockUrl }}
+            style={styles.coverPreviewImage}
+            contentFit="cover"
           />
-          <Chip
-            label={language === "en" ? "My Profile Photo" : "Profil Fotoğrafım"}
-            active={coverOption === "profile"}
-            onPress={() => setCoverOption("profile")}
-          />
-        </View>
-
-        {coverOption === "profile" ? (
-          user?.photo_url ? (
-            <>
-              <Pressable style={styles.coverPreviewCard} onPress={() => setIsCropModalVisible(true)}>
-                <Image
-                  source={{ uri: resolvePhotoUrl(user.photo_url) ?? undefined }}
-                  style={styles.coverPreviewImage}
-                  contentFit="contain"
-                />
-                <View style={styles.tapToCropBanner}>
-                  <Feather name="maximize-2" size={13} color="#FFFFFF" />
-                  <Text style={styles.tapToCropText}>
-                    Dokunarak Dikdörtgen Çerçevede Ayarla 🖼️
-                  </Text>
-                </View>
-              </Pressable>
-              <RectangleCropModal
-                visible={isCropModalVisible}
-                uri={resolvePhotoUrl(user.photo_url) || ""}
-                onClose={() => setIsCropModalVisible(false)}
-              />
-            </>
-          ) : (
-            <View style={styles.coverPreviewCard}>
-              <LinearGradient colors={currentCategoryMeta?.gradient || ["#B8AEE8", "#6C4CF1"]} style={styles.coverPreviewImage}>
-                <View style={styles.gradientFallbackIcon}>
-                  <Feather name={currentCategoryMeta?.icon || "grid"} size={40} color={colors.surface} />
-                </View>
-              </LinearGradient>
-            </View>
-          )
-        ) : (
-          <View style={styles.coverPreviewCard}>
-            <Image
-              source={{ uri: activeStockUrl }}
-              style={styles.coverPreviewImage}
-              contentFit="cover"
-            />
-            <Text style={styles.stockGalleryTitle}>
-              {language === "en" ? "Select Cover Photo:" : "Görsel Seçenekleri (Seçmek için dokun):"}
-            </Text>
-            <View style={styles.stockGalleryGrid}>
-              {currentStockImages.map((imgUrl) => {
-                const isSelected = imgUrl === activeStockUrl;
-                return (
-                  <Pressable
-                    key={imgUrl}
-                    style={[styles.stockThumbWrapper, isSelected && styles.stockThumbSelected]}
-                    onPress={() => setSelectedStockUrl(imgUrl)}
-                  >
-                    <Image source={{ uri: imgUrl }} style={styles.stockThumbImage} contentFit="cover" />
-                    {isSelected ? (
-                      <View style={styles.stockThumbBadge}>
-                        <Feather name="check" size={12} color="#FFF" />
-                      </View>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </View>
+          <Text style={styles.stockGalleryTitle}>
+            {language === "en" ? "Select Cover Photo:" : "Görsel Seçenekleri (Seçmek için dokun):"}
+          </Text>
+          <View style={styles.stockGalleryGrid}>
+            {currentStockImages.map((imgUrl) => {
+              const isSelected = imgUrl === activeStockUrl;
+              return (
+                <Pressable
+                  key={imgUrl}
+                  style={[styles.stockThumbWrapper, isSelected && styles.stockThumbSelected]}
+                  onPress={() => setSelectedStockUrl(imgUrl)}
+                >
+                  <Image source={{ uri: imgUrl }} style={styles.stockThumbImage} contentFit="cover" />
+                  {isSelected ? (
+                    <View style={styles.stockThumbBadge}>
+                      <Feather name="check" size={12} color="#FFF" />
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
           </View>
-        )}
+        </View>
       </View>
 
       <View style={styles.field}>
