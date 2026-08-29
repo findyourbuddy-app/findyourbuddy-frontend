@@ -341,7 +341,7 @@ export function ProfileScreen() {
       {user.looking_for ? (
         <Pressable style={[styles.card, styles.cardAccentYellow]} onPress={() => handleOpenQuickEdit("looking_for")}>
           <View style={styles.cardHeaderWithHidden}>
-            <IconSectionHeader icon="target" color="#E0A800" label={language === "en" ? "Looking For" : "Aradığı İletişim"} />
+            <IconSectionHeader icon="target" color="#E0A800" label={language === "en" ? "Relationship Goal" : "Aradığı Arkadaşlık İlişkisi"} />
             {user.hidden_fields?.includes("looking_for") ? (
               <View style={styles.hiddenBadge}>
                 <Feather name="eye-off" size={11} color={colors.textSecondary} />

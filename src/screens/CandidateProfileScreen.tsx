@@ -360,7 +360,9 @@ export function CandidateProfileScreen({ route }: Props) {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Feather name="briefcase" size={18} color={colors.primary} />
-              <Text style={styles.cardTitle}>Kariyer, Eğitim & İletişim</Text>
+              <Text style={styles.cardTitle}>
+                {language === "en" ? "Career, Education & Intention" : "Kariyer, Eğitim & Arkadaşlık İlişkisi"}
+              </Text>
             </View>
 
             {profile.occupation && !profile.hidden_fields?.includes("occupation") ? (
@@ -387,7 +389,10 @@ export function CandidateProfileScreen({ route }: Props) {
             {profile.looking_for && !profile.hidden_fields?.includes("looking_for") ? (
               <View style={styles.infoRow}>
                 <Feather name="target" size={16} color={colors.textSecondary} />
-                <Text style={styles.infoText}>Ne Arıyor: {profile.looking_for}</Text>
+                <Text style={styles.infoText}>
+                  {language === "en" ? "Looking for: " : "Aradığı Arkadaşlık İlişkisi: "}
+                  {profile.looking_for}
+                </Text>
               </View>
             ) : null}
 

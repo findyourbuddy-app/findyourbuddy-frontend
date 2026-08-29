@@ -128,7 +128,7 @@ export const translations = {
     universityOrSchool: "Üniversite / Okul",
     personalityAndPreferences: "Kişilik & Tercihler",
     zodiacSign: "Burç",
-    lookingForIntention: "Beklenti / Ne Arıyorsun?",
+    lookingForIntention: "Aradığı Arkadaşlık İlişkisi",
     justHavingFun: "Sadece Eğlence",
     introduceYourself: "Kendini Tanıt",
     funDetailPrompt: "Eğlenceli Detay (Beni yakından tanımak istersen:)",
