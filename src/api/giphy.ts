@@ -20,6 +20,7 @@ interface GiphyGifItem {
   images: {
     fixed_width: GiphyImageVariant;
     fixed_width_downsampled?: GiphyImageVariant;
+    downsized?: GiphyImageVariant;
     original: GiphyImageVariant;
   };
 }
@@ -32,7 +33,9 @@ function mapGif(item: GiphyGifItem): GifResult {
   return {
     id: item.id,
     title: item.title,
-    url: item.images.original.url,
+    // `downsized` is capped at ~2 MB -- reliable to send over mobile data,
+    // unlike `original` which can be 10 MB+.
+    url: item.images.downsized?.url ?? item.images.original.url,
     // Downsampled preview is a fraction of the size -- much lighter to decode
     // and animate in a scrolling grid.
     previewUrl: item.images.fixed_width_downsampled?.url ?? item.images.fixed_width.url,

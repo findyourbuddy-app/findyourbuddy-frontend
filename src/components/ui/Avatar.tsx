@@ -50,22 +50,25 @@ export function resolvePhotoUrl(url?: string | null): string | null {
 
   const base = API_BASE_URL.replace(/\/+$/, "");
 
-  // If it's a backend media or upload file (whether absolute URL with old IP or relative path)
-  if (trimmed.includes("/media/") || trimmed.includes("/uploads/")) {
-    const mediaPath = trimmed.includes("/media/")
-      ? trimmed.substring(trimmed.indexOf("/media/"))
-      : trimmed.substring(trimmed.indexOf("/uploads/"));
-    return `${base}${mediaPath}`;
-  }
-
-  // Absolute HTTP/HTTPS URLs (external services like Giphy, Google, Cloudflare R2, etc.)
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    if (trimmed.includes("giphy.com") || trimmed.includes("giphy.org") || trimmed.includes("googleusercontent.com")) {
+    // Third-party hosts are served directly and must never be rewritten to the
+    // backend -- even Giphy, whose URLs contain "/media/" in their path.
+    if (
+      trimmed.includes("giphy.com") ||
+      trimmed.includes("giphy.org") ||
+      trimmed.includes("googleusercontent.com")
+    ) {
       return trimmed;
     }
+    // Cloudflare R2 objects are proxied through the backend by filename.
     if (trimmed.includes("r2.dev")) {
       const fileName = trimmed.split("/").pop() || "";
       return `${base}/media/${fileName}`;
+    }
+    // A backend media/upload URL saved with a now-stale host -- keep the path.
+    if (trimmed.includes("/media/") || trimmed.includes("/uploads/")) {
+      const marker = trimmed.includes("/media/") ? "/media/" : "/uploads/";
+      return `${base}${trimmed.substring(trimmed.indexOf(marker))}`;
     }
     return trimmed;
   }

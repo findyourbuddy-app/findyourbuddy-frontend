@@ -233,6 +233,10 @@ export function SwipeScreen() {
         route.params && "eventId" in route.params ? route.params.eventId : undefined;
       const hasParamChange = paramEventId != null && paramEventId !== consumedEventIdRef.current;
 
+      // Keep the like / super-like counters honest on every return to the tab
+      // (e.g. after buying credits in the store).
+      refreshQuota();
+
       // Same tab / filters / target as the loaded deck and cards still in hand:
       // this is just a re-focus, so keep what's on screen (the 15s poller keeps
       // candidates fresh) instead of a visible refetch.

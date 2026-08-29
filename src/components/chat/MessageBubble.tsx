@@ -90,7 +90,12 @@ export const MessageBubble = memo(function MessageBubble({
     ? Math.round(MEDIA_WIDTH / Math.min(Math.max(knownAspect, 0.55), 2.2))
     : 180;
 
-  const isPendingUpload = typeof message.id === "string" && message.id.startsWith("temp_");
+  // Only a local image being uploaded gets the "uploading" veil -- a GIF is
+  // already a remote URL with nothing to upload, so show it straight away.
+  const isPendingUpload =
+    typeof message.id === "string" &&
+    message.id.startsWith("temp_") &&
+    message.message_type !== "gif";
   const hasCaption =
     Boolean(content) && !CAPTION_SENTINELS.includes(content) && !content.startsWith("http");
 
