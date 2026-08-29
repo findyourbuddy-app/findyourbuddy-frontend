@@ -485,11 +485,11 @@ export function SwipeScreen() {
 
   async function handleSwipe(direction: "like" | "pass" | "super_like"): Promise<User | null> {
     const target = candidates[currentIndex];
-    if (!activeEvent || !target) {
+    if (!target) {
       return null;
     }
     const targetId = target.id;
-    const eventId = activeEvent.id;
+    const eventId = activeEvent?.id;
     swipedCandidateIdsRef.current.add(targetId);
 
     // OPTIMISTIC UPDATE: Increment candidate index IMMEDIATELY for 0ms instant UI transition!

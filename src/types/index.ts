@@ -150,7 +150,7 @@ export type SwipeDirection = "like" | "pass" | "super_like";
 
 export interface SwipeCreate {
   target_id: number;
-  event_id: number;
+  event_id?: number | null;
   direction: SwipeDirection;
 }
 
@@ -158,7 +158,7 @@ export interface Swipe {
   id: number;
   swiper_id: number;
   target_id: number;
-  event_id: number;
+  event_id?: number | null;
   direction: SwipeDirection;
   created_at: string;
   match_id: number | null;

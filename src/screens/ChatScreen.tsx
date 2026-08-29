@@ -7,7 +7,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps, NativeStackNavigationProp } from "@react-navigation/native-stack";
 import axios from "axios";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, uploadChatMedia, type IcebreakerItem } from "../api/messages";
 import { fetchTrendingGifs, searchGifs, type GifResult } from "../api/giphy";
@@ -29,6 +29,26 @@ import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Message, ReportReason, UserPublic } from "../types";
 
 type Props = NativeStackScreenProps<MainStackParamList, "Chat">;
+
+function reactionsEqual(a: Record<string, string> = {}, b: Record<string, string> = {}): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
+}
+
+// True when two snapshots of the same message would render identically, so the
+// listener can keep the previous object reference instead of a fresh one.
+function messagesRenderEqual(a: Message, b: Message): boolean {
+  return (
+    a.content === b.content &&
+    a.is_read === b.is_read &&
+    a.message_type === b.message_type &&
+    a.media_url === b.media_url &&
+    a.media_width === b.media_width &&
+    a.media_height === b.media_height &&
+    a.created_at === b.created_at &&
+    reactionsEqual(a.reactions, b.reactions)
+  );
+}
 
 export function ChatScreen({ route }: Props) {
   const insets = useSafeAreaInsets();
@@ -561,10 +581,11 @@ export function ChatScreen({ route }: Props) {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const list: Message[] = [];
+        const incoming: Message[] = [];
+        const unreadIncomingIds: string[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data({ serverTimestamps: "estimate" });
-          list.push({
+          incoming.push({
             id: docSnap.id,
             match_id: matchId,
             sender_id: data.sender_id,
@@ -579,13 +600,31 @@ export function ChatScreen({ route }: Props) {
             client_temp_id: data.client_temp_id || null,
           });
 
-          // Mark incoming unread messages as read in Firestore
           if (data.sender_id !== user.id && !data.is_read) {
-            const docRef = doc(db, "matches", String(matchId), "messages", docSnap.id);
-            updateDoc(docRef, { is_read: true }).catch(() => {});
+            unreadIncomingIds.push(docSnap.id);
           }
         });
+
+        // One batched write for all newly-seen messages, so opening a chat with
+        // N unread messages fires a single follow-up snapshot instead of N
+        // (each of which used to rebuild the whole list).
+        if (unreadIncomingIds.length > 0) {
+          const batch = writeBatch(db);
+          for (const id of unreadIncomingIds) {
+            batch.update(doc(db, "matches", String(matchId), "messages", id), { is_read: true });
+          }
+          batch.commit().catch(() => {});
+        }
+
         setLiveMessages((prev) => {
+          // Reuse the previous object for any message whose rendered fields are
+          // unchanged, so the memoized list rows don't churn on every snapshot.
+          const prevById = new Map(prev.map((m) => [String(m.id), m]));
+          const list = incoming.map((next) => {
+            const old = prevById.get(String(next.id));
+            return old && messagesRenderEqual(old, next) ? old : next;
+          });
+
           const temps = prev.filter(
             (m) => typeof m.id === "string" && m.id.startsWith("temp_")
           );
@@ -977,20 +1016,28 @@ export function ChatScreen({ route }: Props) {
         </View>
       ) : null}
 
-      <FlatList
-        ref={messageListRef}
-        inverted
-        contentContainerStyle={styles.messageList}
-        data={reversedMessages}
-        keyExtractor={keyExtractor}
-        initialNumToRender={15}
-        maxToRenderPerBatch={10}
-        windowSize={7}
-        removeClippedSubviews={true}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        renderItem={renderMessage}
-      />
+      <View style={styles.listContainer}>
+        <FlatList
+          ref={messageListRef}
+          inverted
+          style={styles.messagesList}
+          contentContainerStyle={styles.messageList}
+          data={reversedMessages}
+          keyExtractor={keyExtractor}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={7}
+          removeClippedSubviews={true}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          renderItem={renderMessage}
+        />
+        {isInitialLoading && messages.length === 0 ? (
+          <View style={styles.loadingOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        ) : null}
+      </View>
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
@@ -1002,11 +1049,7 @@ export function ChatScreen({ route }: Props) {
         </View>
       ) : null}
 
-      {isInitialLoading ? (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
-      ) : messages.length === 0 ? (
+      {!isInitialLoading && messages.length === 0 ? (
         <IcebreakerStrip
           icebreakers={aiIcebreakers}
           isLoading={isLoadingIcebreakers}
@@ -1268,6 +1311,17 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  listContainer: {
+    flex: 1,
+  },
+  messagesList: {
+    flex: 1,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
   },
   messageList: {
     padding: spacing.lg,
