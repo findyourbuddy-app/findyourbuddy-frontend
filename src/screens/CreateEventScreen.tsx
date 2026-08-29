@@ -12,9 +12,8 @@ import { Chip } from "../components/ui/Chip";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { LocationPickerModal } from "../components/overlays/LocationPickerModal";
 import type { GeocodingResult } from "../api/geocoding";
-import * as ImagePicker from "expo-image-picker";
 import { createEvent, createEventCreditsCheckoutSession, getEventCreationQuota } from "../api/events";
-import { getCurrentUser, uploadGalleryPhoto } from "../api/users";
+import { getCurrentUser } from "../api/users";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import type { EventCreationQuota } from "../types";
@@ -74,34 +73,8 @@ export function CreateEventScreen() {
   const [maxAttendees, setMaxAttendees] = useState("10");
   const [isPaid, setIsPaid] = useState(false);
   const [ticketPrice, setTicketPrice] = useState("");
-  const [coverOption, setCoverOption] = useState<"profile" | "category" | "custom">("profile");
-  const [customPhotoUri, setCustomPhotoUri] = useState<string | null>(null);
-  const [contentFitMode, setContentFitMode] = useState<"contain" | "cover">("contain");
+  const [coverOption, setCoverOption] = useState<"category" | "profile">("category");
   const [selectedStockUrl, setSelectedStockUrl] = useState<string | null>(null);
-
-  async function handlePickCustomPhoto(): Promise<void> {
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(
-          language === "en" ? "Permission Needed" : "İzin Gerekli",
-          language === "en" ? "Please grant photo library access." : "Görsel seçebilmek için galeri erişim izni vermelisin."
-        );
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.85,
-      });
-      if (!result.canceled && result.assets[0]?.uri) {
-        setCustomPhotoUri(result.assets[0].uri);
-        setCoverOption("custom");
-      }
-    } catch {
-      Alert.alert("Bir sorun oluştu", "Fotoğraf seçilemedi.");
-    }
-  }
 
   const currentCategoryMeta = useMemo(() => {
     return CATEGORIES.find((c) => c.slug === category);
@@ -257,15 +230,7 @@ export function CreateEventScreen() {
 
     setIsSaving(true);
     try {
-      let imageUrlToSave = coverOption === "category" ? activeStockUrl : undefined;
-      if (coverOption === "custom" && customPhotoUri) {
-        try {
-          const uploaded = await uploadGalleryPhoto(customPhotoUri, "event_cover.jpg");
-          imageUrlToSave = uploaded?.photo_url || customPhotoUri;
-        } catch {
-          imageUrlToSave = customPhotoUri;
-        }
-      }
+      const imageUrlToSave = coverOption === "category" ? activeStockUrl : undefined;
 
       await createEvent({
         title: title.trim(),
@@ -386,44 +351,15 @@ export function CreateEventScreen() {
         </Text>
         <View style={styles.chipGrid}>
           <Chip
-            label={language === "en" ? "My Profile Photo" : "Profil Fotoğrafım"}
-            active={coverOption === "profile"}
-            onPress={() => setCoverOption("profile")}
-          />
-          <Chip
             label={language === "en" ? "Category Cover Photo" : "Kategori Görseli"}
             active={coverOption === "category"}
             onPress={() => setCoverOption("category")}
           />
           <Chip
-            label={language === "en" ? "Upload Photo 📸" : "Fotoğraf Yükle 📸"}
-            active={coverOption === "custom"}
-            onPress={handlePickCustomPhoto}
+            label={language === "en" ? "My Profile Photo" : "Profil Fotoğrafım"}
+            active={coverOption === "profile"}
+            onPress={() => setCoverOption("profile")}
           />
-        </View>
-
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: spacing.xs, marginBottom: spacing.xs }}>
-          <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 12, color: colors.textSecondary }}>
-            {language === "en" ? "Photo Fitting:" : "Fotoğraf Sığdırma:"}
-          </Text>
-          <View style={{ flexDirection: "row", gap: spacing.xs }}>
-            <Pressable
-              style={[styles.fitPill, contentFitMode === "contain" && styles.fitPillActive]}
-              onPress={() => setContentFitMode("contain")}
-            >
-              <Text style={[styles.fitPillText, contentFitMode === "contain" && styles.fitPillTextActive]}>
-                {language === "en" ? "Fit Entire (No Crop)" : "Tam Sığdır (Kesme)"}
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.fitPill, contentFitMode === "cover" && styles.fitPillActive]}
-              onPress={() => setContentFitMode("cover")}
-            >
-              <Text style={[styles.fitPillText, contentFitMode === "cover" && styles.fitPillTextActive]}>
-                {language === "en" ? "Fill Frame" : "Alana Yay"}
-              </Text>
-            </Pressable>
-          </View>
         </View>
 
         {coverOption === "profile" ? (
@@ -432,7 +368,7 @@ export function CreateEventScreen() {
               <Image
                 source={{ uri: resolvePhotoUrl(user.photo_url) ?? undefined }}
                 style={styles.coverPreviewImage}
-                contentFit={contentFitMode}
+                contentFit="cover"
               />
             ) : (
               <LinearGradient colors={currentCategoryMeta?.gradient || ["#B8AEE8", "#6C4CF1"]} style={styles.coverPreviewImage}>
@@ -442,29 +378,12 @@ export function CreateEventScreen() {
               </LinearGradient>
             )}
           </View>
-        ) : coverOption === "custom" ? (
-          <View style={styles.coverPreviewCard}>
-            {customPhotoUri ? (
-              <Image
-                source={{ uri: customPhotoUri }}
-                style={styles.coverPreviewImage}
-                contentFit={contentFitMode}
-              />
-            ) : (
-              <Pressable style={styles.customPhotoPlaceholder} onPress={handlePickCustomPhoto}>
-                <Feather name="image" size={32} color={colors.primary} />
-                <Text style={styles.customPhotoPlaceholderText}>
-                  {language === "en" ? "Tap to select photo from gallery" : "Galeriden fotoğraf seçmek için dokun"}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        ) : coverOption === "category" ? (
+        ) : (
           <View style={styles.coverPreviewCard}>
             <Image
               source={{ uri: activeStockUrl }}
               style={styles.coverPreviewImage}
-              contentFit={contentFitMode}
+              contentFit="cover"
             />
             <Text style={styles.stockGalleryTitle}>
               {language === "en" ? "Select Cover Photo:" : "Görsel Seçenekleri (Seçmek için dokun):"}
@@ -489,7 +408,7 @@ export function CreateEventScreen() {
               })}
             </View>
           </View>
-        ) : null}
+        )}
       </View>
 
       <View style={styles.field}>
