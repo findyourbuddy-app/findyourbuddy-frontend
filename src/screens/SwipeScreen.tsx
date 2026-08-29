@@ -68,6 +68,7 @@ export function SwipeScreen() {
   const [eventPickerVisible, setEventPickerVisible] = useState(false);
   const [storeVisible, setStoreVisible] = useState(false);
   const [boostConfirmVisible, setBoostConfirmVisible] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<"system" | "user">("system");
   const [userSubTab, setUserSubTab] = useState<"birebir" | "group">("birebir");
   const [userGroupEvents, setUserGroupEvents] = useState<Event[]>([]);
@@ -1020,13 +1021,6 @@ export function SwipeScreen() {
               if (!activeCandidate) return;
               navigation.navigate("CandidateProfile", {
                 candidate: activeCandidate,
-                eventTitle: groupSwipeEvent?.title ?? activeEvent?.title,
-                onExitGroupSwipe: groupSwipeEvent
-                  ? () => {
-                      resetSwipeDeck();
-                      navigation.goBack();
-                    }
-                  : undefined,
                 onSwipeLeft: () => handleSwipe("pass"),
                 onSwipeRight: () => handleSwipe("like"),
                 onSwipeUp: () => handleSwipe("super_like"),
@@ -1058,6 +1052,18 @@ export function SwipeScreen() {
             </View>
           </View>
         )}
+
+        {candidates[currentIndex] && (activeTab !== "user" || userSubTab !== "group" || groupSwipeEvent) ? (
+          <Pressable
+            style={styles.helpButton}
+            onPress={() => setHelpVisible(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={language === "en" ? "How to swipe" : "Nasıl kaydırılır"}
+          >
+            <Feather name="info" size={16} color="#FFFFFF" />
+          </Pressable>
+        ) : null}
       </View>
 
       <MatchCelebrationModal
@@ -1065,6 +1071,36 @@ export function SwipeScreen() {
         onSendMessage={goToMatchChat}
         onDismiss={() => setMatch(null)}
       />
+
+      <Modal
+        visible={helpVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHelpVisible(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setHelpVisible(false)}>
+          <Pressable style={styles.helpCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={[typeScale.h1, { textAlign: "center" }]}>
+              {language === "en" ? "How to swipe" : "Nasıl Kaydırılır?"}
+            </Text>
+            <View style={styles.helpRow}>
+              <Feather name="arrow-right" size={18} color={colors.primary} />
+              <Text style={styles.helpText}>{language === "en" ? "Right — Like" : "Sağa kaydır — Beğen"}</Text>
+            </View>
+            <View style={styles.helpRow}>
+              <Feather name="arrow-left" size={18} color={colors.textSecondary} />
+              <Text style={styles.helpText}>{language === "en" ? "Left — Pass" : "Sola kaydır — Geç"}</Text>
+            </View>
+            <View style={styles.helpRow}>
+              <Feather name="arrow-up" size={18} color="#2E7FC9" />
+              <Text style={styles.helpText}>{language === "en" ? "Up — Super Like" : "Yukarı kaydır — Süper Beğeni"}</Text>
+            </View>
+            <Pressable style={styles.closeBtn} onPress={() => setHelpVisible(false)}>
+              <Text style={styles.closeBtnText}>{t("close")}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <SwipeFiltersModal
         visible={filtersVisible}
@@ -1278,6 +1314,36 @@ const styles = StyleSheet.create({
     flex: 1,
     marginVertical: 2,
     paddingBottom: spacing.xs,
+  },
+  helpButton: {
+    position: "absolute",
+    top: spacing.md,
+    right: spacing.md,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(0, 0, 0, 0.42)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  helpCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    width: "100%",
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md,
+  },
+  helpRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  helpText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 14,
+    color: colors.textPrimary,
   },
   center: {
     flex: 1,

@@ -24,7 +24,7 @@ import { useAppTheme } from "../context/ThemeContext";
 type Props = NativeStackScreenProps<MainStackParamList, "CandidateProfile">;
 
 export function CandidateProfileScreen({ route }: Props) {
-  const { candidate, eventTitle, onExitGroupSwipe, onSwipeLeft, onSwipeRight, onSwipeUp } = route.params;
+  const { candidate, onSwipeLeft, onSwipeRight, onSwipeUp } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { bgGradient, language } = useAppTheme();
   const [profile, setProfile] = useState(candidate);
@@ -146,30 +146,6 @@ export function CandidateProfileScreen({ route }: Props) {
   return (
     <Animated.View style={[{ flex: 1 }, pan.getLayout()]} {...panResponder.panHandlers}>
       <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
-      {eventTitle && onExitGroupSwipe ? (
-        <View style={styles.groupSwipeHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.groupSwipeTag}>Grup Etkinliği Eşleşmesi</Text>
-            <Text style={styles.groupSwipeTitle} numberOfLines={1}>
-              {eventTitle}
-            </Text>
-          </View>
-          <Pressable
-            style={styles.exitGroupSwipeBtn}
-            onPress={() => {
-              if (onExitGroupSwipe) {
-                onExitGroupSwipe();
-              } else {
-                navigation.goBack();
-              }
-            }}
-          >
-            <Feather name="log-out" size={14} color="#FFFFFF" />
-            <Text style={styles.exitGroupSwipeBtnText}>Grup Eşleşmesinden Çık</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
       <ScrollView contentContainerStyle={[styles.content, !(onSwipeLeft || onSwipeRight || onSwipeUp) && { paddingBottom: spacing.xl }]} showsVerticalScrollIndicator={false}>
         {/* SECTION 1: Main Photo 1 Hero with overlay */}
         <View style={styles.mainPhotoCard}>
@@ -749,40 +725,6 @@ const styles = StyleSheet.create({
   },
   likeButton: {
     backgroundColor: colors.primary,
-  },
-  groupSwipeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.sm,
-    zIndex: 10,
-  },
-  groupSwipeTag: {
-    ...typeScale.caption,
-    fontFamily: fontFamily.displayBold,
-    color: colors.primary,
-  },
-  groupSwipeTitle: {
-    ...typeScale.body,
-    color: colors.textPrimary,
-  },
-  exitGroupSwipeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.accentRed,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: radius.sm,
-    gap: 4,
-  },
-  exitGroupSwipeBtnText: {
-    ...typeScale.caption,
-    fontFamily: fontFamily.displayBold,
-    color: "#FFFFFF",
   },
 });
 

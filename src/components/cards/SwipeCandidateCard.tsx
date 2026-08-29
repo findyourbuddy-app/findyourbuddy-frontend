@@ -125,17 +125,17 @@ export function SwipeCandidateCard({
     outputRange: ["-12deg", "0deg", "12deg"],
   });
   const likeOpacity = position.x.interpolate({
-    inputRange: [20, DRAG_THRESHOLD_X],
+    inputRange: [12, 70],
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
   const passOpacity = position.x.interpolate({
-    inputRange: [-DRAG_THRESHOLD_X, -20],
+    inputRange: [-70, -12],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
   const superOpacity = position.y.interpolate({
-    inputRange: [-DRAG_THRESHOLD_Y, -20],
+    inputRange: [-80, -12],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
@@ -178,23 +178,6 @@ export function SwipeCandidateCard({
           ))}
         </View>
       ) : null}
-
-      {/* No action buttons anymore -- hint the main gesture. */}
-      <View style={styles.swipeHint} pointerEvents="none">
-        <Feather name="heart" size={10} color="#FFFFFF" />
-        <Text style={styles.swipeHintText}>{language === "en" ? "Swipe right" : "Sağa kaydır"}</Text>
-        <Feather name="chevrons-right" size={12} color="#FFFFFF" />
-      </View>
-
-      <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]} pointerEvents="none">
-        <Text style={styles.stampText}>{language === "en" ? "LIKE" : "BEĞEN"}</Text>
-      </Animated.View>
-      <Animated.View style={[styles.stamp, styles.stampPass, { opacity: passOpacity }]} pointerEvents="none">
-        <Text style={styles.stampText}>{language === "en" ? "PASS" : "GEÇ"}</Text>
-      </Animated.View>
-      <Animated.View style={[styles.stamp, styles.stampSuper, { opacity: superOpacity }]} pointerEvents="none">
-        <Text style={styles.stampText}>{language === "en" ? "SUPER" : "SÜPER"}</Text>
-      </Animated.View>
 
       <LinearGradient
         colors={["transparent", "rgba(10,5,30,0.85)"]}
@@ -249,6 +232,17 @@ export function SwipeCandidateCard({
           ) : null}
         </Pressable>
       </LinearGradient>
+
+      {/* Rendered last so the swipe feedback always sits above the photo + overlay. */}
+      <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]} pointerEvents="none">
+        <Text style={styles.stampText}>{language === "en" ? "LIKE" : "BEĞEN"}</Text>
+      </Animated.View>
+      <Animated.View style={[styles.stamp, styles.stampPass, { opacity: passOpacity }]} pointerEvents="none">
+        <Text style={styles.stampText}>{language === "en" ? "PASS" : "GEÇ"}</Text>
+      </Animated.View>
+      <Animated.View style={[styles.stamp, styles.stampSuper, { opacity: superOpacity }]} pointerEvents="none">
+        <Text style={styles.stampText}>{language === "en" ? "SUPER" : "SÜPER"}</Text>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -274,23 +268,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: spacing.xs,
-  },
-  swipeHint: {
-    position: "absolute",
-    top: spacing.md,
-    right: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "rgba(0, 0, 0, 0.42)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
-  swipeHintText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 10,
-    color: "#FFFFFF",
   },
   dot: {
     width: 6,
