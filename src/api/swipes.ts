@@ -16,13 +16,13 @@ export interface SwipeCandidateFilters {
 }
 
 export function getSwipeCandidates(
-  eventId: number,
+  eventId?: number | null,
   filters?: SwipeCandidateFilters
 ): Promise<User[]> {
   return apiClient
     .get<User[]>("/swipes/candidates", {
       params: {
-        event_id: eventId,
+        event_id: eventId ?? undefined,
         min_age: filters?.minAge,
         max_age: filters?.maxAge,
         max_distance_km: filters?.maxDistanceKm,

@@ -6,10 +6,20 @@ export function listEvents(
   upcomingOnly = true,
   skip = 0,
   limit = 20,
-  origin?: "system" | "user"
+  origin?: "system" | "user",
+  isGroupEvent?: boolean
 ): Promise<Event[]> {
   return apiClient
-    .get<Event[]>("/events/", { params: { category, upcoming_only: upcomingOnly, skip, limit, origin } })
+    .get<Event[]>("/events/", {
+      params: {
+        category,
+        upcoming_only: upcomingOnly,
+        skip,
+        limit,
+        origin,
+        is_group_event: isGroupEvent,
+      },
+    })
     .then((res) => res.data);
 }
 

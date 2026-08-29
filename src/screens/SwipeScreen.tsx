@@ -140,7 +140,7 @@ export function SwipeScreen() {
       // origin="user" is required here -- without it, this shares its 50-item
       // budget with thousands of system events, which crowd out user/group
       // events almost entirely (the same pagination bug fixed earlier on Discover).
-      Promise.all([listEvents(undefined, true, 0, 50, "user"), listMyAttendingEvents(true).catch(() => [])])
+      Promise.all([listEvents(undefined, true, 0, 50, "user", true), listMyAttendingEvents(true).catch(() => [])])
         .then(([all, attending]) => {
           if (cancelled) return;
           const merged = mergeEvents(all, attending);
@@ -318,17 +318,13 @@ export function SwipeScreen() {
           if (!isSameEvent || hasParamChange) {
             setCurrentIndex(0);
           }
-          if (event) {
-            const list = await getSwipeCandidates(event.id, filters);
-            if (!cancelled) {
-              const freshCandidates = list.filter((c) => !swipedCandidateIdsRef.current.has(c.id));
-              setCandidates(freshCandidates);
-              if (freshCandidates.length > 0 && (!isSameEvent || hasParamChange || currentIndex >= candidatesRef.current.length)) {
-                setCurrentIndex(0);
-              }
+          const list = await getSwipeCandidates(event ? event.id : undefined, filters);
+          if (!cancelled) {
+            const freshCandidates = list.filter((c) => !swipedCandidateIdsRef.current.has(c.id));
+            setCandidates(freshCandidates);
+            if (freshCandidates.length > 0 && (!isSameEvent || hasParamChange || currentIndex >= candidatesRef.current.length)) {
+              setCurrentIndex(0);
             }
-          } else {
-            setCandidates([]);
           }
         })
         .catch(() => {
