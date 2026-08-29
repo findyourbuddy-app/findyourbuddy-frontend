@@ -63,10 +63,10 @@ export function EventDetailScreen({ route }: Props) {
     if (route.params?.autoOpenRating && event && !event.has_rated && !isOwnerOfGroupEvent) {
       setShowRatingModal(true);
     }
-    if (route.params?.autoOpenRequests && isOwnerOfGroupEvent && joinRequests.length > 0) {
+    if (route.params?.autoOpenRequests) {
       setIsApprovalModalVisible(true);
     }
-  }, [route.params?.autoOpenRating, route.params?.autoOpenRequests, event, isOwnerOfGroupEvent, joinRequests.length]);
+  }, [route.params?.autoOpenRating, route.params?.autoOpenRequests, event, isOwnerOfGroupEvent]);
 
   const refreshJoinRequests = useCallback(async (eventIdToLoad: number) => {
     try {
@@ -704,6 +704,15 @@ export function EventDetailScreen({ route }: Props) {
           creatorName={event.creator?.display_name}
           onClose={() => setShowRatingModal(false)}
           onSuccess={() => setEvent((prev) => (prev ? { ...prev, has_rated: true } : prev))}
+        />
+        <EventOrganizerApprovalModal
+          visible={isApprovalModalVisible}
+          eventId={event.id}
+          eventTitle={event.title}
+          onDismiss={() => setIsApprovalModalVisible(false)}
+          onUpdated={() => {
+            if (event) refreshJoinRequests(event.id);
+          }}
         />
       </>
     )}
