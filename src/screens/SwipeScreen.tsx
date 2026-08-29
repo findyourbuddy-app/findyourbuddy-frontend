@@ -108,6 +108,18 @@ export function SwipeScreen() {
       return true;
     });
   }, [availableEvents]);
+  const user1on1Events = useMemo(() => {
+    const nowMs = Date.now();
+    return availableEvents.filter((event) => {
+      if (!event.creator_id || event.is_group_event) return false;
+      if (!event.is_attending) return false;
+      if (event.starts_at) {
+        const eventMs = new Date(event.starts_at).getTime();
+        if (eventMs + 4 * 60 * 60 * 1000 < nowMs) return false;
+      }
+      return true;
+    });
+  }, [availableEvents]);
   const userEvents = useMemo(() => availableEvents.filter((event) => Boolean(event.creator_id)), [availableEvents]);
   const tabEvents = activeTab === "system" ? systemEvents : userEvents;
 
@@ -415,30 +427,60 @@ export function SwipeScreen() {
   }
 
   function openEventPicker(): void {
-    if (systemEvents.length > 0) {
-      setEventPickerVisible(true);
-    } else {
-      navigation.navigate("Discover");
-    }
+    setEventPickerVisible(true);
   }
 
   const eventPickerOptions = useMemo(() => {
-    const list = systemEvents.map((event) => ({
-      key: String(event.id),
-      label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
-      icon: "map-pin" as const,
-      onPress: () => switchEvent(event),
-    }));
+    const list: Array<{
+      key: string;
+      label: string;
+      icon: "map-pin" | "globe";
+      onPress: () => void;
+    }> = [];
 
-    list.push({
-      key: "discover_new",
-      label: language === "en" ? "Explore & Join New Events 🎯" : "Keşfet'ten Yeni Etkinlik Seç 🎯",
-      icon: "map-pin" as const,
-      onPress: () => navigation.navigate("Discover"),
-    });
+    if (activeTab === "user") {
+      list.push({
+        key: "general_users",
+        label: language === "en" ? "Browse General Users 🌍" : "Genel Kullanıcılarda Gezin 🌍",
+        icon: "globe",
+        onPress: () => selectGeneralSwipe(),
+      });
+
+      user1on1Events.forEach((event) => {
+        list.push({
+          key: String(event.id),
+          label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
+          icon: "map-pin",
+          onPress: () => switchEvent(event),
+        });
+      });
+
+      list.push({
+        key: "discover_new_user_event",
+        label: language === "en" ? "Explore & Join New Events 🎯" : "Keşfet'ten Yeni Bire Bir Etkinlik Seç 🎯",
+        icon: "map-pin",
+        onPress: () => navigation.navigate("Discover"),
+      });
+    } else {
+      systemEvents.forEach((event) => {
+        list.push({
+          key: String(event.id),
+          label: event.location_name ? `${event.location_name} · ${event.title}` : event.title,
+          icon: "map-pin",
+          onPress: () => switchEvent(event),
+        });
+      });
+
+      list.push({
+        key: "discover_new_system_event",
+        label: language === "en" ? "Explore & Join New Events 🎯" : "Keşfet'ten Yeni Resmi Etkinlik Seç 🎯",
+        icon: "map-pin",
+        onPress: () => navigation.navigate("Discover"),
+      });
+    }
 
     return list;
-  }, [systemEvents, language, navigation]);
+  }, [activeTab, user1on1Events, systemEvents, language, navigation]);
 
   function handleApplyFilters(nextFilters: SwipeCandidateFilters): void {
     setFilters(nextFilters);
@@ -750,7 +792,7 @@ export function SwipeScreen() {
           {activeEvent ? (
             <Pressable
               style={styles.eventPill}
-              onPress={activeTab === "system" ? openEventPicker : () => selectGeneralSwipe()}
+              onPress={openEventPicker}
               accessibilityRole="button"
               accessibilityLabel="Etkinlik değiştir"
             >
@@ -758,29 +800,25 @@ export function SwipeScreen() {
               <Text style={styles.eventPillText} numberOfLines={1}>
                 {activeEvent.location_name ? `${activeEvent.location_name} · ${activeEvent.title}` : activeEvent.title}
               </Text>
-              {activeTab === "system" ? (
-                <Feather name="chevron-down" size={12} color={colors.textSecondary} />
-              ) : (
-                <Feather name="x" size={12} color={colors.textSecondary} />
-              )}
+              <Feather name="chevron-down" size={12} color={colors.textSecondary} />
             </Pressable>
           ) : activeTab === "system" ? (
             <Pressable
               style={styles.eventPill}
-              onPress={() => navigation.navigate("Discover")}
+              onPress={openEventPicker}
               accessibilityRole="button"
               accessibilityLabel="Keşfet'ten Etkinlik Seç"
             >
               <Feather name="compass" size={14} color={colors.primary} />
               <Text style={styles.eventPillText} numberOfLines={1}>
-                {language === "en" ? "Select Event from Discover 🎯" : "Keşfet'ten Etkinlik Seç 🎯"}
+                {language === "en" ? "Select Event 🎯" : "Etkinlik Seç 🎯"}
               </Text>
-              <Feather name="chevron-right" size={12} color={colors.textSecondary} />
+              <Feather name="chevron-down" size={12} color={colors.textSecondary} />
             </Pressable>
           ) : (
             <Pressable
               style={styles.eventPill}
-              onPress={() => navigation.navigate("Discover")}
+              onPress={openEventPicker}
               accessibilityRole="button"
               accessibilityLabel="Genel Kullanıcılarda Geziniyorsun"
             >
@@ -788,7 +826,7 @@ export function SwipeScreen() {
               <Text style={styles.eventPillText} numberOfLines={1}>
                 {language === "en" ? "Browsing General Users 🌍" : "Genel Kullanıcılarda Geziniyorsun 🌍"}
               </Text>
-              <Feather name="chevron-right" size={12} color={colors.textSecondary} />
+              <Feather name="chevron-down" size={12} color={colors.textSecondary} />
             </Pressable>
           )}
 

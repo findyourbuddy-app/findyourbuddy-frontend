@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "../ui/Avatar";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 import { formatRelativeTimestamp } from "../../utils/date";
+import { formatMessagePreview } from "../../utils/messagePreview";
 import type { Match } from "../../types";
 
 import { useAppTheme } from "../../context/ThemeContext";
@@ -41,7 +42,7 @@ export function ChatListItem({ match, currentUserId, onPress, onPressAvatar }: C
             </Text>
           </View>
           <Text style={[styles.preview, isUnread && styles.unreadText]} numberOfLines={1}>
-            {lastMessage ? lastMessage.content : (language === "en" ? "Group chat created! Send a message..." : "Grup sohbeti başladı! İlk mesajı sen yaz 📢")}
+            {lastMessage ? formatMessagePreview(lastMessage, language) : (language === "en" ? "Group chat created! Send a message..." : "Grup sohbeti başladı! İlk mesajı sen yaz 📢")}
           </Text>
         </View>
         {isUnread ? <View style={styles.unreadDot} /> : null}
@@ -88,7 +89,7 @@ export function ChatListItem({ match, currentUserId, onPress, onPressAvatar }: C
         ) : null}
 
         <Text style={[styles.preview, isUnread && styles.unreadText]} numberOfLines={1}>
-          {lastMessage ? lastMessage.content : (language === "en" ? "No messages yet, send the first one!" : "Henüz mesaj yok, ilk sen yaz!")}
+          {lastMessage ? formatMessagePreview(lastMessage, language) : (language === "en" ? "No messages yet, send the first one!" : "Henüz mesaj yok, ilk sen yaz!")}
         </Text>
       </View>
       {isUnread ? <View style={styles.unreadDot} /> : null}

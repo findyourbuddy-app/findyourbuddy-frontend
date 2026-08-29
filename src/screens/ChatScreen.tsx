@@ -259,6 +259,15 @@ export function ChatScreen({ route }: Props) {
     }
   }, [reportTyping]);
 
+  // Clear the typing flag when leaving the chat (or switching match/user) so it
+  // doesn't linger for the other participant.
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      reportTyping(false);
+    };
+  }, [reportTyping]);
+
   const initiateCall = useCallback(async (type: "voice" | "video") => {
     if (!user) return;
     const docRef = doc(db, "matches", String(matchId), "call", "signal");
@@ -489,7 +498,19 @@ export function ChatScreen({ route }: Props) {
         ) : null
       ),
     });
-  }, [otherUserId, otherUserName, otherUserPhoto, accentColor, initiateCall, openSafetyMenu]);
+  }, [
+    otherUserId,
+    otherUserName,
+    otherUserPhoto,
+    accentColor,
+    initiateCall,
+    openSafetyMenu,
+    isGroupEvent,
+    isOrganizer,
+    eventTitle,
+    language,
+    openGroupMembersModal,
+  ]);
 
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
@@ -612,62 +633,56 @@ export function ChatScreen({ route }: Props) {
     // tear down and rebuild the listener (that briefly clears the message list).
   }, [matchId, user?.id]);
 
-  // Deduplicate and merge Postgres historical messages + Firestore live messages + Optimistic temp messages
+  // Merge Firestore live messages (authoritative for everything sent since the
+  // real-time migration) with Postgres history (older messages Firestore never
+  // carried) and optimistic temp placeholders.
   const messages = useMemo(() => {
-    const map = new Map<string | number, Message>();
-
-    for (const msg of historicalMessages) {
-      map.set(msg.id, msg);
-    }
-
-    for (const msg of liveMessages) {
-      map.set(msg.id, msg);
-    }
-
-    const merged = Array.from(map.values());
-    const fulfilledTempIds = new Set<string>();
-
-    for (const msg of merged) {
-      if (msg.client_temp_id) {
-        fulfilledTempIds.add(msg.client_temp_id);
-      }
-    }
-
-    const uniqueList: Message[] = [];
-    const seenSignatures = new Set<string>();
-
-    for (const msg of merged) {
-      const isTemp = typeof msg.id === "string" && msg.id.startsWith("temp_");
-
-      if (isTemp && fulfilledTempIds.has(msg.id as string)) {
-        continue;
-      }
-
-      if (isTemp) {
-        uniqueList.push(msg);
-        continue;
-      }
-
-      const timeMs = new Date(msg.created_at).getTime() || 0;
-      const timeSlot = Math.floor(timeMs / 60000);
+    const signatureOf = (msg: Message): string => {
       const msgType = msg.message_type || "text";
       const contentKey = msgType === "text" ? (msg.content || "").trim() : (msg.media_url || "").trim();
-      const signature = `${msg.sender_id}_${msgType}_${contentKey}_${timeSlot}`;
+      const timeSlot = Math.floor((new Date(msg.created_at).getTime() || 0) / 60000);
+      return `${msg.sender_id}|${msgType}|${contentKey}|${timeSlot}`;
+    };
 
-      if (seenSignatures.has(signature)) {
-        continue;
-      }
-
-      seenSignatures.add(signature);
-      uniqueList.push(msg);
+    const fulfilledTempIds = new Set<string>();
+    for (const msg of liveMessages) {
+      if (msg.client_temp_id) fulfilledTempIds.add(msg.client_temp_id);
     }
 
-    return uniqueList.sort((a, b) => {
-      const timeA = new Date(a.created_at).getTime() || 0;
-      const timeB = new Date(b.created_at).getTime() || 0;
-      return timeA - timeB;
-    });
+    const result: Message[] = [];
+    // How many real live messages carry each signature -- history may only
+    // backfill the surplus, so a genuine repeat ("ok" / "ok") isn't collapsed.
+    const liveSignatureCounts = new Map<string, number>();
+
+    for (const msg of liveMessages) {
+      const isTemp = typeof msg.id === "string" && msg.id.startsWith("temp_");
+      if (isTemp && fulfilledTempIds.has(msg.id as string)) continue;
+      if (!isTemp) {
+        const sig = signatureOf(msg);
+        liveSignatureCounts.set(sig, (liveSignatureCounts.get(sig) ?? 0) + 1);
+      }
+      result.push(msg);
+    }
+
+    const consumed = new Map<string, number>();
+    for (const msg of historicalMessages) {
+      const sig = signatureOf(msg);
+      const covered = liveSignatureCounts.get(sig) ?? 0;
+      const used = consumed.get(sig) ?? 0;
+      if (used < covered) {
+        consumed.set(sig, used + 1);
+        continue;
+      }
+      result.push(msg);
+    }
+
+    return result.sort(
+      (a, b) => (new Date(a.created_at).getTime() || 0) - (new Date(b.created_at).getTime() || 0)
+    );
   }, [historicalMessages, liveMessages]);
+
+  // The message list renders `inverted`, so it needs newest-first data.
+  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   const messageListRef = useRef<FlatList<Message>>(null);
 
@@ -858,8 +873,6 @@ export function ChatScreen({ route }: Props) {
   if (!user) {
     return null;
   }
-
-  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   return (
     <KeyboardAvoidingView
