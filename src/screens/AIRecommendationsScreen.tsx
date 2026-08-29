@@ -260,12 +260,7 @@ export function AIRecommendationsScreen() {
               <Pressable
                 style={styles.viewProfileBtn}
                 onPress={() => {
-                  navigation.navigate("CandidateProfile", {
-                    candidate: user,
-                    onSwipeLeft: () => {},
-                    onSwipeRight: () => {},
-                    onSwipeUp: () => {},
-                  });
+                  navigation.navigate("CandidateProfile", { candidate: user });
                 }}
               >
                 <Text style={styles.viewProfileText}>{t("viewMyProfile")}</Text>

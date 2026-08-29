@@ -1019,12 +1019,7 @@ export function SwipeScreen() {
             onPressProfile={() => {
               const activeCandidate = candidates[currentIndex];
               if (!activeCandidate) return;
-              navigation.navigate("CandidateProfile", {
-                candidate: activeCandidate,
-                onSwipeLeft: () => handleSwipe("pass"),
-                onSwipeRight: () => handleSwipe("like"),
-                onSwipeUp: () => handleSwipe("super_like"),
-              });
+              navigation.navigate("CandidateProfile", { candidate: activeCandidate });
             }}
           />
         ) : (

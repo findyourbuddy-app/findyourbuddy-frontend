@@ -66,12 +66,7 @@ export function MessagesScreen() {
       const { getUserById } = require("../api/users");
       const fetchedUser = await getUserById(userId);
       if (fetchedUser) {
-        navigation.navigate("CandidateProfile", {
-          candidate: fetchedUser,
-          onSwipeLeft: () => {},
-          onSwipeRight: () => {},
-          onSwipeUp: () => {},
-        });
+        navigation.navigate("CandidateProfile", { candidate: fetchedUser });
       }
     } catch {
       Alert.alert("Hata", "Kullanıcı profili açılırken bir sorun oluştu.");

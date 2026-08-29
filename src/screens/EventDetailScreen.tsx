@@ -503,12 +503,7 @@ export function EventDetailScreen({ route }: Props) {
               <Pressable
                 style={styles.creatorRow}
                 onPress={() => {
-                  navigation.navigate("CandidateProfile", {
-                    candidate: event.creator,
-                    onSwipeLeft: () => {},
-                    onSwipeRight: () => {},
-                    onSwipeUp: () => {},
-                  } as any);
+                  navigation.navigate("CandidateProfile", { candidate: event.creator } as any);
                 }}
               >
                 <Image source={{ uri: event.creator.photo_url || "https://placehold.co/100" }} style={styles.creatorAvatar} />

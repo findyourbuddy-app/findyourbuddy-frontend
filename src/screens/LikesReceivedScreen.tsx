@@ -146,29 +146,7 @@ export function LikesReceivedScreen() {
       );
       return;
     }
-    navigation.navigate("CandidateProfile", {
-      candidate: item.user,
-      onSwipeLeft: async () => {
-        try {
-          await createSwipe({ target_id: item.user.id, event_id: item.event_id, direction: "pass" });
-          loadLikers();
-        } catch (e) {
-          // silently ignore
-        }
-      },
-      onSwipeRight: async () => {
-        try {
-          await createSwipe({ target_id: item.user.id, event_id: item.event_id, direction: "like" });
-          loadLikers();
-        } catch (e) {}
-      },
-      onSwipeUp: async () => {
-        try {
-          await createSwipe({ target_id: item.user.id, event_id: item.event_id, direction: "super_like" });
-          loadLikers();
-        } catch (e) {}
-      },
-    });
+    navigation.navigate("CandidateProfile", { candidate: item.user });
   };
 
   const handleUpgrade = async () => {

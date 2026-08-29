@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,43 +24,13 @@ import { useAppTheme } from "../context/ThemeContext";
 type Props = NativeStackScreenProps<MainStackParamList, "CandidateProfile">;
 
 export function CandidateProfileScreen({ route }: Props) {
-  const { candidate, onSwipeLeft, onSwipeRight, onSwipeUp } = route.params;
+  const { candidate } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { bgGradient, language } = useAppTheme();
   const [profile, setProfile] = useState(candidate);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [trustInfoVisible, setTrustInfoVisible] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState<EventPublicSummary[]>([]);
-
-  const pan = useRef(new Animated.ValueXY()).current;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only capture intentional horizontal swipes (dx > 40 AND dx > dy * 2.0)
-        // so vertical scrolling on the profile remains 100% smooth and never wiggles!
-        return Math.abs(gestureState.dx) > 40 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 2.0;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        pan.x.setValue(gestureState.dx);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > 65) {
-          Animated.timing(pan, { toValue: { x: 500, y: 0 }, duration: 150, useNativeDriver: false }).start(() => {
-            pan.setValue({ x: 0, y: 0 });
-            act(onSwipeRight);
-          });
-        } else if (gestureState.dx < -65) {
-          Animated.timing(pan, { toValue: { x: -500, y: 0 }, duration: 150, useNativeDriver: false }).start(() => {
-            pan.setValue({ x: 0, y: 0 });
-            act(onSwipeLeft);
-          });
-        } else {
-          Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 7, useNativeDriver: false }).start();
-        }
-      },
-    })
-  ).current;
 
   useEffect(() => {
     setProfile(candidate);
@@ -101,17 +71,6 @@ export function CandidateProfileScreen({ route }: Props) {
     };
   }, [candidate]);
 
-  async function act(action?: () => any): Promise<void> {
-    if (action) {
-      const nextCandidate = await action();
-      if (nextCandidate) {
-        setProfile(nextCandidate);
-      } else {
-        navigation.goBack();
-      }
-    }
-  }
-
   const [locationName, setLocationName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -144,9 +103,8 @@ export function CandidateProfileScreen({ route }: Props) {
   const remainingPhotos = displayedGalleryPhotos.slice(2);
 
   return (
-    <Animated.View style={[{ flex: 1 }, pan.getLayout()]} {...panResponder.panHandlers}>
-      <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
-      <ScrollView contentContainerStyle={[styles.content, !(onSwipeLeft || onSwipeRight || onSwipeUp) && { paddingBottom: spacing.xl }]} showsVerticalScrollIndicator={false}>
+    <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* SECTION 1: Main Photo 1 Hero with overlay */}
         <View style={styles.mainPhotoCard}>
           {photo1 ? (
@@ -434,38 +392,7 @@ export function CandidateProfileScreen({ route }: Props) {
         trustScore={profile.trust_score}
         onClose={() => setTrustInfoVisible(false)}
       />
-
-      {/* Floating Bottom Action Bar (rendered ONLY during active candidate swiping mode) */}
-      {onSwipeLeft || onSwipeRight || onSwipeUp ? (
-        <View style={styles.actionRow}>
-          <Pressable
-            style={[styles.actionButton, styles.passButton]}
-            onPress={() => act(onSwipeLeft)}
-            accessibilityRole="button"
-            accessibilityLabel="Geç"
-          >
-            <Feather name="x" size={24} color={colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            style={[styles.actionButton, styles.superButton]}
-            onPress={() => act(onSwipeUp)}
-            accessibilityRole="button"
-            accessibilityLabel="Süper beğen"
-          >
-            <Feather name="star" size={22} color={colors.surface} />
-          </Pressable>
-          <Pressable
-            style={[styles.actionButton, styles.likeButton]}
-            onPress={() => act(onSwipeRight)}
-            accessibilityRole="button"
-            accessibilityLabel="Beğen"
-          >
-            <Feather name="heart" size={24} color={colors.surface} />
-          </Pressable>
-        </View>
-      ) : null}
     </View>
-  </Animated.View>
   );
 }
 
@@ -477,7 +404,7 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     gap: spacing.md,
-    paddingBottom: 110,
+    paddingBottom: spacing.xl,
   },
   mainPhotoCard: {
     height: 380,
@@ -689,42 +616,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 1,
-  },
-  actionRow: {
-    position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
-    bottom: 28,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: spacing.xl,
-    paddingVertical: spacing.sm + 4,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderRadius: radius.pill,
-    ...shadows.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  actionButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.soft,
-  },
-  passButton: {
-    backgroundColor: colors.surface,
-  },
-  superButton: {
-    backgroundColor: "#2E7FC9",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-  },
-  likeButton: {
-    backgroundColor: colors.primary,
   },
 });
 

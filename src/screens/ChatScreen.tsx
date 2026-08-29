@@ -479,12 +479,7 @@ export function ChatScreen({ route }: Props) {
       photo_url: otherUserPhoto,
     } as any;
 
-    navigation.navigate("CandidateProfile", {
-      candidate: initialCandidate as any,
-      onSwipeLeft: () => {},
-      onSwipeRight: () => {},
-      onSwipeUp: () => {},
-    });
+    navigation.navigate("CandidateProfile", { candidate: initialCandidate as any });
   }
 
   useEffect(() => {
