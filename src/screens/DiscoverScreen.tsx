@@ -684,8 +684,16 @@ export function DiscoverScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ flexDirection: "row", gap: spacing.xs }}
+                directionalLockEnabled={true}
+                nestedScrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ flexDirection: "row", gap: spacing.xs, paddingVertical: 4 }}
               >
+                <Chip
+                  label={language === "en" ? "All Events 🌍" : "Tüm Etkinlikler 🌍"}
+                  active={originFilter === null}
+                  onPress={() => handleSelectOrigin(null)}
+                />
                 <Chip
                   label={t("systemEvents")}
                   active={originFilter === "system"}
@@ -704,20 +712,24 @@ export function DiscoverScreen() {
               </ScrollView>
 
               {/* Category Chips Scroller */}
-              <FlatList
+              <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                data={CATEGORIES}
-                keyExtractor={(category) => category.slug}
-                renderItem={({ item }) => (
+                directionalLockEnabled={true}
+                nestedScrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ flexDirection: "row", gap: spacing.xs, paddingVertical: 4 }}
+                style={styles.chipList}
+              >
+                {CATEGORIES.map((item) => (
                   <Chip
+                    key={item.slug}
                     label={language === "en" ? item.labelEn : item.label}
                     active={selectedCategory === item.slug}
                     onPress={() => handleSelectCategory(item.slug)}
                   />
-                )}
-                style={styles.chipList}
-              />
+                ))}
+              </ScrollView>
 
               <Pressable
                 style={styles.aiMatchingBanner}
