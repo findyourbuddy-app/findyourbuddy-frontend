@@ -10,8 +10,8 @@ import axios from "axios";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { listMessages, markMessagesAsRead, sendMessage, getIcebreakers, uploadChatMedia, type IcebreakerItem } from "../api/messages";
-import { fetchTrendingGifs, searchGifs, type GifResult } from "../api/giphy";
 import { IcebreakerStrip } from "../components/chat/IcebreakerStrip";
+import { GifPickerModal } from "../components/chat/GifPickerModal";
 import { MessageBubble } from "../components/chat/MessageBubble";
 import { uploadGalleryPhoto } from "../api/users";
 import { submitMatchFeedback } from "../api/matches";
@@ -167,38 +167,6 @@ export function ChatScreen({ route }: Props) {
 
 
 
-  const [gifResults, setGifResults] = useState<GifResult[]>([]);
-  const [gifQuery, setGifQuery] = useState("");
-  const [isLoadingGifs, setIsLoadingGifs] = useState(false);
-
-  const loadTrendingGifs = useCallback(() => {
-    setIsLoadingGifs(true);
-    fetchTrendingGifs()
-      .then(setGifResults)
-      .catch(() => setGifResults([]))
-      .finally(() => setIsLoadingGifs(false));
-  }, []);
-
-  const gifDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleGifSearchText = useCallback((text: string) => {
-    setGifQuery(text);
-    if (gifDebounceRef.current) clearTimeout(gifDebounceRef.current);
-
-    if (!text.trim()) {
-      loadTrendingGifs();
-      return;
-    }
-
-    setIsLoadingGifs(true);
-    gifDebounceRef.current = setTimeout(() => {
-      searchGifs(text.trim())
-        .then(setGifResults)
-        .catch(() => setGifResults([]))
-        .finally(() => setIsLoadingGifs(false));
-    }, 250);
-  }, [loadTrendingGifs]);
-
   const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
   const [selectedMessageForReaction, setSelectedMessageForReaction] = useState<Message | null>(null);
   const [visibleTimestampId, setVisibleTimestampId] = useState<string | number | null>(null);
@@ -222,12 +190,6 @@ export function ChatScreen({ route }: Props) {
   }
 
   const [gifModalVisible, setGifModalVisible] = useState(false);
-
-  useEffect(() => {
-    if (!gifModalVisible) return;
-    setGifQuery("");
-    loadTrendingGifs();
-  }, [gifModalVisible, loadTrendingGifs]);
 
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1153,74 +1115,13 @@ export function ChatScreen({ route }: Props) {
         </View>
       )}
 
-      {/* GIF Picker Modal */}
-      <Modal
+      <GifPickerModal
         visible={gifModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setGifModalVisible(false)}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={() => setGifModalVisible(false)}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ width: "100%", justifyContent: "flex-end" }}
-          >
-            <Pressable style={styles.gifModalCard} onPress={(e) => e.stopPropagation()}>
-              <Pressable style={styles.dragHandleTouch} onPress={() => setGifModalVisible(false)}>
-                <View style={styles.dragHandle} />
-              </Pressable>
-
-              <View style={styles.gifModalHeader}>
-                <Text style={typeScale.h2}>{language === "en" ? "Send GIF" : "GIF Gönder"}</Text>
-                <Pressable
-                  onPress={() => setGifModalVisible(false)}
-                  style={styles.closeIconBtn}
-                  hitSlop={10}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("close")}
-                >
-                  <Feather name="x" size={20} color={colors.textSecondary} />
-                </Pressable>
-              </View>
-
-              <View style={styles.gifSearchBar}>
-                <Feather name="search" size={16} color={colors.textSecondary} />
-                <TextInput
-                  style={styles.gifSearchInput}
-                  placeholder={language === "en" ? "Search GIFs..." : "GIF ara..."}
-                  placeholderTextColor={colors.textSecondary}
-                  value={gifQuery}
-                  onChangeText={handleGifSearchText}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.gifGrid} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                {isLoadingGifs ? (
-                  <ActivityIndicator color={colors.primary} style={{ width: "100%", marginVertical: spacing.lg }} />
-                ) : gifResults.length === 0 ? (
-                  <Text style={styles.gifEmptyText}>
-                    {language === "en" ? "No GIFs found." : "GIF bulunamadı."}
-                  </Text>
-                ) : (
-                  gifResults.map((gif) => (
-                    <Pressable key={gif.id} style={styles.gifTile} onPress={() => handleSendGif(gif.url)} disabled={isSending}>
-                      <Image
-                        source={{ uri: gif.previewUrl }}
-                        style={styles.gifImage}
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                        recyclingKey={gif.id}
-                      />
-                    </Pressable>
-                  ))
-                )}
-              </ScrollView>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+        disabled={isSending}
+        language={language}
+        onClose={() => setGifModalVisible(false)}
+        onSelect={handleSendGif}
+      />
 
       {/* Long-Press Emoji Reaction Modal */}
       <Modal
@@ -1498,99 +1399,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(15, 10, 40, 0.6)",
     justifyContent: "flex-end",
-  },
-  modalCard: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.card,
-    borderTopRightRadius: radius.card,
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  gifModalCard: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.card * 1.5,
-    borderTopRightRadius: radius.card * 1.5,
-    padding: spacing.xl,
-    paddingTop: spacing.xs,
-    height: "75%",
-    maxHeight: "85%",
-    gap: spacing.md,
-    ...shadows.card,
-  },
-  dragHandleTouch: {
-    paddingVertical: 6,
-    alignItems: "center",
-    width: "100%",
-  },
-  dragHandle: {
-    width: 44,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: colors.border,
-  },
-  closeIconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.background,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  gifModalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  gifGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    justifyContent: "space-between",
-  },
-  gifTile: {
-    width: "48%",
-    backgroundColor: colors.background,
-    borderRadius: radius.sm,
-    overflow: "hidden",
-  },
-  gifImage: {
-    width: "100%",
-    height: 110,
-  },
-  gifSearchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  gifSearchInput: {
-    flex: 1,
-    fontFamily: fontFamily.body,
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
-  gifEmptyText: {
-    width: "100%",
-    textAlign: "center",
-    fontFamily: fontFamily.body,
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginVertical: spacing.lg,
-  },
-  cancelButton: {
-    alignItems: "center",
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    marginTop: spacing.xs,
-  },
-  cancelText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: 15,
-    color: colors.textSecondary,
   },
   callBackdrop: {
     flex: 1,

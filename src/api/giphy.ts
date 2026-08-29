@@ -19,6 +19,7 @@ interface GiphyGifItem {
   title: string;
   images: {
     fixed_width: GiphyImageVariant;
+    fixed_width_downsampled?: GiphyImageVariant;
     original: GiphyImageVariant;
   };
 }
@@ -32,7 +33,9 @@ function mapGif(item: GiphyGifItem): GifResult {
     id: item.id,
     title: item.title,
     url: item.images.original.url,
-    previewUrl: item.images.fixed_width.url,
+    // Downsampled preview is a fraction of the size -- much lighter to decode
+    // and animate in a scrolling grid.
+    previewUrl: item.images.fixed_width_downsampled?.url ?? item.images.fixed_width.url,
   };
 }
 
