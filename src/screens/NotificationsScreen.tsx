@@ -190,8 +190,10 @@ export function NotificationsScreen() {
       const isJoinRequest =
         item.notification_type === "event_join_request" ||
         item.notification_type === "event_request" ||
-        item.title.toLowerCase().includes("katılım isteği") ||
-        item.body.toLowerCase().includes("katılmak istiyor");
+        item.title.toLowerCase().includes("katılım") ||
+        item.title.toLowerCase().includes("istek") ||
+        item.body.toLowerCase().includes("katılmak") ||
+        item.body.toLowerCase().includes("istiyor");
 
       navigation.navigate("EventDetail", {
         eventId: targetEventId,

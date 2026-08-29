@@ -2,16 +2,10 @@ import type { LanguageKey } from "../context/ThemeContext";
 
 export function parseApiDate(iso: string): Date {
   if (!iso) return new Date();
+  // The backend serializes UTC datetimes without a timezone marker, so a naive
+  // string must be read as UTC -- not local time.
   const hasTimezone = /Z$|[+-]\d{2}:\d{2}$/.test(iso);
-  if (hasTimezone) {
-    return new Date(iso);
-  }
-  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
-  if (match) {
-    const [, y, m, d, hh, mm, ss] = match;
-    return new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm), Number(ss || 0));
-  }
-  return new Date(iso);
+  return new Date(hasTimezone ? iso : `${iso}Z`);
 }
 
 export function isToday(iso: string): boolean {

@@ -688,38 +688,28 @@ export function EventDetailScreen({ route }: Props) {
       language={language}
     />
 
+    <EventOrganizerApprovalModal
+      visible={isApprovalModalVisible}
+      eventId={eventId}
+      eventTitle={event?.title || ""}
+      onDismiss={() => setIsApprovalModalVisible(false)}
+      onUpdated={() => {
+        if (eventId) {
+          getEvent(eventId).then(setEvent);
+          refreshJoinRequests(eventId);
+        }
+      }}
+    />
+
     {event && (
-      <>
-        <EventOrganizerApprovalModal
-          visible={isApprovalModalVisible}
-          eventId={event.id}
-          eventTitle={event.title}
-          onDismiss={() => setIsApprovalModalVisible(false)}
-          onUpdated={() => {
-            if (event) {
-              getEvent(event.id).then(setEvent);
-              listJoinRequests(event.id).then(setJoinRequests);
-            }
-          }}
-        />
-        <EventRatingModal
-          visible={showRatingModal}
-          eventId={event.id}
-          eventTitle={event.title}
-          creatorName={event.creator?.display_name}
-          onClose={() => setShowRatingModal(false)}
-          onSuccess={() => setEvent((prev) => (prev ? { ...prev, has_rated: true } : prev))}
-        />
-        <EventOrganizerApprovalModal
-          visible={isApprovalModalVisible}
-          eventId={event.id}
-          eventTitle={event.title}
-          onDismiss={() => setIsApprovalModalVisible(false)}
-          onUpdated={() => {
-            if (event) refreshJoinRequests(event.id);
-          }}
-        />
-      </>
+      <EventRatingModal
+        visible={showRatingModal}
+        eventId={event.id}
+        eventTitle={event.title}
+        creatorName={event.creator?.display_name}
+        onClose={() => setShowRatingModal(false)}
+        onSuccess={() => setEvent((prev) => (prev ? { ...prev, has_rated: true } : prev))}
+      />
     )}
     </>
   );
