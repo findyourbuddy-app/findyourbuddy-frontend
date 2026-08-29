@@ -21,7 +21,7 @@ import { activateBoost, createPurchaseCheckoutSession } from "../api/users";
 import type { SwipeCandidateFilters, SwipeQuota } from "../api/swipes";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
-import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
+import { colors, fontFamily, radius, spacing, typeScale } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event, User, UserPublic } from "../types";
 import { formatEventDate } from "../utils/date";
@@ -90,7 +90,6 @@ export function SwipeScreen() {
     }
   }, [candidates, currentIndex]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
-  const [isSwiping, setIsSwiping] = useState(false);
 
   // Only events the user has actually joined belong in the swipe-deck picker --
   // picking used to double as an implicit "join", letting people swipe on any
@@ -1042,38 +1041,6 @@ export function SwipeScreen() {
         )}
       </View>
 
-      {candidates[currentIndex] && (activeTab !== "user" || userSubTab !== "group" || groupSwipeEvent) ? (
-        <View style={styles.actionRow}>
-          <Pressable
-            style={[styles.actionButton, styles.passButton]}
-            onPress={() => handleSwipe("pass")}
-            disabled={isSwiping}
-            accessibilityRole="button"
-            accessibilityLabel="Geç"
-          >
-            <Feather name="x" size={24} color={colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            style={[styles.actionButton, styles.superLikeButton]}
-            onPress={() => handleSwipe("super_like")}
-            disabled={isSwiping}
-            accessibilityRole="button"
-            accessibilityLabel="Süper beğen"
-          >
-            <Feather name="star" size={20} color={colors.surface} />
-          </Pressable>
-          <Pressable
-            style={[styles.actionButton, styles.likeButton]}
-            onPress={() => handleSwipe("like")}
-            disabled={isSwiping}
-            accessibilityRole="button"
-            accessibilityLabel="Beğen"
-          >
-            <Feather name="heart" size={24} color={colors.surface} />
-          </Pressable>
-        </View>
-      ) : null}
-
       <MatchCelebrationModal
         matchedUser={match?.user ?? null}
         onSendMessage={goToMatchChat}
@@ -1290,7 +1257,7 @@ const styles = StyleSheet.create({
   cardArea: {
     flex: 1,
     marginVertical: 2,
-    paddingBottom: 95,
+    paddingBottom: spacing.md,
   },
   center: {
     flex: 1,
@@ -1303,39 +1270,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textSecondary,
     textAlign: "center",
-  },
-  actionRow: {
-    position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
-    bottom: 82,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: spacing.xl,
-    paddingVertical: spacing.sm + 4,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderRadius: radius.pill,
-    ...shadows.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  actionButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.soft,
-  },
-  passButton: {
-    backgroundColor: colors.surface,
-  },
-  superLikeButton: {
-    backgroundColor: "#2E7FC9",
-  },
-  likeButton: {
-    backgroundColor: colors.primary,
   },
   likesReceivedButton: {
     backgroundColor: "#FF2E93",
