@@ -179,6 +179,11 @@ export function SwipeCandidateCard({
         </View>
       ) : null}
 
+      {/* There is no super-like button anymore, so hint the swipe-up gesture. */}
+      <View style={styles.superHint} pointerEvents="none">
+        <Feather name="chevrons-up" size={12} color="#FFFFFF" />
+        <Text style={styles.superHintText}>{language === "en" ? "Super Like" : "Süper Beğen"}</Text>
+      </View>
 
       <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]} pointerEvents="none">
         <Text style={styles.stampText}>{language === "en" ? "LIKE" : "BEĞEN"}</Text>
@@ -268,6 +273,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: spacing.xs,
+  },
+  superHint: {
+    position: "absolute",
+    top: spacing.md,
+    right: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(46, 127, 201, 0.92)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+  },
+  superHintText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 10,
+    color: "#FFFFFF",
   },
   dot: {
     width: 6,
