@@ -681,13 +681,13 @@ export function DiscoverScreen() {
                 ) : null}
               </View>
 
+              <View style={styles.filterCluster}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 directionalLockEnabled={true}
                 nestedScrollEnabled={true}
                 keyboardShouldPersistTaps="handled"
-                style={{ marginVertical: 6 }}
                 contentContainerStyle={{ flexDirection: "row", paddingVertical: 2, paddingHorizontal: 2 }}
               >
                 <Chip
@@ -714,7 +714,6 @@ export function DiscoverScreen() {
                 directionalLockEnabled={true}
                 nestedScrollEnabled={true}
                 keyboardShouldPersistTaps="handled"
-                style={{ marginBottom: 6 }}
                 contentContainerStyle={{ flexDirection: "row", paddingVertical: 2, paddingHorizontal: 2 }}
               >
                 {CATEGORIES.map((item) => (
@@ -747,6 +746,7 @@ export function DiscoverScreen() {
                   </View>
                 </LinearGradient>
               </Pressable>
+              </View>
 
               {/* Sub-Header Location & Map View Controls Row */}
               <View style={styles.subHeaderControlsRow}>
@@ -920,7 +920,7 @@ const styles = StyleSheet.create({
   },
   headerArea: {
     paddingTop: spacing.xl,
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   topRow: {
     flexDirection: "row",
@@ -1073,8 +1073,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.surface,
   },
+  filterCluster: {
+    gap: spacing.xs,
+  },
   aiMatchingBanner: {
-    marginTop: spacing.md,
     borderRadius: radius.card,
     overflow: "hidden",
     ...shadows.card,
