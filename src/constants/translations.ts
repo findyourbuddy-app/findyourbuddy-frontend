@@ -78,7 +78,7 @@ export const translations = {
     superLike: "Süper",
     verified: "Onaylı Profil",
     aboutMe: "Hakkımda",
-    systemEvents: "Sistem Etkinlikleri",
+    systemEvents: "Resmi Etkinlikler",
     userEvents: "Kullanıcı Etkinlikleri",
     noUpcomingEventsChooseInDiscover: "Yaklaşan etkinlik yok. Önce Keşfet sekmesinden bir etkinlik seç.",
     premiumFilterNotice: "Cinsiyet, özel yaş aralığı ve mesafe sınırı filtreleri Premium üyelere özeldir!",

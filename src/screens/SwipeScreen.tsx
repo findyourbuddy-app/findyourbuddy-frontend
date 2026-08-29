@@ -768,7 +768,7 @@ export function SwipeScreen() {
           <View style={styles.systemSubTabPill}>
             <Feather name="shield" size={13} color={colors.primary} />
             <Text style={styles.systemSubTabPillText}>
-              {language === "en" ? "Official System Events" : "Resmi Sistem Etkinlikleri"}
+              {language === "en" ? "Official Events" : "Resmi Etkinlikler"}
             </Text>
           </View>
         )}
