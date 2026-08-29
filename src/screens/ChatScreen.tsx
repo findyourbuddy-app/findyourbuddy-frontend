@@ -804,10 +804,15 @@ export function ChatScreen({ route }: Props) {
     }, 100);
   }
 
+  const prevMessageCountRef = useRef(0);
+
   useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom(true);
-    }
+    const prevCount = prevMessageCountRef.current;
+    prevMessageCountRef.current = messages.length;
+    if (messages.length === 0) return;
+    // The inverted list already sits at the newest message on first fill;
+    // only animate the jump when new messages arrive afterwards.
+    scrollToBottom(prevCount > 0 && messages.length > prevCount);
   }, [messages.length]);
 
   // Sync read status to PostgreSQL backend on screen focus

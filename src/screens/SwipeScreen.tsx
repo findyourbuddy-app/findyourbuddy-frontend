@@ -992,7 +992,7 @@ export function SwipeScreen() {
                 label={language === "en" ? "Find Another Event" : "Başka Etkinlik Bul"}
                 onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
               />
-              {activeEvent ? (
+              {activeEvent && activeTab === "user" ? (
                 <PrimaryButton
                   label={language === "en" ? "Browse General Users" : "Genel Kullanıcılarda Gezin"}
                   onPress={() => selectGeneralSwipe()}
