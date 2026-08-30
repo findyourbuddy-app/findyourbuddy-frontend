@@ -36,10 +36,20 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { apiClient } from "../api/client";
-import { LANGUAGES_LIST } from "../constants/languages";
+import { LANGUAGES_LIST, getLanguageLabel } from "../constants/languages";
 import { BIO_SUGGESTIONS, PROMPT_SUGGESTIONS } from "../constants/prompts";
 import { INTERESTS } from "../constants/interests";
 import { HOBBIES, MAX_HOBBIES_SELECTION } from "../constants/hobbies";
+import { pickLabel } from "../constants/localized";
+import {
+  BELIEF_OPTIONS,
+  CLASS_YEAR_OPTIONS,
+  GENDER_OPTIONS,
+  LOOKING_FOR_OPTIONS,
+  optionLabel,
+  POLITICAL_OPTIONS,
+  ZODIAC_OPTIONS,
+} from "../constants/profileOptions";
 import {
   MAX_BIO_LENGTH,
   MAX_OCCUPATION_LENGTH,
@@ -84,111 +94,39 @@ export function EditProfileScreen() {
   const [genderPickerVisible, setGenderPickerVisible] = useState(false);
   const [lookingForPickerVisible, setLookingForPickerVisible] = useState(false);
 
-  const ZODIAC_SIGNS = [
-    { key: "Koç", tr: "Koç", en: "Aries" },
-    { key: "Boğa", tr: "Boğa", en: "Taurus" },
-    { key: "İkizler", tr: "İkizler", en: "Gemini" },
-    { key: "Yengeç", tr: "Yengeç", en: "Cancer" },
-    { key: "Aslan", tr: "Aslan", en: "Leo" },
-    { key: "Başak", tr: "Başak", en: "Virgo" },
-    { key: "Terazi", tr: "Terazi", en: "Libra" },
-    { key: "Akrep", tr: "Akrep", en: "Scorpio" },
-    { key: "Yay", tr: "Yay", en: "Sagittarius" },
-    { key: "Oğlak", tr: "Oğlak", en: "Capricorn" },
-    { key: "Kova", tr: "Kova", en: "Aquarius" },
-    { key: "Balık", tr: "Balık", en: "Pisces" },
-  ];
-
-  const CLASS_YEAR_OPTIONS = [
-    { key: "Hazırlık", tr: "Hazırlık", en: "Prep Year" },
-    { key: "1. Sınıf", tr: "1. Sınıf", en: "1st Year" },
-    { key: "2. Sınıf", tr: "2. Sınıf", en: "2nd Year" },
-    { key: "3. Sınıf", tr: "3. Sınıf", en: "3rd Year" },
-    { key: "4. Sınıf", tr: "4. Sınıf", en: "4th Year" },
-    { key: "Yüksek Lisans", tr: "Yüksek Lisans", en: "Master's" },
-    { key: "Doktora", tr: "Doktora", en: "PhD" },
-    { key: "Mezun", tr: "Mezun", en: "Graduate" },
-  ];
-
-  const GENDER_OPTIONS = [
-    { key: "Kadın", tr: "Kadın", en: "Female" },
-    { key: "Erkek", tr: "Erkek", en: "Male" },
-    { key: "Diğer", tr: "Diğer", en: "Other" },
-    { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
-  ];
-
-  const LOOKING_FOR_OPTIONS = [
-    { key: "Kahve & Sohbet", tr: "Kahve & Sohbet ☕", en: "Coffee & Chat ☕" },
-    { key: "Spor Arkadaşı", tr: "Spor Arkadaşı 🏋️‍♂️", en: "Workout Buddy 🏋️‍♂️" },
-    { key: "Konser & Festival", tr: "Konser & Festival 🎶", en: "Concert & Festival 🎶" },
-    { key: "Ders & Çalışma", tr: "Ders & Çalışma Ekürisi 📚", en: "Study Buddy 📚" },
-    { key: "Seyahat & Gezi", tr: "Seyahat & Gezi Ortağı ✈️", en: "Travel & Trip Partner ✈️" },
-    { key: "Yazılım & Proje", tr: "Yazılım & Proje Ortaklığı 💻", en: "Coding & Project Partner 💻" },
-    { key: "Oyun & E-Spor", tr: "Oyun & E-Spor Kankası 🎮", en: "Gaming & E-Sports Buddy 🎮" },
-    { key: "Sanat & Müze", tr: "Sanat & Müze Gezisi 🎨", en: "Art & Museum Visits 🎨" },
-    { key: "Gece Hayatı & Parti", tr: "Gece Hayatı & Parti 🥳", en: "Nightlife & Party 🥳" },
-    { key: "Yeni Şehirde Çevre", tr: "Yeni Şehirde Çevre / Rehber 🗺️", en: "New City Friends & Guide 🗺️" },
-    { key: "Doğa Yürüyüşü & Kamp", tr: "Doğa Yürüyüşü & Kamp 🏕️", en: "Hiking & Camping 🏕️" },
-    { key: "Yemek & Gurme", tr: "Yemek & Gurme Keşfi 🍕", en: "Food & Foodie Buddy 🍕" },
-    { key: "Fotoğraf & Video", tr: "Fotoğraf & Video Çekimi 📸", en: "Photography & Content 📸" },
-    { key: "Dil Pratiği", tr: "Dil Pratiği (Language Exchange) 🗣️", en: "Language Exchange 🗣️" },
-    { key: "Uzun Vadeli Dostluk", tr: "Uzun Vadeli Dostluk 🤝", en: "Long-term Friendship 🤝" },
-    { key: "Sadece Eğlence", tr: "Sadece Eğlence & Aktivite 🎉", en: "Just Fun & Activities 🎉" },
-  ];
-
-  const POLITICAL_OPTIONS = [
-    { key: "Apolitik / Nötr", tr: "Apolitik / Nötr", en: "Apolitical / Neutral" },
-    { key: "Sosyal Demokrat", tr: "Sosyal Demokrat", en: "Social Democrat" },
-    { key: "Liberal", tr: "Liberal", en: "Liberal" },
-    { key: "Muhafazakar", tr: "Muhafazakar", en: "Conservative" },
-    { key: "Milliyetçi", tr: "Milliyetçi", en: "Nationalist" },
-    { key: "Sol / İlerici", tr: "Sol / İlerici", en: "Progressive / Left" },
-    { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
-  ];
-
-  const BELIEF_OPTIONS = [
-    { key: "Deist", tr: "Deist", en: "Deist" },
-    { key: "Müslüman", tr: "Müslüman", en: "Muslim" },
-    { key: "Ateist", tr: "Ateist", en: "Atheist" },
-    { key: "Agnostik", tr: "Agnostik", en: "Agnostic" },
-    { key: "Hristiyan", tr: "Hristiyan", en: "Christian" },
-    { key: "Spirütüel", tr: "Spirütüel", en: "Spiritual" },
-    { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
-  ];
-
-  const zodiacOptions = ZODIAC_SIGNS.map((item) => ({
+  const zodiacOptions = ZODIAC_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => setZodiacSign(item.key),
   }));
 
   const classYearOptions = CLASS_YEAR_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => setClassYear(item.key),
   }));
 
   const genderOptions = GENDER_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => setGender(item.key),
   }));
 
   const lookingForOptions = LOOKING_FOR_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => setLookingFor(item.key),
   }));
 
   const politicalOptions = POLITICAL_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => setPoliticalViews(item.key),
   }));
 
   const beliefOptions = BELIEF_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => setBeliefs(item.key),
   }));
 
@@ -673,7 +611,7 @@ export function EditProfileScreen() {
           <Text style={styles.fieldLabel}>{t("gender")}</Text>
           <Pressable style={styles.inputPressable} onPress={() => setGenderPickerVisible(true)}>
             <Text style={[styles.inputText, !gender && { color: colors.textSecondary }]}>
-              {gender ? (gender === "Kadın" && language === "en" ? t("female") : gender === "Erkek" && language === "en" ? t("male") : gender) : (t("selectGender"))}
+              {gender ? optionLabel(GENDER_OPTIONS, gender, language) : t("selectGender")}
             </Text>
             <Feather name="chevron-down" size={16} color={colors.textSecondary} />
           </Pressable>
@@ -801,9 +739,7 @@ export function EditProfileScreen() {
           </View>
           <Pressable style={styles.inputPressable} onPress={() => setClassYearPickerVisible(true)}>
             <Text style={[styles.inputText, !classYear && { color: colors.textSecondary }]}>
-              {classYear
-                ? (language === "en" ? CLASS_YEAR_OPTIONS.find((item) => item.key === classYear)?.en : CLASS_YEAR_OPTIONS.find((item) => item.key === classYear)?.tr) ?? classYear
-                : (t("select"))}
+              {classYear ? optionLabel(CLASS_YEAR_OPTIONS, classYear, language) : t("select")}
             </Text>
             <Feather name="book-open" size={16} color={colors.textSecondary} />
           </Pressable>
@@ -824,11 +760,7 @@ export function EditProfileScreen() {
           </View>
           <Pressable style={styles.inputPressable} onPress={() => setZodiacPickerVisible(true)}>
             <Text style={[styles.inputText, !zodiacSign && { color: colors.textSecondary }]}>
-              {zodiacSign
-                ? (ZODIAC_SIGNS.find((item) => item.key === zodiacSign)
-                    ? (language === "en" ? ZODIAC_SIGNS.find((item) => item.key === zodiacSign)?.en : ZODIAC_SIGNS.find((item) => item.key === zodiacSign)?.tr)
-                    : zodiacSign)
-                : (t("selectZodiacSign2"))}
+              {zodiacSign ? optionLabel(ZODIAC_OPTIONS, zodiacSign, language) : t("selectZodiacSign2")}
             </Text>
             <Feather name="compass" size={16} color={colors.textSecondary} />
           </Pressable>
@@ -879,7 +811,7 @@ export function EditProfileScreen() {
                   onPress={() => setPoliticalViews(item.key)}
                 >
                   <Text style={[styles.chipText, politicalViews === item.key && styles.chipTextActive]}>
-                    {language === "en" ? item.en : item.tr}
+                    {pickLabel(item.labels, language)}
                   </Text>
                 </Pressable>
               ))}
@@ -913,7 +845,7 @@ export function EditProfileScreen() {
                   onPress={() => setBeliefs(item.key)}
                 >
                   <Text style={[styles.chipText, beliefs === item.key && styles.chipTextActive]}>
-                    {language === "en" ? item.en : item.tr}
+                    {pickLabel(item.labels, language)}
                   </Text>
                 </Pressable>
               ))}
@@ -939,7 +871,7 @@ export function EditProfileScreen() {
                   onPress={() => setLookingFor(item.key)}
                 >
                   <Text style={[styles.chipText, lookingFor === item.key && styles.chipTextActive]}>
-                    {language === "en" ? item.en : item.tr}
+                    {pickLabel(item.labels, language)}
                   </Text>
                 </Pressable>
               ))}
@@ -957,7 +889,7 @@ export function EditProfileScreen() {
             return (
               <Chip
                 key={lang.code}
-                label={`${lang.flag} ${language === "en" ? lang.labelEn : lang.label}`}
+                label={`${lang.flag} ${getLanguageLabel(lang.code, language)}`}
                 active={active}
                 onPress={() => toggleLanguage(lang.code)}
               />
@@ -987,12 +919,11 @@ export function EditProfileScreen() {
                     borderRadius: radius.pill,
                   }}
                   onPress={() => {
-                    const q = language === "en" ? item.questionEn : item.questionTr;
-                    setAboutMePrompt(`${q} `);
+                    setAboutMePrompt(`${pickLabel(item.question, language)} `);
                   }}
                 >
                   <Text style={{ color: "#854D0E", fontWeight: "600", fontFamily: fontFamily.body, fontSize: 13 }}>
-                    {language === "en" ? item.questionEn : item.questionTr}
+                    {pickLabel(item.question, language)}
                   </Text>
                 </Pressable>
               ))}
@@ -1031,12 +962,11 @@ export function EditProfileScreen() {
                     borderRadius: radius.pill,
                   }}
                   onPress={() => {
-                    const text = language === "en" ? item.placeholderEn : item.placeholderTr;
-                    setBio(text.slice(0, MAX_BIO_LENGTH));
+                    setBio(pickLabel(item.placeholder, language).slice(0, MAX_BIO_LENGTH));
                   }}
                 >
                   <Text style={{ color: "#0369A1", fontWeight: "600", fontFamily: fontFamily.body, fontSize: 13 }}>
-                    {language === "en" ? item.questionEn : item.questionTr}
+                    {pickLabel(item.question, language)}
                   </Text>
                 </Pressable>
               ))}
@@ -1060,7 +990,7 @@ export function EditProfileScreen() {
           {HOBBIES.map((hobby) => (
             <Chip
               key={hobby.slug}
-              label={language === "en" ? hobby.labelEn : hobby.label}
+              label={pickLabel(hobby.labels, language)}
               active={selectedHobbies.has(hobby.slug)}
               onPress={() => toggleHobby(hobby.slug)}
             />
@@ -1074,7 +1004,7 @@ export function EditProfileScreen() {
           {INTERESTS.map((interest) => (
             <Chip
               key={interest.slug}
-              label={language === "en" ? interest.labelEn : interest.label}
+              label={pickLabel(interest.labels, language)}
               active={selectedInterests.has(interest.slug)}
               onPress={() => toggleInterest(interest.slug)}
             />

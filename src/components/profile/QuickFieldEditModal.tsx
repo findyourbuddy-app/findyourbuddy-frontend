@@ -13,10 +13,17 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { updateCurrentUser } from "../../api/users";
-import { LANGUAGES_LIST } from "../../constants/languages";
+import { LANGUAGES_LIST, getLanguageLabel } from "../../constants/languages";
 import { HOBBIES, MAX_HOBBIES_SELECTION, getHobbyLabel } from "../../constants/hobbies";
 import { INTERESTS, getInterestLabel } from "../../constants/interests";
 import { BIO_SUGGESTIONS, PROMPT_SUGGESTIONS } from "../../constants/prompts";
+import { pickLabel, type LocalizedLabel } from "../../constants/localized";
+import {
+  BELIEF_OPTIONS,
+  CLASS_YEAR_OPTIONS,
+  POLITICAL_OPTIONS,
+  ZODIAC_OPTIONS,
+} from "../../constants/profileOptions";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../../theme";
@@ -34,50 +41,12 @@ interface Props {
   onSaved: () => void;
 }
 
-const ZODIAC_SIGNS = [
-  { key: "Koç", tr: "Koç", en: "Aries" },
-  { key: "Boğa", tr: "Boğa", en: "Taurus" },
-  { key: "İkizler", tr: "İkizler", en: "Gemini" },
-  { key: "Yengeç", tr: "Yengeç", en: "Cancer" },
-  { key: "Aslan", tr: "Aslan", en: "Leo" },
-  { key: "Başak", tr: "Başak", en: "Virgo" },
-  { key: "Terazi", tr: "Terazi", en: "Libra" },
-  { key: "Akrep", tr: "Akrep", en: "Scorpio" },
-  { key: "Yay", tr: "Yay", en: "Sagittarius" },
-  { key: "Oğlak", tr: "Oğlak", en: "Capricorn" },
-  { key: "Kova", tr: "Kova", en: "Aquarius" },
-  { key: "Balık", tr: "Balık", en: "Pisces" },
-];
-
-const POLITICAL_OPTIONS = [
-  { key: "Apolitik / Nötr", tr: "Apolitik / Nötr", en: "Apolitical / Neutral" },
-  { key: "Sosyal Demokrat", tr: "Sosyal Demokrat", en: "Social Democrat" },
-  { key: "Liberal", tr: "Liberal", en: "Liberal" },
-  { key: "Muhafazakar", tr: "Muhafazakar", en: "Conservative" },
-  { key: "Milliyetçi", tr: "Milliyetçi", en: "Nationalist" },
-  { key: "Sol / İlerici", tr: "Sol / İlerici", en: "Progressive / Left" },
-  { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
-];
-
-const BELIEF_OPTIONS = [
-  { key: "Deist", tr: "Deist", en: "Deist" },
-  { key: "Müslüman", tr: "Müslüman", en: "Muslim" },
-  { key: "Ateist", tr: "Ateist", en: "Atheist" },
-  { key: "Agnostik", tr: "Agnostik", en: "Agnostic" },
-  { key: "Hristiyan", tr: "Hristiyan", en: "Christian" },
-  { key: "Spirütüel", tr: "Spirütüel", en: "Spiritual" },
-  { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
-];
-
-const CLASS_YEAR_OPTIONS = [
-  { key: "Hazırlık", tr: "Hazırlık", en: "Prep Year" },
-  { key: "1. Sınıf", tr: "1. Sınıf", en: "1st Year" },
-  { key: "2. Sınıf", tr: "2. Sınıf", en: "2nd Year" },
-  { key: "3. Sınıf", tr: "3. Sınıf", en: "3rd Year" },
-  { key: "4. Sınıf", tr: "4. Sınıf", en: "4th Year" },
-  { key: "Yüksek Lisans", tr: "Yüksek Lisans", en: "Master's" },
-  { key: "Doktora", tr: "Doktora", en: "PhD" },
-  { key: "Mezun", tr: "Mezun", en: "Graduate" },
+const LOOKING_FOR_QUICK_SUGGESTIONS: LocalizedLabel[] = [
+  { tr: "Kahve & Sohbet Kankası ☕", en: "Coffee & Chat Buddy ☕", de: "Kaffee- & Plausch-Buddy ☕", es: "Colega de café y charla ☕", fr: "Pote café et discussion ☕", it: "Amico di caffè e chiacchiere ☕", ru: "Напарник для кофе и разговоров ☕", ar: "رفيق القهوة والدردشة ☕" },
+  { tr: "Spor & Yürüyüş Arkadaşı 🏃‍♂️", en: "Sports & Jogging Buddy 🏃‍♂️", de: "Sport- & Lauf-Buddy 🏃‍♂️", es: "Colega de deporte y footing 🏃‍♂️", fr: "Pote sport et jogging 🏃‍♂️", it: "Amico di sport e jogging 🏃‍♂️", ru: "Напарник для спорта и пробежек 🏃‍♂️", ar: "رفيق الرياضة والجري 🏃‍♂️" },
+  { tr: "Konser & Festival Ekibi 🎶", en: "Concert & Event Squad 🎶", de: "Konzert- & Festival-Crew 🎶", es: "Equipo de conciertos y eventos 🎶", fr: "Équipe concerts et festivals 🎶", it: "Squadra di concerti ed eventi 🎶", ru: "Команда для концертов и фестивалей 🎶", ar: "فريق الحفلات والفعاليات 🎶" },
+  { tr: "Ders & Çalışma Kankası 📚", en: "Study & Project Buddy 📚", de: "Lern- & Projekt-Buddy 📚", es: "Colega de estudio y proyectos 📚", fr: "Pote d'étude et de projets 📚", it: "Amico di studio e progetti 📚", ru: "Напарник для учёбы и проектов 📚", ar: "رفيق الدراسة والمشاريع 📚" },
+  { tr: "Seyahat & Yol Arkadaşı ✈️", en: "Travel & Road Buddy ✈️", de: "Reise- & Roadtrip-Buddy ✈️", es: "Compañero de viajes y carretera ✈️", fr: "Compagnon de voyage et de route ✈️", it: "Compagno di viaggio e di strada ✈️", ru: "Напарник для путешествий и поездок ✈️", ar: "رفيق السفر والطريق ✈️" },
 ];
 
 export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved }: Props) {
@@ -302,7 +271,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                         onPress={() => toggleLanguage(lang.code)}
                       >
                         <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                          {lang.flag} {language === "en" ? lang.labelEn : lang.label}
+                          {lang.flag} {getLanguageLabel(lang.code, language)}
                         </Text>
                       </Pressable>
                     );
@@ -323,10 +292,10 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                       <Pressable
                         key={item.id}
                         style={styles.suggestionPill}
-                        onPress={() => setBioText(language === "en" ? item.placeholderEn : item.placeholderTr)}
+                        onPress={() => setBioText(pickLabel(item.placeholder, language))}
                       >
                         <Text style={styles.suggestionText}>
-                          {language === "en" ? item.questionEn : item.questionTr}
+                          {pickLabel(item.question, language)}
                         </Text>
                       </Pressable>
                     ))}
@@ -356,12 +325,11 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                         key={item.id}
                         style={styles.suggestionPill}
                         onPress={() => {
-                          const q = language === "en" ? item.questionEn : item.questionTr;
-                          setPromptText(`${q} `);
+                          setPromptText(`${pickLabel(item.question, language)} `);
                         }}
                       >
                         <Text style={styles.suggestionText}>
-                          {language === "en" ? item.questionEn : item.questionTr}
+                          {pickLabel(item.question, language)}
                         </Text>
                       </Pressable>
                     ))}
@@ -386,21 +354,13 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
                   <View style={{ flexDirection: "row", gap: spacing.xs }}>
-                    {[
-                      { tr: "Kahve & Sohbet Kankası ☕", en: "Coffee & Chat Buddy ☕" },
-                      { tr: "Spor & Yürüyüş Arkadaşı 🏃‍♂️", en: "Sports & Jogging Buddy 🏃‍♂️" },
-                      { tr: "Konser & Festival Ekibi 🎶", en: "Concert & Event Squad 🎶" },
-                      { tr: "Ders & Çalışma Kankası 📚", en: "Study & Project Buddy 📚" },
-                      { tr: "Seyahat & Yol Arkadaşı ✈️", en: "Travel & Road Buddy ✈️" },
-                    ].map((item, idx) => (
+                    {LOOKING_FOR_QUICK_SUGGESTIONS.map((item, idx) => (
                       <Pressable
                         key={idx}
                         style={styles.suggestionPill}
-                        onPress={() => setLookingForText(language === "en" ? item.en : item.tr)}
+                        onPress={() => setLookingForText(pickLabel(item, language))}
                       >
-                        <Text style={styles.suggestionText}>
-                          {language === "en" ? item.en : item.tr}
-                        </Text>
+                        <Text style={styles.suggestionText}>{pickLabel(item, language)}</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -446,7 +406,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                         onPress={() => setClassYearVal(active ? "" : item.key)}
                       >
                         <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                          {language === "en" ? item.en : item.tr}
+                          {pickLabel(item.labels, language)}
                         </Text>
                       </Pressable>
                     );
@@ -459,7 +419,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
             {fieldKey === "zodiac" && (
               <View style={styles.fieldSection}>
                 <View style={styles.chipGrid}>
-                  {ZODIAC_SIGNS.map((item) => {
+                  {ZODIAC_OPTIONS.map((item) => {
                     const active = zodiacVal === item.key;
                     return (
                       <Pressable
@@ -468,7 +428,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                         onPress={() => setZodiacVal(item.key)}
                       >
                         <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                          {language === "en" ? item.en : item.tr}
+                          {pickLabel(item.labels, language)}
                         </Text>
                       </Pressable>
                     );
@@ -491,7 +451,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                         onPress={() => setPoliticalVal(item.key)}
                       >
                         <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                          {language === "en" ? item.en : item.tr}
+                          {pickLabel(item.labels, language)}
                         </Text>
                       </Pressable>
                     );
@@ -509,7 +469,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                         onPress={() => setBeliefVal(item.key)}
                       >
                         <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                          {language === "en" ? item.en : item.tr}
+                          {pickLabel(item.labels, language)}
                         </Text>
                       </Pressable>
                     );

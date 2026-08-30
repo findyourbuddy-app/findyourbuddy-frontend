@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import { Avatar, resolvePhotoUrl } from "../components/ui/Avatar";
 import { getInterestLabel } from "../constants/interests";
+import { zodiacDisplayLabel } from "../constants/profileOptions";
 import { getHobbyLabel } from "../constants/hobbies";
 import { formatMemberSince } from "../utils/date";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
@@ -129,7 +130,7 @@ export function ViewProfileScreen() {
             </Pressable>
             {profile.zodiac_sign && !profile.hidden_fields?.includes("zodiac_sign") ? (
               <View style={styles.trustBadge}>
-                <Text style={styles.trustText}>{profile.zodiac_sign}</Text>
+                <Text style={styles.trustText}>{zodiacDisplayLabel(profile.zodiac_sign, language)}</Text>
               </View>
             ) : null}
             {profile.height && !profile.hidden_fields?.includes("height") ? (
@@ -202,7 +203,7 @@ export function ViewProfileScreen() {
               <View style={styles.chipRow}>
                 {profile.hobbies.map((hobby) => (
                   <View key={hobby} style={styles.hobbyChip}>
-                    <Text style={styles.hobbyChipText}>{getHobbyLabel(hobby)}</Text>
+                    <Text style={styles.hobbyChipText}>{getHobbyLabel(hobby, language)}</Text>
                   </View>
                 ))}
               </View>
@@ -218,7 +219,7 @@ export function ViewProfileScreen() {
               <View style={styles.chipRow}>
                 {profile.interests.map((interest) => (
                   <View key={interest} style={styles.chip}>
-                    <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
+                    <Text style={styles.chipText}>{getInterestLabel(interest, language)}</Text>
                   </View>
                 ))}
               </View>

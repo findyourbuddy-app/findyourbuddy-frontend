@@ -9,6 +9,7 @@ import type { SwipeCandidateFilters } from "../../api/swipes";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTheme } from "../../context/ThemeContext";
+import { ZODIAC_GLYPHS, ZODIAC_OPTIONS, zodiacDisplayLabel } from "../../constants/profileOptions";
 import { UniversityAutocomplete } from "../ui/UniversityAutocomplete";
 
 interface SwipeFiltersModalProps {
@@ -30,11 +31,10 @@ function toNumber(text: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-const ZODIAC_LIST = [
-  "Tümü", "Koç ♈", "Boğa ♉", "İkizler ♊", "Yengeç ♋",
-  "Aslan ♌", "Başak ♍", "Terazi ♎", "Akrep ♏",
-  "Yay ♐", "Oğlak ♑", "Kova ♒", "Balık ♓"
-];
+/** Filter values keep the "Koç ♈" shape for stored-state compatibility. */
+const ZODIAC_FILTER_VALUES = ZODIAC_OPTIONS.map(
+  (option, index) => `${option.key} ${ZODIAC_GLYPHS[index]}`
+);
 
 const MIN_AGE = 18;
 const MAX_AGE = 100;
@@ -459,16 +459,24 @@ export function SwipeFiltersModal({
             <View style={styles.field}>
               <Text style={styles.label}>{t("zodiacSignSynergy")}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
-                {ZODIAC_LIST.map((z) => {
-                  const isSelected = zodiacSign === z;
+                <Pressable
+                  style={[styles.presetChip, zodiacSign === "Tümü" && styles.presetChipSelected]}
+                  onPress={() => setZodiacSign("Tümü")}
+                >
+                  <Text style={[styles.presetText, zodiacSign === "Tümü" && styles.presetTextSelected]}>
+                    {t("all")}
+                  </Text>
+                </Pressable>
+                {ZODIAC_FILTER_VALUES.map((value, index) => {
+                  const isSelected = zodiacSign === value;
                   return (
                     <Pressable
-                      key={z}
+                      key={value}
                       style={[styles.presetChip, isSelected && styles.presetChipSelected]}
-                      onPress={() => setZodiacSign(z)}
+                      onPress={() => setZodiacSign(value)}
                     >
                       <Text style={[styles.presetText, isSelected && styles.presetTextSelected]}>
-                        {z}
+                        {zodiacDisplayLabel(ZODIAC_OPTIONS[index].key, language)}
                       </Text>
                     </Pressable>
                   );

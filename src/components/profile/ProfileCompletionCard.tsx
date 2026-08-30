@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { calculateProfileCompletion } from "../../utils/profileCompletion";
+import { pickLabel } from "../../constants/localized";
 import { useAppTheme } from "../../context/ThemeContext";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../../theme";
 import type { MainStackParamList } from "../../navigation/RootNavigator";
@@ -90,7 +91,7 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
                   }}
                 >
                   <Feather name="plus" size={13} color="#FF6B6B" />
-                  <Text style={styles.missingChipText}>{language === "en" ? item.labelEn : item.labelTr}</Text>
+                  <Text style={styles.missingChipText}>{pickLabel(item.label, language)}</Text>
                   <Feather name="arrow-right" size={11} color="#E74C3C" style={{ marginLeft: 2 }} />
                 </Pressable>
               ))}

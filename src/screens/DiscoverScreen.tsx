@@ -27,6 +27,7 @@ import { formatEventDate, parseApiDate } from "../utils/date";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { CATEGORIES, getCategoryMeta } from "../constants/categories";
+import { pickLabel } from "../constants/localized";
 import { colors, fontFamily, spacing, typeScale, radius, shadows } from "../theme";
 import type { MainStackParamList, MainTabParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
@@ -529,7 +530,7 @@ export function DiscoverScreen() {
     if (!searchQuery.trim()) return sortedEvents;
     const q = searchQuery.trim();
     return sortedEvents.filter((event) => {
-      const categoryLabel = getCategoryMeta(event.category)?.label || "";
+      const categoryLabel = getCategoryMeta(event.category, language)?.label || "";
       return (
         isSmartMatch(event.title, q) ||
         isSmartMatch(event.location_name, q) ||
@@ -734,7 +735,7 @@ export function DiscoverScreen() {
                 {CATEGORIES.map((item) => (
                   <Chip
                     key={item.slug}
-                    label={language === "en" ? item.labelEn : item.label}
+                    label={pickLabel(item.labels, language)}
                     active={selectedCategory === item.slug}
                     onPress={() => handleSelectCategory(item.slug)}
                   />

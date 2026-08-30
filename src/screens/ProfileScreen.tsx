@@ -18,9 +18,10 @@ import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
-import { LANGUAGES_LIST } from "../constants/languages";
+import { LANGUAGES_LIST, getLanguageLabel } from "../constants/languages";
 import { getInterestLabel } from "../constants/interests";
 import { getHobbyLabel } from "../constants/hobbies";
+import { zodiacDisplayLabel } from "../constants/profileOptions";
 import { formatEventDate, formatMemberSince, isNewMember, parseApiDate } from "../utils/date";
 import { listMyAttendingEvents } from "../api/events";
 import * as ImagePicker from "expo-image-picker";
@@ -35,27 +36,6 @@ import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { Event } from "../types";
 
 type ProfileNavigationProp = NativeStackNavigationProp<MainStackParamList, "Profile">;
-
-const ZODIAC_SIGNS = [
-  { key: "Koç", tr: "Koç ♈", en: "Aries ♈" },
-  { key: "Boğa", tr: "Boğa ♉", en: "Taurus ♉" },
-  { key: "İkizler", tr: "İkizler ♊", en: "Gemini ♊" },
-  { key: "Yengeç", tr: "Yengeç ♋", en: "Cancer ♋" },
-  { key: "Aslan", tr: "Aslan ♌", en: "Leo ♌" },
-  { key: "Başak", tr: "Başak ♍", en: "Virgo ♍" },
-  { key: "Terazi", tr: "Terazi ♎", en: "Libra ♎" },
-  { key: "Akrep", tr: "Akrep ♏", en: "Scorpio ♏" },
-  { key: "Yay", tr: "Yay ♐", en: "Sagittarius ♐" },
-  { key: "Oğlak", tr: "Oğlak ♑", en: "Capricorn ♑" },
-  { key: "Kova", tr: "Kova ♒", en: "Aquarius ♒" },
-  { key: "Balık", tr: "Balık ♓", en: "Pisces ♓" },
-];
-
-function getZodiacLabel(key: string, language: string): string {
-  const item = ZODIAC_SIGNS.find((z) => z.key === key);
-  if (!item) return key;
-  return language === "en" ? item.en : item.tr;
-}
 
 export function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
@@ -402,7 +382,7 @@ export function ProfileScreen() {
               </View>
             ) : null}
           </View>
-          <Text style={styles.bio}>{getZodiacLabel(user.zodiac_sign, language)}</Text>
+          <Text style={styles.bio}>{zodiacDisplayLabel(user.zodiac_sign, language)}</Text>
         </Pressable>
       ) : null}
 
@@ -422,7 +402,7 @@ export function ProfileScreen() {
               const item = LANGUAGES_LIST.find((l) => l.code === code);
               return (
                 <View key={code} style={styles.chip}>
-                  <Text style={styles.chipText}>{item ? `${item.flag} ${language === "en" ? item.labelEn : item.label}` : code}</Text>
+                  <Text style={styles.chipText}>{item ? `${item.flag} ${getLanguageLabel(code, language)}` : code}</Text>
                 </View>
               );
             })}

@@ -18,6 +18,7 @@ import { useAuth } from "../context/AuthContext";
 import { useAppTheme } from "../context/ThemeContext";
 import type { EventCreationQuota } from "../types";
 import { CATEGORIES } from "../constants/categories";
+import { pickLabel } from "../constants/localized";
 import * as Location from "expo-location";
 import { resolveCityDistrict } from "../utils/location";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
@@ -400,7 +401,7 @@ export function CreateEventScreen() {
           {CATEGORIES.map((item) => (
             <Chip
               key={item.slug}
-              label={language === "en" ? item.labelEn : item.label}
+              label={pickLabel(item.labels, language)}
               active={category === item.slug}
               onPress={() => setCategory(item.slug)}
             />

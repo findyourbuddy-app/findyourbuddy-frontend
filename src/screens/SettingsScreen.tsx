@@ -30,6 +30,7 @@ function formatExpiryDate(iso: string): string {
 }
 
 import { LANGUAGES, THEME_PRESETS, useAppTheme, type LanguageKey } from "../context/ThemeContext";
+import { pickLabel } from "../constants/localized";
 
 export function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
@@ -297,7 +298,7 @@ export function SettingsScreen() {
           <View style={styles.themeGridRow}>
             {THEME_PRESETS.map((preset) => {
               const isSelected = themeKey === preset.key;
-              const themeName = language === "en" ? preset.labelEn : preset.label;
+              const themeName = pickLabel(preset.labels, language);
               return (
                 <Pressable
                   key={preset.key}

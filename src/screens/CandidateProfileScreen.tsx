@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
 import { getInterestLabel } from "../constants/interests";
+import { zodiacDisplayLabel } from "../constants/profileOptions";
 import { getHobbyLabel } from "../constants/hobbies";
 import { getUserUpcomingEvents } from "../api/events";
 import { getUserById } from "../api/users";
@@ -147,7 +148,7 @@ export function CandidateProfileScreen({ route }: Props) {
               ) : null}
               {!profile.hidden_fields?.includes("zodiac_sign") && profile.zodiac_sign ? (
                 <View style={styles.trustBadge}>
-                  <Text style={styles.trustText}>{profile.zodiac_sign}</Text>
+                  <Text style={styles.trustText}>{zodiacDisplayLabel(profile.zodiac_sign, language)}</Text>
                 </View>
               ) : null}
             </View>
@@ -248,7 +249,7 @@ export function CandidateProfileScreen({ route }: Props) {
                 <View style={styles.chipRow}>
                   {profile.hobbies.map((hobby) => (
                     <View key={hobby} style={styles.hobbyChip}>
-                      <Text style={styles.hobbyChipText}>{getHobbyLabel(hobby)}</Text>
+                      <Text style={styles.hobbyChipText}>{getHobbyLabel(hobby, language)}</Text>
                     </View>
                   ))}
                 </View>
@@ -264,7 +265,7 @@ export function CandidateProfileScreen({ route }: Props) {
                 <View style={styles.chipRow}>
                   {profile.interests.map((interest) => (
                     <View key={interest} style={styles.chip}>
-                      <Text style={styles.chipText}>{getInterestLabel(interest)}</Text>
+                      <Text style={styles.chipText}>{getInterestLabel(interest, language)}</Text>
                     </View>
                   ))}
                 </View>

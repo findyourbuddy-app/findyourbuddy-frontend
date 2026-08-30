@@ -45,26 +45,25 @@ export function isRtlLanguage(lang: LanguageKey): boolean {
 
 export interface ThemePreset {
   key: ThemePresetKey;
-  label: string;
-  labelEn: string;
+  labels: Record<LanguageKey, string>;
   color: string;
   bgGradient: [string, string];
   isPremium: boolean;
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
-  { key: "purple", label: "Kanka Moru", labelEn: "Buddy Purple", color: "#6C4CF1", bgGradient: ["#F8F6FE", "#EDE7FB"], isPremium: false },
-  { key: "blue", label: "Okyanus Mavisi", labelEn: "Ocean Blue", color: "#1DA1F2", bgGradient: ["#F0F8FF", "#E1F3FE"], isPremium: false },
-  { key: "green", label: "Doğa Yeşili", labelEn: "Nature Green", color: "#2ECC71", bgGradient: ["#F0FBF5", "#E0F7E9"], isPremium: false },
-  { key: "orange", label: "Gün Batımı", labelEn: "Sunset Orange", color: "#FF7A00", bgGradient: ["#FFF8F0", "#FFEEDD"], isPremium: false },
-  { key: "gold", label: "Altın Işıltı", labelEn: "Golden Glow", color: "#F1C40F", bgGradient: ["#FEFDF0", "#FCF8D5"], isPremium: true },
-  { key: "pink", label: "Gece Pembe", labelEn: "Night Pink", color: "#FF2A7A", bgGradient: ["#FFF0F5", "#FFE0EC"], isPremium: true },
-  { key: "cyan", label: "Siber Gece", labelEn: "Cyber Cyan", color: "#00F5D4", bgGradient: ["#E6FCF8", "#CCFBF3"], isPremium: true },
-  { key: "lavender", label: "Gece Yarısı", labelEn: "Midnight Lavender", color: "#A55EEA", bgGradient: ["#F6F0FD", "#ECE0FA"], isPremium: true },
-  { key: "emerald", label: "Zümrüt Işığı", labelEn: "Neon Emerald", color: "#00E676", bgGradient: ["#E8FDF0", "#D0FBE1"], isPremium: true },
-  { key: "ruby", label: "Kraliyet Yakutu", labelEn: "Royal Ruby", color: "#E74C3C", bgGradient: ["#FDF0ED", "#FCDCD8"], isPremium: true },
-  { key: "nebula", label: "Kozmik Galaksi", labelEn: "Cosmic Nebula", color: "#9B51E0", bgGradient: ["#F5EEFD", "#EAD9FC"], isPremium: true },
-  { key: "volcanic", label: "Volkanik Ateş", labelEn: "Volcanic Flame", color: "#FF3366", bgGradient: ["#FFF0F3", "#FFE0E6"], isPremium: true },
+  { key: "purple", labels: { tr: "Kanka Moru", en: "Buddy Purple", de: "Buddy-Lila", es: "Púrpura Buddy", fr: "Violet Buddy", it: "Viola Buddy", ru: "Фиолетовый бадди", ar: "بنفسجي الرفيق" }, color: "#6C4CF1", bgGradient: ["#F8F6FE", "#EDE7FB"], isPremium: false },
+  { key: "blue", labels: { tr: "Okyanus Mavisi", en: "Ocean Blue", de: "Ozeanblau", es: "Azul océano", fr: "Bleu océan", it: "Blu oceano", ru: "Океанский синий", ar: "أزرق المحيط" }, color: "#1DA1F2", bgGradient: ["#F0F8FF", "#E1F3FE"], isPremium: false },
+  { key: "green", labels: { tr: "Doğa Yeşili", en: "Nature Green", de: "Naturgrün", es: "Verde naturaleza", fr: "Vert nature", it: "Verde natura", ru: "Природный зелёный", ar: "أخضر الطبيعة" }, color: "#2ECC71", bgGradient: ["#F0FBF5", "#E0F7E9"], isPremium: false },
+  { key: "orange", labels: { tr: "Gün Batımı", en: "Sunset Orange", de: "Sonnenuntergangsorange", es: "Naranja atardecer", fr: "Orange coucher de soleil", it: "Arancione tramonto", ru: "Оранжевый закат", ar: "برتقالي الغروب" }, color: "#FF7A00", bgGradient: ["#FFF8F0", "#FFEEDD"], isPremium: false },
+  { key: "gold", labels: { tr: "Altın Işıltı", en: "Golden Glow", de: "Goldener Schimmer", es: "Brillo dorado", fr: "Éclat doré", it: "Bagliore dorato", ru: "Золотое сияние", ar: "توهج ذهبي" }, color: "#F1C40F", bgGradient: ["#FEFDF0", "#FCF8D5"], isPremium: true },
+  { key: "pink", labels: { tr: "Gece Pembe", en: "Night Pink", de: "Nachtrosa", es: "Rosa noche", fr: "Rose nuit", it: "Rosa notte", ru: "Ночной розовый", ar: "وردي الليل" }, color: "#FF2A7A", bgGradient: ["#FFF0F5", "#FFE0EC"], isPremium: true },
+  { key: "cyan", labels: { tr: "Siber Gece", en: "Cyber Cyan", de: "Cyber-Cyan", es: "Cian ciber", fr: "Cyan cyber", it: "Ciano cyber", ru: "Кибер-циан", ar: "سماوي سايبر" }, color: "#00F5D4", bgGradient: ["#E6FCF8", "#CCFBF3"], isPremium: true },
+  { key: "lavender", labels: { tr: "Gece Yarısı", en: "Midnight Lavender", de: "Mitternachtslavendel", es: "Lavanda medianoche", fr: "Lavande minuit", it: "Lavanda mezzanotte", ru: "Полуночная лаванда", ar: "لافندر منتصف الليل" }, color: "#A55EEA", bgGradient: ["#F6F0FD", "#ECE0FA"], isPremium: true },
+  { key: "emerald", labels: { tr: "Zümrüt Işığı", en: "Neon Emerald", de: "Neon-Smaragd", es: "Esmeralda neón", fr: "Émeraude néon", it: "Smeraldo neon", ru: "Неоновый изумруд", ar: "زمردي نيون" }, color: "#00E676", bgGradient: ["#E8FDF0", "#D0FBE1"], isPremium: true },
+  { key: "ruby", labels: { tr: "Kraliyet Yakutu", en: "Royal Ruby", de: "Königsrubin", es: "Rubí real", fr: "Rubis royal", it: "Rubino reale", ru: "Королевский рубин", ar: "ياقوت ملكي" }, color: "#E74C3C", bgGradient: ["#FDF0ED", "#FCDCD8"], isPremium: true },
+  { key: "nebula", labels: { tr: "Kozmik Galaksi", en: "Cosmic Nebula", de: "Kosmischer Nebel", es: "Nebulosa cósmica", fr: "Nébuleuse cosmique", it: "Nebulosa cosmica", ru: "Космическая туманность", ar: "سديم كوني" }, color: "#9B51E0", bgGradient: ["#F5EEFD", "#EAD9FC"], isPremium: true },
+  { key: "volcanic", labels: { tr: "Volkanik Ateş", en: "Volcanic Flame", de: "Vulkanflamme", es: "Llama volcánica", fr: "Flamme volcanique", it: "Fiamma vulcanica", ru: "Вулканическое пламя", ar: "لهب بركاني" }, color: "#FF3366", bgGradient: ["#FFF0F3", "#FFE0E6"], isPremium: true },
 ];
 
 type TranslateParams = Record<string, string | number>;

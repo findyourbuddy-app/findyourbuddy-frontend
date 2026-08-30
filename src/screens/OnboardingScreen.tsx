@@ -30,64 +30,21 @@ import {
 } from "../api/users";
 import { LANGUAGES_LIST } from "../constants/languages";
 import { BIO_SUGGESTIONS, PROMPT_SUGGESTIONS } from "../constants/prompts";
-import { HOBBIES } from "../constants/hobbies";
+import { HOBBIES, getHobbyLabel } from "../constants/hobbies";
 import { INTERESTS, getInterestLabel } from "../constants/interests";
+import { pickLabel } from "../constants/localized";
+import {
+  BELIEF_OPTIONS,
+  GENDER_OPTIONS,
+  LOOKING_FOR_ONBOARDING_OPTIONS,
+  POLITICAL_OPTIONS,
+  ZODIAC_OPTIONS,
+} from "../constants/profileOptions";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../theme";
 import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { User, UserPhoto } from "../types";
 
 type NavigationProp = NativeStackNavigationProp<MainStackParamList, "Onboarding">;
-
-const ZODIAC_SIGNS = [
-  { key: "Koç", tr: "Koç", en: "Aries" },
-  { key: "Boğa", tr: "Boğa", en: "Taurus" },
-  { key: "İkizler", tr: "İkizler", en: "Gemini" },
-  { key: "Yengeç", tr: "Yengeç", en: "Cancer" },
-  { key: "Aslan", tr: "Aslan", en: "Leo" },
-  { key: "Başak", tr: "Başak", en: "Virgo" },
-  { key: "Terazi", tr: "Terazi", en: "Libra" },
-  { key: "Akrep", tr: "Akrep", en: "Scorpio" },
-  { key: "Yay", tr: "Yay", en: "Sagittarius" },
-  { key: "Oğlak", tr: "Oğlak", en: "Capricorn" },
-  { key: "Kova", tr: "Kova", en: "Aquarius" },
-  { key: "Balık", tr: "Balık", en: "Pisces" },
-];
-
-const GENDER_OPTIONS = [
-  { key: "Kadın", tr: "Kadın", en: "Female" },
-  { key: "Erkek", tr: "Erkek", en: "Male" },
-  { key: "Diğer", tr: "Diğer", en: "Other" },
-  { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
-];
-
-const LOOKING_FOR_OPTIONS = [
-  { key: "Kahve & Sohbet", tr: "Kahve & Sohbet", en: "Coffee & Chat" },
-  { key: "Spor Arkadaşı", tr: "Spor Arkadaşı", en: "Workout Buddy" },
-  { key: "Konser Kankası", tr: "Konser Kankası", en: "Concert Buddy" },
-  { key: "Yeni Şehirde Rehber", tr: "Yeni Şehirde Rehber", en: "City Guide" },
-  { key: "Sadece Eğlence", tr: "Sadece Eğlence", en: "Just Having Fun" },
-  { key: "Uzun Vadeli Dostluk", tr: "Uzun Vadeli Dostluk", en: "Long-term Friendship" },
-];
-
-const POLITICAL_OPTIONS = [
-  { key: "Apolitik / Nötr", tr: "Apolitik / Nötr", en: "Apolitical / Neutral" },
-  { key: "Sosyal Demokrat", tr: "Sosyal Demokrat", en: "Social Democrat" },
-  { key: "Liberal", tr: "Liberal", en: "Liberal" },
-  { key: "Muhafazakar", tr: "Muhafazakar", en: "Conservative" },
-  { key: "Milliyetçi", tr: "Milliyetçi", en: "Nationalist" },
-  { key: "Sol / İlerici", tr: "Sol / İlerici", en: "Progressive / Left" },
-  { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
-];
-
-const BELIEF_OPTIONS = [
-  { key: "Deist", tr: "Deist", en: "Deist" },
-  { key: "Müslüman", tr: "Müslüman", en: "Muslim" },
-  { key: "Ateist", tr: "Ateist", en: "Atheist" },
-  { key: "Agnostik", tr: "Agnostik", en: "Agnostic" },
-  { key: "Hristiyan", tr: "Hristiyan", en: "Christian" },
-  { key: "Spirütüel", tr: "Spirütüel", en: "Spiritual" },
-  { key: "Belirtmek İstemiyorum", tr: "Belirtmek İstemiyorum", en: "Prefer not to say" },
-];
 
 const MAX_PHOTOS = 6;
 
@@ -149,9 +106,9 @@ export function OnboardingScreen() {
   const [beliefsPickerVisible, setBeliefsPickerVisible] = useState(false);
 
   // Zodiac Options
-  const zodiacOptions = ZODIAC_SIGNS.map((item) => ({
+  const zodiacOptions = ZODIAC_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => {
       setZodiacSign(item.key);
       setZodiacPickerVisible(false);
@@ -161,7 +118,7 @@ export function OnboardingScreen() {
   // Gender Options
   const genderOptions = GENDER_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => {
       setGender(item.key);
       setGenderPickerVisible(false);
@@ -169,9 +126,9 @@ export function OnboardingScreen() {
   }));
 
   // Looking For Options
-  const lookingForOptions = LOOKING_FOR_OPTIONS.map((item) => ({
+  const lookingForOptions = LOOKING_FOR_ONBOARDING_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => {
       setLookingFor(item.key);
       setLookingForPickerVisible(false);
@@ -181,7 +138,7 @@ export function OnboardingScreen() {
   // Political Options
   const politicalOptions = POLITICAL_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => {
       setPoliticalViews(item.key);
       setPoliticalPickerVisible(false);
@@ -191,7 +148,7 @@ export function OnboardingScreen() {
   // Belief Options
   const beliefOptions = BELIEF_OPTIONS.map((item) => ({
     key: item.key,
-    label: language === "en" ? item.en : item.tr,
+    label: pickLabel(item.labels, language),
     onPress: () => {
       setBeliefs(item.key);
       setBeliefsPickerVisible(false);
@@ -537,7 +494,7 @@ export function OnboardingScreen() {
                     onPress={() => toggleHobby(h.slug)}
                   >
                     <Text style={[styles.hobbyText, isSelected && styles.hobbyTextSelected]}>
-                      {h.label}
+                      {getHobbyLabel(h.slug, language)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -555,7 +512,7 @@ export function OnboardingScreen() {
                     onPress={() => toggleInterest(i.slug)}
                   >
                     <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                      {getInterestLabel(i.slug)}
+                      {getInterestLabel(i.slug, language)}
                     </Text>
                   </TouchableOpacity>
                 );

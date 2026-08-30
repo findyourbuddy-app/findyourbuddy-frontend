@@ -16,6 +16,7 @@ import type { MainStackParamList } from "../navigation/RootNavigator";
 import type { User } from "../types";
 
 import { useAppTheme } from "../context/ThemeContext";
+import { zodiacDisplayLabel } from "../constants/profileOptions";
 
 interface Recommendation {
   user: User;
@@ -214,7 +215,7 @@ export function AIRecommendationsScreen() {
                   {user.zodiac_sign && (
                     <View style={styles.zodiacTag}>
                       <Feather name="sun" size={12} color={colors.primary} />
-                      <Text style={styles.zodiacText}>{user.zodiac_sign}</Text>
+                      <Text style={styles.zodiacText}>{zodiacDisplayLabel(user.zodiac_sign, language)}</Text>
                     </View>
                   )}
                 </View>
