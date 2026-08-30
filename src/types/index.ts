@@ -250,7 +250,7 @@ export interface SubscriptionStatus {
 
 export interface Match {
   id: number;
-  event_id: number;
+  event_id?: number | null;
   event_title?: string | null;
   event_category?: string | null;
   event_is_group?: boolean;
