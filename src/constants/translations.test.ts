@@ -1,24 +1,25 @@
 import { translations } from "./translations";
 
 describe("translations", () => {
+  const languages = Object.keys(translations) as (keyof typeof translations)[];
   const trKeys = Object.keys(translations.tr).sort();
-  const enKeys = Object.keys(translations.en).sort();
 
-  it("TR and EN have the same keys", () => {
-    expect(trKeys).toEqual(enKeys);
+  it("covers tr, en and every added locale", () => {
+    expect(languages).toEqual(
+      expect.arrayContaining(["tr", "en", "ar", "ru", "de", "es", "fr", "it"])
+    );
   });
 
-  it("no TR translation value is an empty string", () => {
-    const emptyKeys = Object.entries(translations.tr)
-      .filter(([, v]) => v === "")
-      .map(([k]) => k);
-    expect(emptyKeys).toEqual([]);
-  });
+  for (const lang of ["en", "ar", "ru", "de", "es", "fr", "it"] as const) {
+    it(`${lang} has exactly the same keys as tr`, () => {
+      expect(Object.keys(translations[lang]).sort()).toEqual(trKeys);
+    });
 
-  it("no EN translation value is an empty string", () => {
-    const emptyKeys = Object.entries(translations.en)
-      .filter(([, v]) => v === "")
-      .map(([k]) => k);
-    expect(emptyKeys).toEqual([]);
-  });
+    it(`${lang} has no empty values`, () => {
+      const empty = Object.entries(translations[lang])
+        .filter(([, v]) => v === "" || v == null)
+        .map(([k]) => k);
+      expect(empty).toEqual([]);
+    });
+  }
 });

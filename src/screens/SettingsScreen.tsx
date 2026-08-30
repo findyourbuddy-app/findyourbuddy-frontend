@@ -29,12 +29,21 @@ function formatExpiryDate(iso: string): string {
   return date.toLocaleDateString("tr-TR");
 }
 
-import { THEME_PRESETS, useAppTheme } from "../context/ThemeContext";
+import { LANGUAGES, THEME_PRESETS, useAppTheme, type LanguageKey } from "../context/ThemeContext";
 
 export function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user, updateUser, signOut, isPremium, premiumExpiresAt } = useAuth();
-  const { themeKey, accentColor, bgGradient, language, setThemeKey, setLanguage, t } = useAppTheme();
+  const { themeKey, accentColor, bgGradient, language, setThemeKey, setLanguage, languageNeedsRestart, t } = useAppTheme();
+
+  function handlePickLanguage(next: LanguageKey): void {
+    if (next === language) return;
+    const needsRestart = languageNeedsRestart(next);
+    setLanguage(next);
+    if (needsRestart) {
+      Alert.alert(t("languageRestartTitle"), t("languageRestartBody"), [{ text: t("ok") }]);
+    }
+  }
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>("undetermined");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -276,22 +285,20 @@ export function SettingsScreen() {
         <View style={{ gap: spacing.xs }}>
           <Text style={styles.sectionSubTitle}>{t("appLanguage")}</Text>
           <View style={styles.langRow}>
-            <Pressable
-              style={[styles.langChip, language === "tr" && { backgroundColor: accentColor, borderColor: accentColor }]}
-              onPress={() => setLanguage("tr")}
-            >
-              <Text style={[styles.langChipText, language === "tr" && { color: colors.surface }]}>
-                🇹🇷 Türkçe
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.langChip, language === "en" && { backgroundColor: accentColor, borderColor: accentColor }]}
-              onPress={() => setLanguage("en")}
-            >
-              <Text style={[styles.langChipText, language === "en" && { color: colors.surface }]}>
-                🇬🇧 English
-              </Text>
-            </Pressable>
+            {LANGUAGES.map((lang) => {
+              const selected = language === lang.key;
+              return (
+                <Pressable
+                  key={lang.key}
+                  style={[styles.langChip, selected && { backgroundColor: accentColor, borderColor: accentColor }]}
+                  onPress={() => handlePickLanguage(lang.key)}
+                >
+                  <Text style={[styles.langChipText, selected && { color: colors.surface }]}>
+                    {lang.flag} {lang.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -673,11 +680,12 @@ const styles = StyleSheet.create({
   },
   langRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
   },
   langChip: {
-    flex: 1,
     paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,

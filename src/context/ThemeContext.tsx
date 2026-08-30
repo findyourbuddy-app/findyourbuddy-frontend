@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { I18nManager } from "react-native";
 import { getToken, setToken } from "../utils/tokenStorage";
 import { translations, type TranslationKey } from "../constants/translations";
 
@@ -16,7 +17,31 @@ export type ThemePresetKey =
   | "nebula"
   | "volcanic";
 
-export type LanguageKey = "tr" | "en";
+export type LanguageKey = "tr" | "en" | "ar" | "ru" | "de" | "es" | "fr" | "it";
+
+export interface LanguageOption {
+  key: LanguageKey;
+  label: string; // endonym, shown in the picker
+  flag: string;
+  rtl: boolean;
+}
+
+export const LANGUAGES: LanguageOption[] = [
+  { key: "tr", label: "Türkçe", flag: "🇹🇷", rtl: false },
+  { key: "en", label: "English", flag: "🇬🇧", rtl: false },
+  { key: "ar", label: "العربية", flag: "🇸🇦", rtl: true },
+  { key: "ru", label: "Русский", flag: "🇷🇺", rtl: false },
+  { key: "de", label: "Deutsch", flag: "🇩🇪", rtl: false },
+  { key: "es", label: "Español", flag: "🇪🇸", rtl: false },
+  { key: "fr", label: "Français", flag: "🇫🇷", rtl: false },
+  { key: "it", label: "Italiano", flag: "🇮🇹", rtl: false },
+];
+
+const LANGUAGE_KEYS = LANGUAGES.map((l) => l.key);
+
+export function isRtlLanguage(lang: LanguageKey): boolean {
+  return LANGUAGES.find((l) => l.key === lang)?.rtl ?? false;
+}
 
 export interface ThemePreset {
   key: ThemePresetKey;
@@ -42,20 +67,32 @@ export const THEME_PRESETS: ThemePreset[] = [
   { key: "volcanic", label: "Volkanik Ateş", labelEn: "Volcanic Flame", color: "#FF3366", bgGradient: ["#FFF0F3", "#FFE0E6"], isPremium: true },
 ];
 
+type TranslateParams = Record<string, string | number>;
+
 interface ThemeContextValue {
   themeKey: ThemePresetKey;
   accentColor: string;
   bgGradient: [string, string];
   language: LanguageKey;
+  isRTL: boolean;
   setThemeKey: (key: ThemePresetKey) => void;
   setLanguage: (lang: LanguageKey) => void;
-  t: (key: TranslationKey) => string;
+  /** Whether switching to `lang` needs an app restart (RTL flip). */
+  languageNeedsRestart: (lang: LanguageKey) => boolean;
+  t: (key: TranslationKey, params?: TranslateParams) => string;
 }
 
 const STORAGE_THEME_KEY = "findyourbuddy_theme_key";
 const STORAGE_LANG_KEY = "findyourbuddy_lang_key";
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+
+function interpolate(template: string, params?: TranslateParams): string {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, name) =>
+    name in params ? String(params[name]) : match
+  );
+}
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [themeKey, setThemeState] = useState<ThemePresetKey>("purple");
@@ -68,7 +105,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       }
     });
     getToken(STORAGE_LANG_KEY).then((val: string | null) => {
-      if (val === "tr" || val === "en") {
+      if (val && (LANGUAGE_KEYS as string[]).includes(val)) {
         setLanguageState(val as LanguageKey);
       }
     });
@@ -82,13 +119,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   function setLanguage(lang: LanguageKey): void {
     setLanguageState(lang);
     setToken(STORAGE_LANG_KEY, lang).catch(() => {});
+    // Native layout direction only changes on the next app launch.
+    const wantRtl = isRtlLanguage(lang);
+    if (I18nManager.isRTL !== wantRtl) {
+      I18nManager.allowRTL(wantRtl);
+      I18nManager.forceRTL(wantRtl);
+    }
+  }
+
+  function languageNeedsRestart(lang: LanguageKey): boolean {
+    return I18nManager.isRTL !== isRtlLanguage(lang);
   }
 
   const currentPreset = THEME_PRESETS.find((p) => p.key === themeKey) || THEME_PRESETS[0];
 
-  function t(key: TranslationKey): string {
-    const langDict = translations[language] || translations.tr;
-    return langDict[key] || translations.tr[key] || key;
+  function t(key: TranslationKey, params?: TranslateParams): string {
+    const raw =
+      (translations[language] as Record<string, string>)?.[key] ??
+      translations.en[key] ??
+      translations.tr[key] ??
+      key;
+    return interpolate(raw, params);
   }
 
   return (
@@ -98,8 +149,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         accentColor: currentPreset.color,
         bgGradient: currentPreset.bgGradient,
         language,
+        isRTL: isRtlLanguage(language),
         setThemeKey,
         setLanguage,
+        languageNeedsRestart,
         t,
       }}
     >

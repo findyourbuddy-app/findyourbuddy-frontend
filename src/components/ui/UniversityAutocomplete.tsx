@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { searchUniversities } from "../../api/universities";
+import type { LanguageKey } from "../../context/ThemeContext";
 import { colors, fontFamily, radius, spacing } from "../../theme";
 
 interface UniversityAutocompleteProps {
@@ -21,7 +22,7 @@ interface UniversityAutocompleteProps {
   placeholder?: string;
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
-  language?: "tr" | "en";
+  language?: LanguageKey;
 }
 
 export function UniversityAutocomplete({
