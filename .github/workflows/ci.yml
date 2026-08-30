@@ -25,3 +25,6 @@ jobs:
 
       - name: Run tests
         run: npx jest --silent
+
+      - name: Audit dependencies
+        run: npm audit --omit=dev --audit-level=high
