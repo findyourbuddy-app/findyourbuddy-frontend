@@ -61,7 +61,7 @@ Verileriniz; ödeme işlemleri için İyzico, gerçek zamanlı mesajlaşma altya
 Size kampanya, duyuru veya tanıtım amaçlı elektronik ileti (e-posta/push bildirim) gönderilmesi, ancak açık rızanızın alınması halinde mümkündür. Bu rızayı Ayarlar > Bildirimler bölümünden dilediğiniz zaman geri çekebilirsiniz. Hesap işlemlerine ilişkin bildirimler (şifre sıfırlama, eşleşme bildirimi vb.) bu kapsamda değildir ve hizmetin ifası için zorunludur.
 
 6. Veri Saklama Süresi
-Kişisel verileriniz, hesabınız aktif olduğu sürece ve ilgili mevzuatta öngörülen süreler boyunca saklanır. Hesabınızı sildiğinizde profil verileriniz ve mesajlarınız makul bir süre içinde kalıcı olarak silinir; yasal yükümlülükler gereği saklanması zorunlu veriler (ör. ödeme kayıtları) ilgili mevzuattaki süre kadar saklanır. Süresi dolmuş etkinlikler ve ilişkili veriler düzenli olarak otomatik temizlenir.
+Kişisel verileriniz, hesabınız aktif olduğu sürece ve ilgili mevzuatta öngörülen süreler boyunca saklanır. Hesabınızı sildiğinizde profil verileriniz (ad, e-posta, telefon, fotoğraf, biyografi, konum ve diğer profil alanları) makul bir süre içinde anonimleştirilir veya silinir. Eşleştiğiniz kullanıcılarla yaptığınız sohbet mesajları, karşı tarafın sohbet geçmişinin bütünlüğünü korumak amacıyla (KVKK m.5/2-f meşru menfaat) gönderen kimliğiniz anonimleştirilmiş şekilde saklanmaya devam eder. Yasal yükümlülükler gereği saklanması zorunlu veriler (ör. ödeme kayıtları) ilgili mevzuattaki süre kadar saklanır. Süresi dolmuş etkinlikler ve ilişkili veriler düzenli olarak otomatik temizlenir.
 
 7. Haklarınız (KVKK m.11)
 KVKK'nın 11. maddesi uyarınca; kişisel verilerinizin işlenip işlenmediğini öğrenme, işlenmişse buna ilişkin bilgi talep etme, işlenme amacını öğrenme, yurt içinde/yurt dışında aktarıldığı üçüncü kişileri bilme, eksik/yanlış işlenmişse düzeltilmesini isteme, silinmesini/yok edilmesini isteme, işlemenin kısıtlanmasını isteme ve zarara uğramanız halinde tazminat talep etme haklarına sahipsiniz. Verilerinizi Ayarlar > Verilerimi İndir üzerinden dışa aktarabilir, Ayarlar > Hesabımı Sil üzerinden kalıcı olarak silebilirsiniz.
@@ -127,7 +127,7 @@ Your data is shared with İyzico (payments), Firebase/Firestore (real-time chat)
 Commercial messages (promotions, announcements) are sent only with your explicit consent, which you can revoke at any time via Settings > Notifications. Essential transactional notices (password resets, match alerts) are exempt as they are required for service delivery.
 
 6. Data Retention & Deletion
-Personal data is retained while your account is active. When you delete your account, your profile data and messages are permanently erased within a reasonable timeframe. Expired events and transient data are cleaned periodically.
+Personal data is retained while your account is active. When you delete your account, your profile data (name, email, phone, photos, bio, location and other profile fields) is anonymized or erased within a reasonable timeframe. Chat messages you exchanged with matched users are retained with your sender identity anonymized, so the other participant's conversation history stays intact (legitimate-interest basis). Data we are legally required to keep (e.g. payment records) is retained for the period set by law. Expired events and transient data are cleaned periodically.
 
 7. User Rights
 You have the right to request access to, correction of, or deletion of your personal data. You can export your data via Settings > Download My Data, or permanently erase your account via Settings > Delete Account.
