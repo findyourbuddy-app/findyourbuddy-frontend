@@ -26,5 +26,8 @@ jobs:
       - name: Run tests
         run: npx jest --silent
 
+      # Advisory: most findings are in Expo's transitive deps and clear with an
+      # SDK bump (done manually, see AGENTS.md). Review the log; don't block on it.
       - name: Audit dependencies
+        continue-on-error: true
         run: npm audit --omit=dev --audit-level=high
