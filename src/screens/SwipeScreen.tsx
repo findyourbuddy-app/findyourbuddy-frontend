@@ -417,8 +417,8 @@ export function SwipeScreen() {
         .catch(() => {
           if (!cancelled) {
             Alert.alert(
-              language === "en" ? "Error" : "Bir sorun oluştu",
-              language === "en" ? "Events and candidates could not be loaded. Please try again." : "Etkinlik ve adaylar yüklenemedi. Lütfen tekrar dene."
+              t("error"),
+              t("eventsAndCandidatesCouldNot")
             );
           }
         })
@@ -447,8 +447,8 @@ export function SwipeScreen() {
       .then(setCandidates)
       .catch(() =>
         Alert.alert(
-          language === "en" ? "Error" : "Bir sorun oluştu",
-          language === "en" ? "Candidates could not be loaded. Please try again." : "Adaylar yüklenemedi. Lütfen tekrar dene."
+          t("error"),
+          t("candidatesCouldNotBeLoaded")
         )
       )
       .finally(() => setIsLoading(false));
@@ -553,7 +553,7 @@ export function SwipeScreen() {
     if (activeTab === "user") {
       list.push({
         key: "general_users",
-        label: language === "en" ? "Browse General Users" : "Genel Kullanıcılarda Gezin",
+        label: t("browseGeneralUsers"),
         icon: "globe",
         onPress: () => selectGeneralSwipe(),
       });
@@ -569,7 +569,7 @@ export function SwipeScreen() {
 
       list.push({
         key: "discover_new_user_event",
-        label: language === "en" ? "Explore & Join New Events" : "Keşfet'ten Yeni Bire Bir Etkinlik Seç",
+        label: t("exploreJoinNewEvents"),
         icon: "map-pin",
         onPress: () => navigation.navigate("Discover"),
       });
@@ -585,7 +585,7 @@ export function SwipeScreen() {
 
       list.push({
         key: "discover_new_system_event",
-        label: language === "en" ? "Explore & Join New Events" : "Keşfet'ten Yeni Resmi Etkinlik Seç",
+        label: t("exploreJoinNewEvents"),
         icon: "map-pin",
         onPress: () => navigation.navigate("Discover"),
       });
@@ -601,9 +601,7 @@ export function SwipeScreen() {
 
   function renewalLine(): string {
     if (!quota) return "";
-    return language === "en"
-      ? `\n\nYour allowance renews ${formatQuotaReset(quota.resets_at, "en")}.`
-      : `\n\nHakların ${formatQuotaReset(quota.resets_at, "tr")} yenilenecek.`;
+    return t("yourAllowanceRenewsP0", { p0: formatQuotaReset(quota.resets_at, "en") });
   }
 
   async function handleSwipe(direction: "like" | "pass" | "super_like"): Promise<User | null> {
@@ -616,10 +614,8 @@ export function SwipeScreen() {
     if (direction === "super_like" && !quota) {
       loadQuota();
       Alert.alert(
-        language === "en" ? "One sec" : "Bir saniye",
-        language === "en"
-          ? "Checking your Super Like balance -- try again in a moment."
-          : "Süper beğeni hakkın kontrol ediliyor -- birazdan tekrar dene."
+        t("oneSec"),
+        t("checkingYourSuperLikeBalance")
       );
       return null;
     }
@@ -632,10 +628,8 @@ export function SwipeScreen() {
         const outOfSwipes = quota.swipe_limit != null && quota.swipes_used_today >= quota.swipe_limit;
         if (outOfSwipes) {
           Alert.alert(
-            language === "en" ? "Daily limit reached" : "Günlük hakkın doldu",
-            (language === "en"
-              ? "You're out of likes for today. Passing is still free, or grab more from the store."
-              : "Bugünlük beğeni hakkın bitti. Geçmeye devam edebilir ya da mağazadan hak alabilirsin.") +
+            t("dailyLimitReached"),
+            (t("youreOutOfLikesFor")) +
               renewalLine()
           );
           return null;
@@ -643,10 +637,8 @@ export function SwipeScreen() {
       }
       if (direction === "super_like" && quota.super_likes_used_today >= quota.super_like_limit) {
         Alert.alert(
-          language === "en" ? "Out of Super Likes" : "Süper beğeni hakkın doldu",
-          (language === "en"
-            ? "Send a normal like, or get more Super Likes from the store."
-            : "Normal beğeni gönderebilir ya da mağazadan süper beğeni alabilirsin.") +
+          t("outOfSuperLikes"),
+          (t("sendANormalLikeOr")) +
             renewalLine()
         );
         return null;
@@ -693,17 +685,13 @@ export function SwipeScreen() {
           rollBack();
           if (detail === "Daily super like limit reached") {
             Alert.alert(
-              language === "en" ? "Out of Super Likes" : "Süper beğeni hakkın doldu",
-              (language === "en"
-                ? "Send a normal like, or get more Super Likes from the store."
-                : "Normal beğeni gönderebilir ya da mağazadan süper beğeni alabilirsin.") + renewalLine()
+              t("outOfSuperLikes"),
+              (t("sendANormalLikeOr")) + renewalLine()
             );
           } else {
             Alert.alert(
-              language === "en" ? "Daily limit reached" : "Günlük hakkın doldu",
-              (language === "en"
-                ? "You're out of likes for today. Passing is still free, or grab more from the store."
-                : "Bugünlük beğeni hakkın bitti. Geçmeye devam edebilir ya da mağazadan hak alabilirsin.") + renewalLine()
+              t("dailyLimitReached"),
+              (t("youreOutOfLikesFor")) + renewalLine()
             );
           }
         }
@@ -746,15 +734,13 @@ export function SwipeScreen() {
       const updatedUser = await activateBoost();
       updateUser(updatedUser);
       Alert.alert(
-        language === "en" ? "Spotlight Started!" : "Spotlight Başlatıldı!",
-        language === "en"
-          ? "Your profile has been moved to the top for 60 minutes in your area!"
-          : "Profilin 60 dakika boyunca bulunduğun bölgede en üste taşındı!"
+        t("spotlightStarted"),
+        t("yourProfileHasBeenMoved2")
       );
     } catch {
       Alert.alert(
-        language === "en" ? "Error" : "Hata",
-        language === "en" ? "Could not start Spotlight. Please try again." : "Spotlight başlatılamadı. Lütfen tekrar dene."
+        t("error"),
+        t("couldNotStartSpotlightPlease")
       );
     } finally {
       setIsLoading(false);
@@ -788,8 +774,8 @@ export function SwipeScreen() {
       .then(setCandidates)
       .catch(() =>
         Alert.alert(
-          language === "en" ? "Error" : "Bir sorun oluştu",
-          language === "en" ? "Candidates could not be loaded. Please try again." : "Adaylar yüklenemedi. Lütfen tekrar dene."
+          t("error"),
+          t("candidatesCouldNotBeLoaded")
         )
       )
       .finally(() => setIsLoading(false));
@@ -824,10 +810,8 @@ export function SwipeScreen() {
       );
       if (updated.is_pending) {
         Alert.alert(
-          language === "en" ? "Request Sent" : "İstek Gönderildi",
-          language === "en"
-            ? "Your request was sent to the organizer. You'll be notified once it's approved."
-            : "İsteğin organizatöre gönderildi. Onaylanınca bilgilendirileceksin."
+          t("requestSent"),
+          t("yourRequestWasSentTo")
         );
       }
     } catch {
@@ -938,7 +922,7 @@ export function SwipeScreen() {
             >
               <Feather name="user" size={13} color={userSubTab === "birebir" ? colors.primary : colors.textSecondary} />
               <Text style={[styles.subTabButtonText, userSubTab === "birebir" && styles.subTabButtonTextActive]}>
-                {language === "en" ? "1-on-1 Buddy" : "Birebir Eşleşme"}
+                {t("1on1Buddy")}
               </Text>
             </Pressable>
             <Pressable
@@ -955,7 +939,7 @@ export function SwipeScreen() {
             >
               <Feather name="users" size={13} color={userSubTab === "group" ? colors.primary : colors.textSecondary} />
               <Text style={[styles.subTabButtonText, userSubTab === "group" && styles.subTabButtonTextActive]}>
-                {language === "en" ? "Group Events" : "Grup Etkinlikleri"}
+                {t("groupEvents")}
               </Text>
             </Pressable>
           </>
@@ -963,7 +947,7 @@ export function SwipeScreen() {
           <View style={styles.systemSubTabPill}>
             <Feather name="shield" size={13} color={colors.primary} />
             <Text style={styles.systemSubTabPillText}>
-              {language === "en" ? "Official Events" : "Resmi Etkinlikler"}
+              {t("officialEvents")}
             </Text>
           </View>
         )}
@@ -981,11 +965,11 @@ export function SwipeScreen() {
             style={styles.groupSwipeExitBtn}
             onPress={resetSwipeDeck}
             accessibilityRole="button"
-            accessibilityLabel={language === "en" ? "Exit group matching" : "Grup eşleşmesinden çık"}
+            accessibilityLabel={t("exitGroupMatching")}
           >
             <Feather name="log-out" size={12} color="#FFFFFF" />
             <Text style={styles.groupSwipeExitBtnText}>
-              {language === "en" ? "Exit" : "Çık"}
+              {t("exit")}
             </Text>
           </Pressable>
         </View>
@@ -1015,7 +999,7 @@ export function SwipeScreen() {
             >
               <Feather name="compass" size={14} color={colors.primary} />
               <Text style={styles.eventPillText} numberOfLines={1}>
-                {language === "en" ? "Select Event" : "Etkinlik Seç"}
+                {t("selectEvent")}
               </Text>
               <Feather name="chevron-down" size={12} color={colors.textSecondary} />
             </Pressable>
@@ -1028,7 +1012,7 @@ export function SwipeScreen() {
             >
               <Feather name="globe" size={14} color={colors.primary} />
               <Text style={styles.eventPillText} numberOfLines={1}>
-                {language === "en" ? "Browsing General Users" : "Genel Kullanıcılarda Geziniyorsun"}
+                {t("browsingGeneralUsers")}
               </Text>
               <Feather name="chevron-down" size={12} color={colors.textSecondary} />
             </Pressable>
@@ -1038,11 +1022,11 @@ export function SwipeScreen() {
             <View style={[styles.quotaColumn, !activeEvent && { marginLeft: "auto" }]}>
               <Text style={styles.quotaText}>
                 {quota.is_premium
-                  ? (language === "en" ? "Unlimited likes" : "Sınırsız beğeni")
-                  : `${quota.swipes_used_today}/${quota.swipe_limit} ${language === "en" ? "likes" : "beğeni"}`}
+                  ? (t("unlimitedLikes"))
+                  : `${quota.swipes_used_today}/${quota.swipe_limit} ${t("likes")}`}
               </Text>
               <Text style={styles.quotaText}>
-                {quota.super_likes_used_today}/{quota.super_like_limit} {language === "en" ? "super" : "süper"}
+                {quota.super_likes_used_today}/{quota.super_like_limit} {t("super2")}
               </Text>
               {(() => {
                 const outOfLikes =
@@ -1051,9 +1035,7 @@ export function SwipeScreen() {
                 if (!outOfLikes && !outOfSupers) return null;
                 return (
                   <Text style={styles.quotaResetText}>
-                    {language === "en"
-                      ? `Renews ${formatQuotaReset(quota.resets_at, "en")}`
-                      : `${formatQuotaReset(quota.resets_at, "tr")} yenilenir`}
+                    {t("renewsP0", { p0: formatQuotaReset(quota.resets_at, "en") })}
                   </Text>
                 );
               })()}
@@ -1071,13 +1053,11 @@ export function SwipeScreen() {
           ) : userGroupEvents.length === 0 ? (
             <View style={styles.center}>
               <Text style={styles.emptyText}>
-                {language === "en"
-                  ? "No group events have been created by users yet."
-                  : "Henüz kullanıcılar tarafından grup etkinliği oluşturulmadı."}
+                {t("noGroupEventsHaveBeen")}
               </Text>
               <View style={{ marginTop: spacing.md }}>
                 <PrimaryButton
-                  label={language === "en" ? "Create Group Event" : "Grup Etkinliği Oluştur"}
+                  label={t("createGroupEvent")}
                   onPress={() => navigation.navigate("CreateEvent")}
                 />
               </View>
@@ -1095,9 +1075,7 @@ export function SwipeScreen() {
                     <View style={styles.attendeesBadge}>
                       <Feather name="users" size={12} color={colors.primary} />
                       <Text style={styles.attendeesBadgeText}>
-                        {language === "en"
-                          ? `Max ${event.max_attendees ?? "∞"} Attendees (${event.attendee_count} Joined)`
-                          : `Max ${event.max_attendees ?? "∞"} Katılımcı (${event.attendee_count} Katıldı)`}
+                        {t("maxP0AttendeesP1Joined", { p0: event.max_attendees ?? "∞", p1: event.attendee_count })}
                       </Text>
                     </View>
                   </View>
@@ -1116,18 +1094,18 @@ export function SwipeScreen() {
                   <View style={styles.groupCardFooter}>
                     <View style={styles.creatorInfo}>
                       <Avatar
-                        name={event.creator?.display_name ?? (language === "en" ? "User" : "Kullanıcı")}
+                        name={event.creator?.display_name ?? (t("user"))}
                         photoUrl={isPremium || !event.creator ? (event.creator?.photo_url ?? null) : null}
                         size={36}
                       />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.creatorNameText}>
                           {isPremium
-                            ? (event.creator?.display_name ?? (language === "en" ? "User" : "Kullanıcı"))
-                            : (language === "en" ? "Hidden Organizer (Premium)" : "Gizli Oluşturan (Premium)")}
+                            ? (event.creator?.display_name ?? (t("user")))
+                            : (t("hiddenOrganizerPremium"))}
                         </Text>
                         <Text style={styles.creatorSubText}>
-                          {language === "en" ? "Event Organizer" : "Etkinlik Oluşturanı"}
+                          {t("eventOrganizer")}
                         </Text>
                       </View>
                     </View>
@@ -1140,7 +1118,7 @@ export function SwipeScreen() {
                             onPress={() => startGroupEventCandidatesSwipe(event)}
                           >
                             <Text style={styles.groupCardActionText}>
-                              {language === "en" ? "View Buddies" : "Kankaları Gör"}
+                              {t("viewBuddies")}
                             </Text>
                           </Pressable>
                           <Pressable
@@ -1148,7 +1126,7 @@ export function SwipeScreen() {
                             onPress={() => navigation.navigate("EventDetail", { eventId: event.id, initialEvent: event as any })}
                           >
                             <Text style={[styles.groupCardActionText, { color: colors.textPrimary }]}>
-                              {language === "en" ? "Chat" : "Sohbet"}
+                              {t("chat")}
                             </Text>
                           </Pressable>
                         </>
@@ -1159,8 +1137,8 @@ export function SwipeScreen() {
                         >
                           <Text style={styles.groupCardActionText}>
                             {event.is_pending
-                              ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
-                              : (language === "en" ? "Join" : "Katıl")}
+                              ? (t("awaitingApproval"))
+                              : (t("join"))}
                           </Text>
                         </Pressable>
                       )}
@@ -1194,21 +1172,17 @@ export function SwipeScreen() {
           <View style={styles.center}>
             <Text style={styles.emptyText}>
               {activeEvent
-                ? language === "en"
-                  ? "No one else is interested in this event right now. Check back later."
-                  : "Bu etkinlik için şu an başka ilgilenen kimse yok. Sonra tekrar bak."
-                : language === "en"
-                ? "No active platform users available right now."
-                : "Şu anda görülecek başka platform kullanıcısı kalmadı."}
+                ? t("noOneElseIsInterested")
+                : t("noActivePlatformUsersAvailable")}
             </Text>
             <View style={{ marginTop: spacing.md, width: "100%", gap: spacing.sm }}>
               <PrimaryButton
-                label={language === "en" ? "Find Another Event" : "Başka Etkinlik Bul"}
+                label={t("findAnotherEvent")}
                 onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}
               />
               {activeEvent && activeTab === "user" ? (
                 <PrimaryButton
-                  label={language === "en" ? "Browse General Users" : "Genel Kullanıcılarda Gezin"}
+                  label={t("browseGeneralUsers")}
                   onPress={() => selectGeneralSwipe()}
                 />
               ) : null}
@@ -1232,30 +1206,30 @@ export function SwipeScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setHelpVisible(false)}>
           <Pressable style={styles.helpCard} onPress={(e) => e.stopPropagation()}>
             <Text style={[typeScale.h1, { textAlign: "center" }]}>
-              {language === "en" ? "How to swipe" : "Nasıl Kaydırılır?"}
+              {t("howToSwipe")}
             </Text>
             <View style={styles.helpRow}>
               <Feather name="arrow-right" size={18} color={colors.primary} />
-              <Text style={styles.helpText}>{language === "en" ? "Right — Like" : "Sağa kaydır — Beğen"}</Text>
+              <Text style={styles.helpText}>{t("rightLike")}</Text>
             </View>
             <View style={styles.helpRow}>
               <Feather name="arrow-left" size={18} color={colors.textSecondary} />
-              <Text style={styles.helpText}>{language === "en" ? "Left — Pass" : "Sola kaydır — Geç"}</Text>
+              <Text style={styles.helpText}>{t("leftPass")}</Text>
             </View>
             <View style={styles.helpRow}>
               <Feather name="arrow-up" size={18} color="#2E7FC9" />
-              <Text style={styles.helpText}>{language === "en" ? "Up — Super Like" : "Yukarı kaydır — Süper Beğeni"}</Text>
+              <Text style={styles.helpText}>{t("upSuperLike")}</Text>
             </View>
             <View style={styles.helpRow}>
               <Feather name="image" size={18} color={colors.primary} />
               <Text style={styles.helpText}>
-                {language === "en" ? "Double-tap — Next / previous photo" : "Çift dokun — Sonraki / önceki fotoğraf"}
+                {t("doubletapNextPreviousPhoto")}
               </Text>
             </View>
             <View style={styles.helpRow}>
               <Feather name="user" size={18} color={colors.textSecondary} />
               <Text style={styles.helpText}>
-                {language === "en" ? "Single tap — Open profile" : "Tek dokun — Profili aç"}
+                {t("singleTapOpenProfile")}
               </Text>
             </View>
             <Pressable style={styles.closeBtn} onPress={() => setHelpVisible(false)}>
@@ -1275,7 +1249,7 @@ export function SwipeScreen() {
 
       <OptionPickerModal
         visible={eventPickerVisible}
-        title={language === "en" ? "Change Event" : "Etkinlik Değiştir"}
+        title={t("changeEvent")}
         options={eventPickerOptions}
         onDismiss={() => setEventPickerVisible(false)}
       />
@@ -1307,7 +1281,7 @@ export function SwipeScreen() {
                   </View>
                 </View>
                 <Pressable style={styles.purchaseBtn} onPress={() => handlePurchase("boost")}>
-                  <Text style={styles.purchaseBtnText}>{language === "en" ? "$3.99" : "39 ₺"}</Text>
+                  <Text style={styles.purchaseBtnText}>{t("399")}</Text>
                 </Pressable>
               </View>
 
@@ -1322,7 +1296,7 @@ export function SwipeScreen() {
                   </View>
                 </View>
                 <Pressable style={styles.purchaseBtn} onPress={() => handlePurchase("super_likes")}>
-                  <Text style={styles.purchaseBtnText}>{language === "en" ? "$1.99" : "19 ₺"}</Text>
+                  <Text style={styles.purchaseBtnText}>{t("199")}</Text>
                 </Pressable>
               </View>
 
@@ -1337,7 +1311,7 @@ export function SwipeScreen() {
                   </View>
                 </View>
                 <Pressable style={styles.purchaseBtn} onPress={() => handlePurchase("swipes")}>
-                  <Text style={styles.purchaseBtnText}>{language === "en" ? "$2.99" : "29 ₺"}</Text>
+                  <Text style={styles.purchaseBtnText}>{t("299")}</Text>
                 </Pressable>
               </View>
             </View>
@@ -1360,28 +1334,24 @@ export function SwipeScreen() {
           <Pressable style={styles.confirmCard} onPress={(e) => e.stopPropagation()}>
             <Feather name="zap" size={36} color="#F1C40F" style={{ alignSelf: "center", marginBottom: spacing.sm }} />
             <Text style={[typeScale.h1, { textAlign: "center" }]}>
-              {language === "en" ? "Start Spotlight?" : "Spotlight Başlatılsın mı?"}
+              {t("startSpotlight")}
             </Text>
             <Text style={styles.confirmSubtitle}>
-              {language === "en"
-                ? "When you activate Spotlight, your profile will be shown at the very top to all buddy candidates in the area for 60 minutes."
-                : "Spotlight'ı aktifleştirdiğinde profilin 60 dakika boyunca bölgedeki tüm kanka adaylarına en ön sırada gösterilecektir."}
+              {t("whenYouActivateSpotlightYour")}
             </Text>
             <Text style={styles.confirmBalanceText}>
-              {language === "en"
-                ? `Your Spotlight Credits: ${user?.boosts_balance ?? 0}`
-                : `Mevcut Spotlight Hakkın: ${user?.boosts_balance ?? 0} adet`}
+              {t("yourSpotlightCreditsP0", { p0: user?.boosts_balance ?? 0 })}
             </Text>
 
             <View style={styles.confirmActions}>
               <Pressable style={styles.confirmBtn} onPress={handleActivateBoost}>
                 <Text style={styles.confirmBtnText}>
-                  {language === "en" ? "Start (Use 1 Credit)" : "Başlat (1 Hak Kullan)"}
+                  {t("startUse1Credit")}
                 </Text>
               </Pressable>
               <Pressable style={styles.cancelConfirmBtn} onPress={() => setBoostConfirmVisible(false)}>
                 <Text style={styles.cancelConfirmBtnText}>
-                  {language === "en" ? "Cancel" : "Vazgeç"}
+                  {t("cancel")}
                 </Text>
               </Pressable>
             </View>

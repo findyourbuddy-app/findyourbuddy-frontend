@@ -63,29 +63,29 @@ export function SwipeFiltersModal({
   const [lookingFor, setLookingFor] = useState(initialFilters.lookingFor || "Tümü");
 
   const GENDER_PREFERENCES = [
-    { id: "all", label: language === "en" ? "Everyone" : "Herkes" },
-    { id: "female", label: language === "en" ? "Female" : "Kadın" },
-    { id: "male", label: language === "en" ? "Male" : "Erkek" },
+    { id: "all", label: t("everyone") },
+    { id: "female", label: t("female") },
+    { id: "male", label: t("male") },
   ];
 
   const INTENTION_OPTIONS = [
-    { id: "Tümü", label: language === "en" ? "All" : "Tümü" },
-    { id: "Etkinlik Arkadaşı", label: language === "en" ? "Event Buddy" : "Etkinlik Arkadaşı" },
-    { id: "Kahve & Sohbet", label: language === "en" ? "Coffee & Chat" : "Kahve & Sohbet" },
-    { id: "Sadece Eğlence", label: language === "en" ? "Just Fun" : "Sadece Eğlence" },
-    { id: "Spor & Aktivite Partneri", label: language === "en" ? "Sport & Activity" : "Spor & Aktivite" },
-    { id: "Uzun Vadeli Dostluk", label: language === "en" ? "Long-term Friendship" : "Uzun Vadeli Dostluk" },
+    { id: "Tümü", label: t("all") },
+    { id: "Etkinlik Arkadaşı", label: t("eventBuddy") },
+    { id: "Kahve & Sohbet", label: t("coffeeChat") },
+    { id: "Sadece Eğlence", label: t("justFun") },
+    { id: "Spor & Aktivite Partneri", label: t("sportActivity") },
+    { id: "Uzun Vadeli Dostluk", label: t("longtermFriendship") },
   ];
 
   const TRUST_SCORE_PRESETS = [
-    { label: language === "en" ? "All" : "Tümü", val: undefined },
+    { label: t("all"), val: undefined },
     { label: "🛡️ 50+", val: 50 },
     { label: "⭐ 70+", val: 70 },
     { label: "🌟 85+", val: 85 },
   ];
 
   const AGE_PRESETS = [
-    { label: language === "en" ? "All" : "Tümü", min: "", max: "" },
+    { label: t("all"), min: "", max: "" },
     { label: "18-25", min: "18", max: "25" },
     { label: "26-35", min: "26", max: "35" },
     { label: "36-50", min: "36", max: "50" },
@@ -191,7 +191,7 @@ export function SwipeFiltersModal({
           <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
             <View style={{ alignItems: "center", gap: spacing.xs, marginVertical: spacing.xs }}>
               <Feather name="sliders" size={36} color={colors.primary} />
-              <Text style={typeScale.h1}>{language === "en" ? "Advanced Buddy Filters" : "Gelişmiş Kanka Filtreleri"}</Text>
+              <Text style={typeScale.h1}>{t("advancedBuddyFilters")}</Text>
               <Text style={[styles.upsellText, { textAlign: "center", lineHeight: 20 }]}>
                 {t("premiumFilterNotice")}
               </Text>
@@ -218,7 +218,7 @@ export function SwipeFiltersModal({
 
             <View style={styles.actions}>
               <PrimaryButton
-                label={isUpgrading ? (language === "en" ? "Loading..." : "Yükleniyor...") : t("getPremiumNowBtn")}
+                label={isUpgrading ? (t("loading")) : t("getPremiumNowBtn")}
                 variant="accent"
                 onPress={handleUpgrade}
                 loading={isUpgrading}
@@ -245,7 +245,7 @@ export function SwipeFiltersModal({
                   <Feather name="sliders" size={16} color={colors.primary} />
                 </View>
                 <Text style={[typeScale.h1, styles.headerTitleText]} numberOfLines={1}>
-                  {language === "en" ? "Advanced Buddy Filters" : "Gelişmiş Kanka Filtreleri"}
+                  {t("advancedBuddyFilters")}
                 </Text>
               </View>
               <Pressable
@@ -262,7 +262,7 @@ export function SwipeFiltersModal({
             <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Gender Preference Chips */}
             <View style={styles.field}>
-              <Text style={styles.label}>{language === "en" ? "Gender Preference" : "Cinsiyet Tercihi"}</Text>
+              <Text style={styles.label}>{t("genderPreference")}</Text>
               <View style={styles.genderRow}>
                 {GENDER_PREFERENCES.map((g) => {
                   const isSelected = genderPreference === g.id;
@@ -283,7 +283,7 @@ export function SwipeFiltersModal({
 
             {/* Relationship Intention Filter */}
             <View style={styles.field}>
-              <Text style={styles.label}>{language === "en" ? "Relationship Goal / Intention" : "Aradığı Arkadaşlık İlişkisi"}</Text>
+              <Text style={styles.label}>{t("relationshipGoalIntention")}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
                 {INTENTION_OPTIONS.map((item) => {
                   const isSelected = lookingFor === item.id;
@@ -305,7 +305,7 @@ export function SwipeFiltersModal({
             {/* Age Range Section with Presets */}
             <View style={styles.field}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>{language === "en" ? "Age Range" : "Yaş Aralığı"}</Text>
+                <Text style={styles.label}>{t("ageRange")}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
                   {AGE_PRESETS.map((p) => (
                     <Pressable
@@ -351,7 +351,7 @@ export function SwipeFiltersModal({
             {/* Distance Radius Section with Presets */}
             <View style={styles.field}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>{language === "en" ? "Max Distance" : "Maksimum Mesafe Yarıçapı"}</Text>
+                <Text style={styles.label}>{t("maxDistance")}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
                   {DISTANCE_PRESETS.map((p) => (
                     <Pressable
@@ -382,12 +382,12 @@ export function SwipeFiltersModal({
 
             {/* University / School Filter */}
             <View style={[styles.field, { zIndex: 20 }]}>
-              <Text style={styles.label}>{language === "en" ? "University / School" : "Üniversite / Okul Filtresi"}</Text>
+              <Text style={styles.label}>{t("universitySchool")}</Text>
               <UniversityAutocomplete
                 value={university}
                 onChangeText={setUniversity}
                 language={language}
-                placeholder={language === "en" ? "Filter by university..." : "Üniversiteye göre filtrele..."}
+                placeholder={t("filterByUniversity")}
               />
             </View>
 
@@ -395,9 +395,9 @@ export function SwipeFiltersModal({
             <View style={styles.toggleCard}>
               <View style={styles.toggleRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.toggleTitle}>{language === "en" ? "Profile Photo Only" : "Sadece Fotoğraflı Profiller"}</Text>
+                  <Text style={styles.toggleTitle}>{t("profilePhotoOnly")}</Text>
                   <Text style={styles.toggleSubtitle}>
-                    {language === "en" ? "Only show profiles with verified photos" : "Profilinde fotoğrafı olan kişileri göster"}
+                    {t("onlyShowProfilesWithVerified")}
                   </Text>
                 </View>
                 <Switch value={requirePhoto} onValueChange={setRequirePhoto} trackColor={{ false: colors.border, true: colors.primary }} />
@@ -405,9 +405,9 @@ export function SwipeFiltersModal({
               <View style={styles.toggleDivider} />
               <View style={styles.toggleRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.toggleTitle}>{language === "en" ? "Blue Checkmark Only" : "Sadece Mavi Tik Onaylı Profiller"}</Text>
+                  <Text style={styles.toggleTitle}>{t("blueCheckmarkOnly")}</Text>
                   <Text style={styles.toggleSubtitle}>
-                    {language === "en" ? "Show only identity-verified users" : "Yalnızca canlı selfie ile doğrulanmış mavi tikli üyeler"}
+                    {t("showOnlyIdentityverifiedUsers")}
                   </Text>
                 </View>
                 <Switch value={isVerifiedOnly} onValueChange={setIsVerifiedOnly} trackColor={{ false: colors.border, true: colors.primary }} />
@@ -415,9 +415,9 @@ export function SwipeFiltersModal({
               <View style={styles.toggleDivider} />
               <View style={styles.toggleRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.toggleTitle}>{language === "en" ? "Voice Intro Only" : "Sadece Ses Tanıtımı Olanlar"}</Text>
+                  <Text style={styles.toggleTitle}>{t("voiceIntroOnly")}</Text>
                   <Text style={styles.toggleSubtitle}>
-                    {language === "en" ? "Show users who recorded a voice intro" : "Ses profil kaydı bulunan kişileri filtrele"}
+                    {t("showUsersWhoRecordedA")}
                   </Text>
                 </View>
                 <Switch value={hasVoiceNote} onValueChange={setHasVoiceNote} trackColor={{ false: colors.border, true: colors.primary }} />
@@ -425,9 +425,9 @@ export function SwipeFiltersModal({
               <View style={styles.toggleDivider} />
               <View style={styles.toggleRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.toggleTitle}>{language === "en" ? "Recently Active Only" : "Son 24 Saatte Aktif Olanlar"}</Text>
+                  <Text style={styles.toggleTitle}>{t("recentlyActiveOnly")}</Text>
                   <Text style={styles.toggleSubtitle}>
-                    {language === "en" ? "Show recently online users" : "Çevrimiçi ve aktif kankaları öne çıkar"}
+                    {t("showRecentlyOnlineUsers")}
                   </Text>
                 </View>
                 <Switch value={onlyOnline} onValueChange={setOnlyOnline} trackColor={{ false: colors.border, true: colors.primary }} />
@@ -436,7 +436,7 @@ export function SwipeFiltersModal({
 
             {/* Minimum Trust Score Selection */}
             <View style={styles.field}>
-              <Text style={styles.label}>{language === "en" ? "Minimum Trust Score" : "Minimum Güven Skoru"}</Text>
+              <Text style={styles.label}>{t("minimumTrustScore")}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
                 {TRUST_SCORE_PRESETS.map((preset) => {
                   const isSelected = minTrustScore === preset.val;
@@ -457,7 +457,7 @@ export function SwipeFiltersModal({
 
             {/* Zodiac Sign Selection */}
             <View style={styles.field}>
-              <Text style={styles.label}>{language === "en" ? "Zodiac Sign Synergy" : "Burç Uyum Tercihi"}</Text>
+              <Text style={styles.label}>{t("zodiacSignSynergy")}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
                 {ZODIAC_LIST.map((z) => {
                   const isSelected = zodiacSign === z;
@@ -479,9 +479,9 @@ export function SwipeFiltersModal({
 
           {/* Sticky Bottom Actions */}
           <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 20) + spacing.md }]}>
-            <PrimaryButton label={language === "en" ? "Apply Filters" : "Filtreleri Uygula"} onPress={handleApply} />
+            <PrimaryButton label={t("applyFilters")} onPress={handleApply} />
             <Pressable onPress={handleClear} style={styles.clearLink} hitSlop={8}>
-              <Text style={styles.clearLinkText}>{language === "en" ? "Clear All Filters" : "Filtreleri Sıfırla"}</Text>
+              <Text style={styles.clearLinkText}>{t("clearAllFilters")}</Text>
             </Pressable>
           </View>
           </View>

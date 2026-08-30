@@ -13,6 +13,7 @@ import {
 import { listMyMatches } from "../../api/matches";
 import type { Match } from "../../types";
 import { Alert } from "../../utils/alert";
+import { translate } from "../../constants/translations";
 
 interface Props {
   visible: boolean;
@@ -55,8 +56,8 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr", onChange }
       }
     } catch {
       Alert.alert(
-        language === "en" ? "Error" : "Hata",
-        language === "en" ? "Could not respond to the invite." : "Davete yanıt verilemedi."
+        translate("error", language),
+        translate("couldNotRespondToThe", language)
       );
     } finally {
       setResponding(false);
@@ -72,12 +73,10 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr", onChange }
     } catch (error: any) {
       const detail = error?.response?.data?.detail;
       Alert.alert(
-        language === "en" ? "Error" : "Hata",
+        translate("error", language),
         typeof detail === "string" && detail
           ? detail
-          : language === "en"
-          ? "Could not send Double Buddy invite."
-          : "Double Buddy daveti gönderilemedi."
+          : translate("couldNotSendDoubleBuddy", language)
       );
     } finally {
       setInvitingId(null);
@@ -86,14 +85,12 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr", onChange }
 
   async function handleDisband() {
     Alert.alert(
-      language === "en" ? "Disband Double Buddy" : "Çiftli Moddan Ayrıl",
-      language === "en"
-        ? "Are you sure you want to disband your Double Buddy pair?"
-        : "Çiftli kanka modundan ayrılmak istediğine emin misin?",
+      translate("disbandDoubleBuddy", language),
+      translate("areYouSureYouWant", language),
       [
-        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
+        { text: translate("cancel", language), style: "cancel" },
         {
-          text: language === "en" ? "Disband" : "Ayrıl",
+          text: translate("disband", language),
           style: "destructive",
           onPress: async () => {
             try {
@@ -119,7 +116,7 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr", onChange }
             <View style={styles.titleRow}>
               <Feather name="users" size={22} color={colors.primary} />
               <Text style={typeScale.h2}>
-                {language === "en" ? "Double Buddy (Pair Mode)" : "Double Buddy (Çiftli Mod)"}
+                {translate("doubleBuddyPairMode", language)}
               </Text>
             </View>
             <Pressable onPress={onClose} style={styles.closeBtn}>
@@ -132,16 +129,14 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr", onChange }
           ) : pair && pair.status === "pending" && pair.is_incoming ? (
             <View style={styles.activePairBox}>
               <Text style={styles.activePairTitle}>
-                {language === "en" ? "Double Buddy Invite" : "Double Buddy Daveti"}
+                {translate("doubleBuddyInvite", language)}
               </Text>
               <View style={styles.partnerRow}>
                 <Avatar name={pair.partner_name} photoUrl={pair.partner_photo} size={48} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.partnerName}>{pair.partner_name}</Text>
                   <Text style={styles.partnerStatus}>
-                    {language === "en"
-                      ? "wants to pair up with you for events"
-                      : "seninle etkinlikler için ikili olmak istiyor"}
+                    {translate("wantsToPairUpWith", language)}
                   </Text>
                 </View>
               </View>
@@ -151,7 +146,7 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr", onChange }
                   onPress={() => handleRespond(false)}
                   disabled={responding}
                 >
-                  <Text style={styles.rejectBtnText}>{language === "en" ? "Decline" : "Reddet"}</Text>
+                  <Text style={styles.rejectBtnText}>{translate("decline", language)}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.inviteBtn, styles.acceptBtn]}
@@ -161,7 +156,7 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr", onChange }
                   {responding ? (
                     <ActivityIndicator size="small" color="#FFF" />
                   ) : (
-                    <Text style={styles.acceptBtnText}>{language === "en" ? "Accept" : "Kabul Et"}</Text>
+                    <Text style={styles.acceptBtnText}>{translate("accept", language)}</Text>
                   )}
                 </Pressable>
               </View>
@@ -169,35 +164,35 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr", onChange }
           ) : pair && pair.status === "pending" ? (
             <View style={styles.activePairBox}>
               <Text style={styles.activePairTitle}>
-                {language === "en" ? "Invite Sent" : "Davet Gönderildi"}
+                {translate("inviteSent", language)}
               </Text>
               <View style={styles.partnerRow}>
                 <Avatar name={pair.partner_name} photoUrl={pair.partner_photo} size={48} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.partnerName}>{pair.partner_name}</Text>
                   <Text style={styles.partnerStatus}>
-                    {language === "en" ? "Waiting for their answer" : "Yanıtı bekleniyor"}
+                    {translate("waitingForTheirAnswer", language)}
                   </Text>
                 </View>
               </View>
               <Pressable style={styles.disbandBtn} onPress={handleDisband}>
                 <Feather name="x" size={16} color="#FFF" style={{ marginRight: 6 }} />
                 <Text style={styles.disbandBtnText}>
-                  {language === "en" ? "Cancel Invite" : "Daveti İptal Et"}
+                  {translate("cancelInvite", language)}
                 </Text>
               </Pressable>
             </View>
           ) : pair ? (
             <View style={styles.activePairBox}>
               <Text style={styles.activePairTitle}>
-                {language === "en" ? "Active Double Buddy Pair" : "Aktif Çiftli Kanka Ekibi"}
+                {translate("activeDoubleBuddyPair", language)}
               </Text>
               <View style={styles.partnerRow}>
                 <Avatar name={pair.partner_name} photoUrl={pair.partner_photo} size={48} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.partnerName}>{pair.partner_name}</Text>
                   <Text style={styles.partnerStatus}>
-                    {language === "en" ? "Paired up for events" : "Etkinlikler için eşleşildi"}
+                    {translate("pairedUpForEvents", language)}
                   </Text>
                 </View>
               </View>
@@ -205,23 +200,19 @@ export function DoubleBuddyModal({ visible, onClose, language = "tr", onChange }
               <Pressable style={styles.disbandBtn} onPress={handleDisband}>
                 <Feather name="user-x" size={16} color="#FFF" style={{ marginRight: 6 }} />
                 <Text style={styles.disbandBtnText}>
-                  {language === "en" ? "Disband Pair" : "Çiftli Modu Kapat"}
+                  {translate("disbandPair", language)}
                 </Text>
               </Pressable>
             </View>
           ) : (
             <View style={styles.infoBox}>
               <Text style={styles.infoText}>
-                {language === "en"
-                  ? "Pick a matched buddy below to pair up -- you'll show up together as a Double Buddy duo wherever you attend."
-                  : "İkili katılmak için aşağıdan eşleştiğin bir kankanı seç -- birlikte katıldığınız her yerde Double Buddy ekibi olarak görünürsünüz."}
+                {translate("pickAMatchedBuddyBelow", language)}
               </Text>
 
               {matches.length === 0 ? (
                 <Text style={styles.emptyMatchesText}>
-                  {language === "en"
-                    ? "You don't have any matches yet to pair up with."
-                    : "Henüz eşleştiğin bir kanka yok, önce birileriyle eşleşmen gerekiyor."}
+                  {translate("youDontHaveAnyMatches", language)}
                 </Text>
               ) : (
                 <FlatList

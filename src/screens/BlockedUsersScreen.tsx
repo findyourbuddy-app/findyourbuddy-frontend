@@ -10,7 +10,7 @@ import type { BlockedUser } from "../types";
 import { useAppTheme } from "../context/ThemeContext";
 
 export function BlockedUsersScreen() {
-  const { bgGradient, language } = useAppTheme();
+  const { bgGradient, language, t } = useAppTheme();
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,12 +35,12 @@ export function BlockedUsersScreen() {
 
   function confirmUnblock(item: BlockedUser): void {
     Alert.alert(
-      language === "en" ? "Unblock User" : "Engeli Kaldır",
-      language === "en" ? `Are you sure you want to unblock ${item.blocked_user.display_name}?` : `${item.blocked_user.display_name} adlı kullanıcının engelini kaldırmak istediğine emin misin?`,
+      t("unblockUser"),
+      t("areYouSureYouWant2", { p0: item.blocked_user.display_name }),
       [
-        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
+        { text: t("cancel"), style: "cancel" },
         {
-          text: language === "en" ? "Unblock" : "Engeli Kaldır",
+          text: t("unblock"),
           onPress: async () => {
             try {
               await unblockUser(item.blocked_user.id);
@@ -61,7 +61,7 @@ export function BlockedUsersScreen() {
       data={blockedUsers}
       keyExtractor={(item) => String(item.id)}
       ListEmptyComponent={
-        !isLoading ? <Text style={styles.emptyText}>{language === "en" ? "No blocked users." : "Engellediğin kimse yok."}</Text> : null
+        !isLoading ? <Text style={styles.emptyText}>{t("noBlockedUsers")}</Text> : null
       }
       renderItem={({ item }) => (
         <View style={styles.row}>

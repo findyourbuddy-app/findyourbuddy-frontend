@@ -30,7 +30,7 @@ export function LocationPickerModal({
   initialLatitude,
   initialLongitude,
 }: LocationPickerModalProps) {
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
   const [coords, setCoords] = useState({
     latitude: initialLatitude ?? DEFAULT_CENTER.latitude,
     longitude: initialLongitude ?? DEFAULT_CENTER.longitude,
@@ -70,7 +70,7 @@ export function LocationPickerModal({
   async function handleSearch(): Promise<void> {
     const trimmed = query.trim();
     if (trimmed.length < 3) {
-      setError(language === "en" ? "Type at least 3 characters." : "En az 3 karakter yaz.");
+      setError(t("typeAtLeast3Characters"));
       return;
     }
     setError(null);
@@ -79,10 +79,10 @@ export function LocationPickerModal({
       const found = await searchLocations(trimmed);
       setResults(found);
       if (found.length === 0) {
-        setError(language === "en" ? "No results found, try a different search?" : "Sonuç bulunamadı, farklı bir arama dener misin?");
+        setError(t("noResultsFoundTryA"));
       }
     } catch {
-      setError(language === "en" ? "Search failed. Please try again." : "Arama yapılamadı. Lütfen tekrar dene.");
+      setError(t("searchFailedPleaseTryAgain"));
     } finally {
       setIsSearching(false);
     }
@@ -103,8 +103,8 @@ export function LocationPickerModal({
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          language === "en" ? "Location Permission Required" : "Konum izni gerekli",
-          language === "en" ? "Please grant location permission to use current location." : "Mevcut konumunu kullanmak için izin vermen gerekiyor."
+          t("locationPermissionRequired"),
+          t("pleaseGrantLocationPermissionTo")
         );
         return;
       }
@@ -113,8 +113,8 @@ export function LocationPickerModal({
       setKnownDisplayName(null);
     } catch {
       Alert.alert(
-        language === "en" ? "Location Error" : "Konum alınamadı",
-        language === "en" ? "Something went wrong, please try again." : "Bir sorun oluştu, tekrar dener misin?"
+        t("locationError"),
+        t("somethingWentWrongPleaseTry")
       );
     } finally {
       setIsLocating(false);
@@ -150,19 +150,19 @@ export function LocationPickerModal({
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.headerRow}>
-            <Text style={typeScale.h1}>{language === "en" ? "Select Location" : "Konum Seç"}</Text>
+            <Text style={typeScale.h1}>{t("selectLocation")}</Text>
             <Pressable onPress={onDismiss} accessibilityRole="button" accessibilityLabel="Kapat">
               <Feather name="x" size={22} color={colors.textSecondary} />
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            <Text style={styles.hint}>{language === "en" ? "Tap a point on the map or drag the pin." : "Haritada bir noktaya dokun ya da pini sürükle."}</Text>
+            <Text style={styles.hint}>{t("tapAPointOnThe")}</Text>
 
             <MapLocationPicker latitude={coords.latitude} longitude={coords.longitude} onChange={handlePinMove} />
 
             <Pressable style={styles.searchToggle} onPress={() => setIsSearchOpen((current) => !current)}>
               <Feather name="search" size={16} color={colors.primary} />
-              <Text style={styles.searchToggleText}>{language === "en" ? "Search address or place (e.g. Times Square)" : "Adres veya mekan ara (örn. Taksim Meydanı)"}</Text>
+              <Text style={styles.searchToggleText}>{t("searchAddressOrPlaceEg")}</Text>
               <Feather name={isSearchOpen ? "chevron-up" : "chevron-down"} size={16} color={colors.primary} />
             </Pressable>
 
@@ -171,7 +171,7 @@ export function LocationPickerModal({
                 <View style={styles.searchRow}>
                   <TextInput
                     style={styles.input}
-                    placeholder={language === "en" ? "e.g. Central Park" : "örn. Taksim Meydanı"}
+                    placeholder={t("egCentralPark")}
                     placeholderTextColor={colors.textSecondary}
                     value={query}
                     onChangeText={setQuery}
@@ -215,13 +215,13 @@ export function LocationPickerModal({
             ) : null}
 
             <PrimaryButton
-              label={isLocating ? (language === "en" ? "Getting..." : "Alınıyor...") : (language === "en" ? "Use My Current Location" : "Mevcut Konumumu Kullan")}
+              label={isLocating ? (t("getting")) : (t("useMyCurrentLocation"))}
               variant="outline"
               onPress={handleUseCurrentLocation}
               loading={isLocating}
             />
             <PrimaryButton
-              label={isConfirming ? (language === "en" ? "Confirming..." : "Onaylanıyor...") : (language === "en" ? "Use This Location" : "Bu Konumu Kullan")}
+              label={isConfirming ? (t("confirming")) : (t("useThisLocation"))}
               onPress={handleConfirm}
               loading={isConfirming}
             />

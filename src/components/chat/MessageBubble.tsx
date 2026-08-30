@@ -7,6 +7,7 @@ import { formatMessageTime } from "../../utils/date";
 import { resolvePhotoUrl } from "../ui/Avatar";
 import type { LanguageKey } from "../../context/ThemeContext";
 import type { Message } from "../../types";
+import { translate } from "../../constants/translations";
 
 const MEDIA_WIDTH = 240;
 const CAPTION_SENTINELS = ["[Fotoğraf]", "[Photo]", "[GIF]"];
@@ -115,7 +116,7 @@ export const MessageBubble = memo(function MessageBubble({
               <Pressable
                 onPress={() => onPressImage(photoUri)}
                 accessibilityRole="imagebutton"
-                accessibilityLabel={language === "en" ? "Enlarge image" : "Resmi Büyüt"}
+                accessibilityLabel={translate("enlargeImage", language)}
               >
                 <Image
                   source={{ uri: photoUri }}

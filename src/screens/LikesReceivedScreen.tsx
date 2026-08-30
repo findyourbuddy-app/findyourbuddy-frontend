@@ -51,8 +51,8 @@ export function LikesReceivedScreen() {
     } catch (error) {
       if (!axios.isAxiosError(error) || error.response?.status !== 403) {
         Alert.alert(
-          language === "en" ? "Error" : "Bir sorun oluştu",
-          language === "en" ? "Could not load. Please try again." : "Beğenenler yüklenemedi. Lütfen tekrar dene."
+          t("error"),
+          t("couldNotLoadPleaseTry")
         );
       }
     } finally {
@@ -90,15 +90,15 @@ export function LikesReceivedScreen() {
       });
       if (result.match_id !== null) {
         Alert.alert(
-          language === "en" ? "It's a Match!" : "Eşleşme Gerçekleşti!",
-          `${item.user.display_name} ${language === "en" ? "is your new buddy!" : "ile yeni bir kankan oldu!"}`
+          t("itsAMatch"),
+          `${item.user.display_name} ${t("isYourNewBuddy")}`
         );
       }
     } catch (error) {
       setLikers(previousLikers);
       Alert.alert(
-        language === "en" ? "Error" : "Bir sorun oluştu",
-        language === "en" ? "Could not save like. Please try again." : "Beğeni kaydedilemedi. Lütfen tekrar dene."
+        t("error"),
+        t("couldNotSaveLikePlease")
       );
     }
   };
@@ -128,8 +128,8 @@ export function LikesReceivedScreen() {
     } catch (error) {
       setLikers(previousLikers);
       Alert.alert(
-        language === "en" ? "Error" : "Bir sorun oluştu",
-        language === "en" ? "Could not save action. Please try again." : "İşlem kaydedilemedi. Lütfen tekrar dene."
+        t("error"),
+        t("couldNotSaveActionPlease")
       );
     }
   };
@@ -174,24 +174,22 @@ export function LikesReceivedScreen() {
     return (
       <View style={styles.headerContainer}>
         <Text style={styles.countText}>
-          {language === "en" ? "People who liked you: " : "Seni beğenen "}
+          {t("peopleWhoLikedYou")}
           <Text style={styles.countNumber}>{likers.length}</Text>
-          {language === "en" ? "!" : " kişi var!"}
+          {t("str")}
         </Text>
 
         {!isPremium && (
           <View style={styles.premiumCard}>
             <View style={styles.premiumCardHeader}>
               <Feather name="star" size={20} color={colors.accentYellow} style={{ marginRight: spacing.xs }} />
-              <Text style={styles.premiumCardTitle}>{language === "en" ? "Premium Membership" : "Premium Üyelik"}</Text>
+              <Text style={styles.premiumCardTitle}>{t("premiumMembership")}</Text>
             </View>
             <Text style={styles.premiumCardBody}>
-              {language === "en"
-                ? "Unblur photos and match instantly with people who liked you by upgrading to Premium!"
-                : "Fotoğrafları netleştirmek ve seni beğenen kişilerle anında eşleşip sohbete başlamak için Premium'a yükselt!"}
+              {t("unblurPhotosAndMatchInstantly")}
             </Text>
             <PrimaryButton
-              label={isUpgrading ? (language === "en" ? "Loading..." : "Yükleniyor...") : t("upgradeToPremium")}
+              label={isUpgrading ? (t("loading")) : t("upgradeToPremium")}
               variant="accent"
               onPress={handleUpgrade}
               loading={isUpgrading}

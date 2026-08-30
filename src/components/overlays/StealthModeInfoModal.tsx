@@ -17,7 +17,7 @@ export function StealthModeInfoModal({
   onToggle,
   onClose,
 }: StealthModeInfoModalProps) {
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -31,19 +31,17 @@ export function StealthModeInfoModal({
           </View>
 
           <Text style={typeScale.h1}>
-            {language === "en" ? "Ghost Stealth Mode" : "Gizli Gezinme Modu"}
+            {t("ghostStealthMode")}
           </Text>
 
           <Text style={styles.subtitle}>
-            {language === "en"
-              ? "Browse profiles and events without leaving a trace."
-              : "Profillerde ve etkinliklerde hiç iz bırakmadan özgürce gez!"}
+            {t("browseProfilesAndEventsWithout")}
           </Text>
 
           {/* Dummy Profile Preview Card */}
           <View style={styles.previewCard}>
             <Text style={styles.previewHeader}>
-              {language === "en" ? "DECK PREVIEW (HOW YOU APPEAR)" : "DUMMY ÖNİZLEME (NASIL GÖRÜNÜRSÜN?)"}
+              {t("deckPreviewHowYouAppear")}
             </Text>
 
             <View style={styles.dummyProfileRow}>
@@ -52,12 +50,12 @@ export function StealthModeInfoModal({
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={styles.dummyName}>
-                  {isEnabled ? (language === "en" ? "Hidden Buddy" : "Gizli Kanka") : "Ahmet K. (Normal)"}
+                  {isEnabled ? (t("hiddenBuddy")) : "Ahmet K. (Normal)"}
                 </Text>
                 <Text style={styles.dummySubtext}>
                   {isEnabled
-                    ? (language === "en" ? "Invisible mode active" : "Görünmez mod aktif • İz Bırakmaz")
-                    : (language === "en" ? "Publicly visible" : "Herkes görebilir")}
+                    ? (t("invisibleModeActive"))
+                    : (t("publiclyVisible"))}
                 </Text>
               </View>
               <View style={[styles.activePill, isEnabled && styles.activePillStealth]}>
@@ -74,9 +72,7 @@ export function StealthModeInfoModal({
                 <Feather name="shield" size={14} color={colors.primary} />
               </View>
               <Text style={styles.perkText}>
-                {language === "en"
-                  ? "Only users you LIKE will see your real profile."
-                  : "Sadece senin BEĞENDİĞİN kişiler gerçek profilini görebilir."}
+                {t("onlyUsersYouLikeWill")}
               </Text>
             </View>
             <View style={styles.perkItem}>
@@ -84,9 +80,7 @@ export function StealthModeInfoModal({
                 <Feather name="eye-off" size={14} color={colors.primary} />
               </View>
               <Text style={styles.perkText}>
-                {language === "en"
-                  ? "Zero profile view notifications are sent."
-                  : "İncelediğin profillere hiç iz veya bildirim bırakmazsın."}
+                {t("zeroProfileViewNotificationsAre")}
               </Text>
             </View>
           </View>
@@ -95,8 +89,8 @@ export function StealthModeInfoModal({
             <PrimaryButton
               label={
                 isEnabled
-                  ? (language === "en" ? "Turn Off Stealth Mode" : "Gizli Gezinmeyi Kapat")
-                  : (language === "en" ? "Activate Stealth Mode" : "Gizli Gezinmeyi Başlat")
+                  ? (t("turnOffStealthMode"))
+                  : (t("activateStealthMode"))
               }
               variant={isEnabled ? "outline" : "accent"}
               onPress={() => {
@@ -105,7 +99,7 @@ export function StealthModeInfoModal({
               }}
             />
             <Pressable onPress={onClose} style={styles.closeBtn}>
-              <Text style={styles.closeBtnText}>{language === "en" ? "Close" : "Kapat"}</Text>
+              <Text style={styles.closeBtnText}>{t("close")}</Text>
             </Pressable>
           </View>
         </Pressable>

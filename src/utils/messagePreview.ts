@@ -1,5 +1,6 @@
 import type { LanguageKey } from "../context/ThemeContext";
 import type { Message } from "../types";
+import { translate } from "../constants/translations";
 
 // Legacy sentinels: image/gif messages sent without a caption store this as
 // their content instead of an empty string.
@@ -31,7 +32,7 @@ export function formatMessagePreview(
   }
 
   if (isPhoto) {
-    const photoLabel = language === "en" ? "📷 Photo" : "📷 Fotoğraf";
+    const photoLabel = translate("photo", language);
     const caption = PHOTO_SENTINELS.includes(content) ? "" : content;
     return caption ? `${photoLabel} · ${caption}` : photoLabel;
   }

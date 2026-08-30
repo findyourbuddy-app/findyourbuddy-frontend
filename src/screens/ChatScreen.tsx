@@ -101,10 +101,8 @@ export function ChatScreen({ route }: Props) {
   const openGroupMembersModal = useCallback(async () => {
     if (!isOrganizer) {
       Alert.alert(
-        language === "en" ? "Event Buddy Matching" : "Kanka Eşleşmesi",
-        language === "en"
-          ? "You can swipe through candidate cards in the Swipe tab to match 1-on-1 with event participants!"
-          : "Etkinlikteki diğer katılımcılarla eşleşmek için 'Eşleş' sekmesindeki kartları sağa/sola kaydırabilirsin!"
+        t("eventBuddyMatching"),
+        t("youCanSwipeThroughCandidate")
       );
       return;
     }
@@ -130,18 +128,18 @@ export function ChatScreen({ route }: Props) {
   }, [isOrganizer, eventId, eventTitle, language]);
 
   const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
-    { reason: "harassment", label: language === "en" ? "Harassment / Inappropriate Behavior" : "Taciz / Rahatsız Edici Davranış" },
-    { reason: "spam", label: language === "en" ? "Spam" : "Spam" },
-    { reason: "fake_profile", label: language === "en" ? "Fake Profile" : "Sahte Profil" },
-    { reason: "inappropriate_content", label: language === "en" ? "Inappropriate Content" : "Uygunsuz İçerik" },
-    { reason: "other", label: language === "en" ? "Other" : "Diğer" },
+    { reason: "harassment", label: t("harassmentInappropriateBehavior") },
+    { reason: "spam", label: t("spam") },
+    { reason: "fake_profile", label: t("fakeProfile") },
+    { reason: "inappropriate_content", label: t("inappropriateContent") },
+    { reason: "other", label: t("other") },
   ];
 
   const defaultIcebreakers = useMemo<IcebreakerItem[]>(
     () => [
-      { text: language === "en" ? `Hi ${otherUserName}! So excited for our event` : `Selam ${otherUserName}! Katılacağımız etkinlik için heyecanlıyım`, type: "text" },
-      { text: language === "en" ? "10-second voice note challenge: say your favorite movie line!" : "10 saniyelik ses kaydıyla en sevdiğin film repliğini söyle!", type: "voice" },
-      { text: language === "en" ? "Checked your profile, let's connect!" : "Profilindeki hobilerine baktım, ne zaman buluşuyoruz?", type: "text" },
+      { text: t("hiP0SoExcitedFor", { p0: otherUserName }), type: "text" },
+      { text: t("10secondVoiceNoteChallengeSay"), type: "voice" },
+      { text: t("checkedYourProfileLetsConnect"), type: "text" },
     ],
     [otherUserName, language]
   );
@@ -338,14 +336,12 @@ export function ChatScreen({ route }: Props) {
 
   function confirmUnmatch(): void {
     Alert.alert(
-      language === "en" ? "Unmatch" : "Eşleşmeyi Kaldır",
-      language === "en"
-        ? `Are you sure you want to unmatch with ${otherUserName}? This will delete your chat history.`
-        : `${otherUserName} ile olan eşleşmeni kaldırmak istediğine emin misin? Bu sohbet geçmişini silecektir.`,
+      t("unmatch"),
+      t("areYouSureYouWant3", { p0: otherUserName }),
       [
-        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
+        { text: t("cancel"), style: "cancel" },
         {
-          text: language === "en" ? "Unmatch" : "Eşleşmeyi Kaldır",
+          text: t("unmatch"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -353,8 +349,8 @@ export function ChatScreen({ route }: Props) {
               navigation.goBack();
             } catch {
               Alert.alert(
-                language === "en" ? "Error" : "Hata",
-                language === "en" ? "A problem occurred while removing the match." : "Eşleşme kaldırılırken bir sorun oluştu."
+                t("error"),
+                t("aProblemOccurredWhileRemoving")
               );
             }
           },
@@ -372,14 +368,12 @@ export function ChatScreen({ route }: Props) {
 
   function confirmBlock(): void {
     Alert.alert(
-      language === "en" ? "Block User" : "Kullanıcıyı Engelle",
-      language === "en"
-        ? `Are you sure you want to block ${otherUserName}? You will no longer be able to match or message each other.`
-        : `${otherUserName} adlı kullanıcıyı engellemek istediğine emin misin? Bir daha eşleşemezsiniz ve mesajlaşamazsınız.`,
+      t("blockUser"),
+      t("areYouSureYouWant4", { p0: otherUserName }),
       [
-        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
+        { text: t("cancel"), style: "cancel" },
         {
-          text: language === "en" ? "Block" : "Engelle",
+          text: t("block"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -387,8 +381,8 @@ export function ChatScreen({ route }: Props) {
               navigation.goBack();
             } catch {
               Alert.alert(
-                language === "en" ? "Error" : "Bir sorun oluştu",
-                language === "en" ? "Could not block user. Please try again." : "Kullanıcı engellenemedi. Lütfen tekrar dene."
+                t("error"),
+                t("couldNotBlockUserPlease")
               );
             }
           },
@@ -400,37 +394,37 @@ export function ChatScreen({ route }: Props) {
   function submitReport(reason: ReportReason): void {
     reportUser({ reported_user_id: otherUserId, reason }).then(
       () => Alert.alert(
-        language === "en" ? "Thank You" : "Teşekkürler",
-        language === "en" ? "Your report has been received and will be reviewed." : "Şikayetin alındı, incelenecek."
+        t("thankYou2"),
+        t("yourReportHasBeenReceived")
       ),
       () => Alert.alert(
-        language === "en" ? "Error" : "Bir sorun oluştu",
-        language === "en" ? "Report could not be sent. Please try again." : "Şikayet gönderilemedi. Lütfen tekrar dene."
+        t("error"),
+        t("reportCouldNotBeSent")
       )
     );
   }
 
   function openReportReasons(): void {
     Alert.alert(
-      language === "en" ? "Report Reason" : "Şikayet Nedeni",
-      language === "en" ? "Why are you reporting this user?" : "Bu kullanıcıyı neden şikayet ediyorsun?",
+      t("reportReason"),
+      t("whyAreYouReportingThis"),
       [
         ...REPORT_REASONS.map(({ reason, label }) => ({
           text: label,
           onPress: () => submitReport(reason),
         })),
-        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" as const },
+        { text: t("cancel"), style: "cancel" as const },
       ]
     );
   }
 
   const openSafetyMenu = useCallback(() => {
     Alert.alert(otherUserName, undefined, [
-      { text: language === "en" ? "Did you meet?" : "Buluştun mu?", onPress: () => setShowFeedbackBanner(true) },
-      { text: language === "en" ? "Unmatch" : "Eşleşmeyi Kaldır", style: "destructive", onPress: confirmUnmatch },
-      { text: language === "en" ? "Report" : "Şikayet Et", onPress: openReportReasons },
-      { text: language === "en" ? "Block" : "Engelle", style: "destructive", onPress: confirmBlock },
-      { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
+      { text: t("didYouMeet"), onPress: () => setShowFeedbackBanner(true) },
+      { text: t("unmatch"), style: "destructive", onPress: confirmUnmatch },
+      { text: t("report"), onPress: openReportReasons },
+      { text: t("block"), style: "destructive", onPress: confirmBlock },
+      { text: t("cancel"), style: "cancel" },
     ]);
   }, [user, otherUserId, otherUserName, language]);
 
@@ -468,12 +462,12 @@ export function ChatScreen({ route }: Props) {
               </View>
               <View style={{ maxWidth: 180 }}>
                 <Text style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 15, color: colors.textPrimary }} numberOfLines={1}>
-                  {eventTitle || (language === "en" ? "Group Event Chat" : "Grup Etkinlik Sohbeti")}
+                  {eventTitle || (t("groupEventChat"))}
                 </Text>
                 <Text style={{ fontFamily: fontFamily.bodyMedium, fontSize: 11, color: colors.primary }}>
                   {isOrganizer
-                    ? (language === "en" ? "Manage Participants (Organizer)" : "Katılımcıları Yönet (Organizatör)")
-                    : (language === "en" ? "Group Announcement Channel" : "📢 Grup Duyuru Kanalı")}
+                    ? (t("manageParticipantsOrganizer"))
+                    : (t("groupAnnouncementChannel"))}
                 </Text>
               </View>
             </Pressable>
@@ -910,7 +904,7 @@ export function ChatScreen({ route }: Props) {
         error?.response?.data?.detail ||
         error?.message ||
         "Mesaj gönderilemedi. Lütfen tekrar dene.";
-      Alert.alert(language === "en" ? "Send Failed" : "Mesaj Gönderilemedi", String(errorMsg));
+      Alert.alert(t("sendFailed"), String(errorMsg));
     } finally {
       setIsSending(false);
       sendLockRef.current = false;
@@ -1052,8 +1046,8 @@ export function ChatScreen({ route }: Props) {
           isLoading={isLoadingIcebreakers}
           onRefresh={() => {
             Alert.alert(
-              language === "en" ? "AI Icebreakers" : "Yapay Zeka",
-              language === "en" ? "Refreshing conversation starters..." : "Yeni tanışma önerileri hazırlanıyor..."
+              t("aiIcebreakers"),
+              t("refreshingConversationStarters")
             );
             fetchAiIcebreakers();
           }}
@@ -1068,10 +1062,10 @@ export function ChatScreen({ route }: Props) {
           <Image source={{ uri: selectedImage.uri }} style={styles.attachedImageThumbnail} contentFit="cover" />
           <View style={styles.attachedImageInfo}>
             <Text style={styles.attachedImageTitle}>
-              {language === "en" ? "Photo attached" : "Fotoğraf eklendi"}
+              {t("photoAttached")}
             </Text>
             <Text style={styles.attachedImageSubtitle}>
-              {language === "en" ? "Add a message or tap Send" : "Aşağıya mesajını yazıp Gönder'e basabilirsin"}
+              {t("addAMessageOrTap")}
             </Text>
           </View>
           <Pressable style={styles.removeAttachedBtn} onPress={() => setSelectedImage(null)}>
@@ -1084,9 +1078,7 @@ export function ChatScreen({ route }: Props) {
         <View style={styles.readOnlyBanner}>
           <Feather name="volume-2" size={18} color={colors.primary} />
           <Text style={styles.readOnlyBannerText}>
-            {language === "en"
-              ? "This is an announcement channel. Only the event organizer can post messages."
-              : "📢 Bu bir grup duyuru kanalıdır. Sadece etkinlik sahibi mesaj yazabilir."}
+            {t("thisIsAnAnnouncementChannel")}
           </Text>
         </View>
       ) : (
@@ -1101,8 +1093,8 @@ export function ChatScreen({ route }: Props) {
             style={styles.input}
             placeholder={
               isGroupEvent && user && eventCreatorId === user.id
-                ? (language === "en" ? "Write an event announcement..." : "📢 Etkinlik duyurusu yaz...")
-                : (language === "en" ? "Type a message..." : "Bir mesaj yaz...")
+                ? (t("writeAnEventAnnouncement"))
+                : (t("typeAMessage"))
             }
             placeholderTextColor={colors.textSecondary}
             value={draft}
@@ -1133,7 +1125,7 @@ export function ChatScreen({ route }: Props) {
         <Pressable style={styles.modalBackdrop} onPress={() => setSelectedMessageForReaction(null)}>
           <View style={styles.reactionCard}>
             <Text style={styles.reactionBarTitle}>
-              {language === "en" ? "React to message" : "Mesaja tepki ver"}
+              {t("reactToMessage")}
             </Text>
             <View style={styles.reactionBarRow}>
               {REACTION_EMOJIS.map((emoji) => (
@@ -1168,20 +1160,18 @@ export function ChatScreen({ route }: Props) {
               <View style={styles.callHeaderTextColumn}>
                 <Text style={styles.callerNameText}>{incomingCall?.callerName}</Text>
                 <Text style={styles.callTypeText}>
-                  {language === "en"
-                    ? `Incoming ${incomingCall?.callType === "video" ? "Video" : "Voice"} Call...`
-                    : `Gelen ${incomingCall?.callType === "video" ? "Görüntülü" : "Sesli"} Arama...`}
+                  {t("incomingP0Call", { p0: incomingCall?.callType === "video" ? "Video" : "Voice" })}
                 </Text>
               </View>
             </View>
             <View style={styles.callActions}>
               <Pressable style={[styles.callBtn, styles.declineBtn]} onPress={handleDeclineCall}>
                 <Feather name="phone-off" size={20} color={colors.surface} />
-                <Text style={styles.callBtnText}>{language === "en" ? "Decline" : "Reddet"}</Text>
+                <Text style={styles.callBtnText}>{t("decline")}</Text>
               </Pressable>
               <Pressable style={[styles.callBtn, styles.acceptBtn]} onPress={handleAcceptCall}>
                 <Feather name="phone" size={20} color={colors.surface} />
-                <Text style={styles.callBtnText}>{language === "en" ? "Answer" : "Yanıtla"}</Text>
+                <Text style={styles.callBtnText}>{t("answer")}</Text>
               </Pressable>
             </View>
           </View>

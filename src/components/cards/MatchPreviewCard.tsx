@@ -16,7 +16,7 @@ interface MatchPreviewCardProps {
 }
 
 export function MatchPreviewCard({ match, subtitle, onPressMessage }: MatchPreviewCardProps) {
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
 
   return (
     <LinearGradient colors={[colors.primary, "#4E32C4"]} style={styles.card}>
@@ -30,7 +30,7 @@ export function MatchPreviewCard({ match, subtitle, onPressMessage }: MatchPrevi
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
       </View>
-      <PrimaryButton label={language === "en" ? "Send Message" : "Mesaj Gönder"} onPress={onPressMessage} variant="outline" />
+      <PrimaryButton label={t("sendMessage")} onPress={onPressMessage} variant="outline" />
     </LinearGradient>
   );
 }

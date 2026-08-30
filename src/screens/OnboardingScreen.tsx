@@ -417,10 +417,10 @@ export function OnboardingScreen() {
       {/* Header Progress Bar */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
-          {language === "en" ? "Create Your Profile" : "Profilini Oluştur"}
+          {t("createYourProfile")}
         </Text>
         <Text style={styles.stepSubtitle}>
-          {language === "en" ? `Step ${step} / 4` : `Adım ${step} / 4`}
+          {t("stepP04", { p0: step })}
         </Text>
         <View style={styles.progressBarBg}>
           <View style={[styles.progressBarFill, { width: `${(step / 4) * 100}%` }]} />
@@ -438,12 +438,10 @@ export function OnboardingScreen() {
         {step === 1 ? (
           <View style={styles.stepCard}>
             <Text style={styles.stepHeading}>
-              {language === "en" ? "Basic Info & Identity" : "Temel Bilgiler & Kimlik"}
+              {t("basicInfoIdentity")}
             </Text>
             <Text style={styles.stepDescription}>
-              {language === "en"
-                ? "Enter your basic info and preferences so we can match you with ideal buddies."
-                : "Sana en uygun kankaları önerebilmemiz için kimlik bilgilerini ve beklentini gir."}
+              {t("enterYourBasicInfoAnd")}
             </Text>
 
             {/* Display Name Input */}

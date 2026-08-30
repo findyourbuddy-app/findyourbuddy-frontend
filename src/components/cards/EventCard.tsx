@@ -59,19 +59,19 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
           </LinearGradient>
         )}
         <View style={styles.badgeSlot}>
-          {isToday(event.starts_at) ? <Badge label={language === "en" ? "Tonight" : "Bu akşam"} variant="yellow" icon="⚡" /> : null}
+          {isToday(event.starts_at) ? <Badge label={t("tonight")} variant="yellow" icon="⚡" /> : null}
           {event.creator_id ? (
             <Badge
               label={
                 isMine
-                  ? (language === "en" ? "My Event" : "Başlattığım Etkinlik")
-                  : (language === "en" ? "User Event" : "Kullanıcı Etkinliği")
+                  ? (t("myEvent"))
+                  : (t("userEvent"))
               }
               variant="primary"
               icon={isMine ? "⭐" : undefined}
             />
           ) : (
-            <Badge label={language === "en" ? "Official Event" : "Resmi Etkinlik"} variant="blue" icon="✓" />
+            <Badge label={t("officialEvent")} variant="blue" icon="✓" />
           )}
         </View>
         <Pressable style={styles.bookmark} onPress={onToggleBookmark}>
@@ -115,7 +115,7 @@ export function EventCard({ event, bookmarked, onToggleBookmark, onPressJoin, on
             event.is_attending
               ? t("seeBuddiesBtn")
               : event.is_pending
-              ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
+              ? (t("awaitingApproval"))
               : t("imGoingToThisEvent")
           }
           onPress={onPressJoin}

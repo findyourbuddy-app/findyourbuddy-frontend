@@ -222,7 +222,7 @@ export function MessagesScreen() {
               <View style={styles.searchBar}>
                 <Feather name="search" size={16} color={colors.textSecondary} />
                 <TextInput
-                  placeholder={language === "en" ? "Search name, event, or location..." : "İsim, etkinlik veya mekan ara..."}
+                  placeholder={t("searchNameEventOrLocation")}
                   placeholderTextColor={colors.textSecondary}
                   value={query}
                   onChangeText={setQuery}
@@ -256,10 +256,10 @@ export function MessagesScreen() {
                       <View style={styles.dropdownBadge}>
                         <Text style={styles.dropdownBadgeText}>
                           {matchType === "event"
-                            ? (language === "en" ? "Event" : "Etkinlik")
+                            ? (t("event"))
                             : matchType === "location"
-                            ? (language === "en" ? "Location" : "Mekan")
-                            : (language === "en" ? "Name" : "İsim")}
+                            ? (t("location"))
+                            : (t("name"))}
                         </Text>
                       </View>
                     </Pressable>
@@ -271,22 +271,22 @@ export function MessagesScreen() {
             {/* Chat Type Filter Chips */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: spacing.xs, marginVertical: spacing.xs }}>
               <Chip
-                label={language === "en" ? "All" : "Hepsi"}
+                label={t("all")}
                 active={chatTypeFilter === "all"}
                 onPress={() => setChatTypeFilter("all")}
               />
               <Chip
-                label={language === "en" ? "New Matches" : "Yeni Eşleşmeler"}
+                label={t("newMatches")}
                 active={chatTypeFilter === "matches"}
                 onPress={() => setChatTypeFilter("matches")}
               />
               <Chip
-                label={language === "en" ? "Direct DMs" : "Özel Mesajlar"}
+                label={t("directDms")}
                 active={chatTypeFilter === "direct"}
                 onPress={() => setChatTypeFilter("direct")}
               />
               <Chip
-                label={language === "en" ? "Group Channels" : "Grup Sohbetleri"}
+                label={t("groupChannels")}
                 active={chatTypeFilter === "group"}
                 onPress={() => setChatTypeFilter("group")}
               />
@@ -300,10 +300,8 @@ export function MessagesScreen() {
               >
                 <Text style={styles.unreadBannerText}>
                   {showUnreadOnly
-                    ? (language === "en" ? "Showing unread only" : "Sadece okunmamışlar gösteriliyor")
-                    : language === "en"
-                    ? `${unreadCount} unread message${unreadCount > 1 ? "s" : ""}`
-                    : `${unreadCount} okunmamış mesaj`}
+                    ? (t("showingUnreadOnly"))
+                    : t("p0UnreadMessagep1", { p0: unreadCount, p1: unreadCount > 1 ? "s" : "" })}
                 </Text>
                 <Feather name={showUnreadOnly ? "x" : "chevron-right"} size={16} color={colors.surface} />
               </Pressable>

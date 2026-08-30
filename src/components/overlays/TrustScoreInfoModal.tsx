@@ -14,7 +14,7 @@ export function TrustScoreInfoModal({
   trustScore,
   onClose,
 }: TrustScoreInfoModalProps) {
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
 
   return (
     <Modal
@@ -30,21 +30,19 @@ export function TrustScoreInfoModal({
               <Feather name="shield" size={26} color={colors.primary} />
             </View>
             <Text style={styles.title}>
-              {language === "en" ? "Trust Score Guide" : "Güven Skoru Rehberi"}
+              {t("trustScoreGuide")}
             </Text>
             {trustScore !== undefined ? (
               <View style={styles.scorePill}>
                 <Text style={styles.scorePillText}>
-                  {language === "en" ? `Score: ${trustScore}/100` : `Skor: ${trustScore}/100`}
+                  {t("scoreP0100", { p0: trustScore })}
                 </Text>
               </View>
             ) : null}
           </View>
 
           <Text style={styles.description}>
-            {language === "en"
-              ? "A 0-100 score recalculated from your real activity: verification, showing up to events, ratings from other buddies, and any reports. It always reflects your current standing -- a rough patch can be recovered."
-              : "Doğrulama, etkinliklere katılım, kankalardan aldığın puanlar ve şikayetler gibi gerçek verilerden yeniden hesaplanan 0-100 arası bir puandır. Her zaman güncel durumunu yansıtır -- kötü bir dönem sonradan telafi edilebilir."}
+            {t("a0100ScoreRecalculatedFrom")}
           </Text>
 
           <View style={styles.list}>
@@ -52,10 +50,10 @@ export function TrustScoreInfoModal({
               <Feather name="check-circle" size={16} color="#1DA1F2" style={styles.itemIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>
-                  {language === "en" ? "Photo verification (+25)" : "Selfie/foto doğrulaması (+25)"}
+                  {t("photoVerification25")}
                 </Text>
                 <Text style={styles.itemSub}>
-                  {language === "en" ? "AI selfie match. Phone (+8) and account (+5) verification add more." : "AI selfie eşlemesi. Telefon (+8) ve hesap (+5) doğrulaması da ekler."}
+                  {t("aiSelfieMatchPhone8")}
                 </Text>
               </View>
             </View>
@@ -64,10 +62,10 @@ export function TrustScoreInfoModal({
               <Feather name="calendar" size={16} color="#27AE60" style={styles.itemIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>
-                  {language === "en" ? "Showing up (up to +15)" : "Etkinliklere katılım (+15'e kadar)"}
+                  {t("showingUpUpTo15")}
                 </Text>
                 <Text style={styles.itemSub}>
-                  {language === "en" ? "Your check-in rate for events you RSVP'd to." : "Katılacağım dediğin etkinliklere gerçekten gitme oranın."}
+                  {t("yourCheckinRateForEvents")}
                 </Text>
               </View>
             </View>
@@ -76,10 +74,10 @@ export function TrustScoreInfoModal({
               <Feather name="star" size={16} color="#F1C40F" style={styles.itemIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>
-                  {language === "en" ? "Buddy ratings & meetups (±12, +8)" : "Kanka puanları & buluşmalar (±12, +8)"}
+                  {t("buddyRatingsMeetups128")}
                 </Text>
                 <Text style={styles.itemSub}>
-                  {language === "en" ? "Average rating you get as an event host, plus confirmed real-life meetups." : "Etkinlik düzenleyen olarak aldığın ortalama puan ve doğrulanmış gerçek buluşmalar."}
+                  {t("averageRatingYouGetAs")}
                 </Text>
               </View>
             </View>
@@ -88,10 +86,10 @@ export function TrustScoreInfoModal({
               <Feather name="alert-triangle" size={16} color="#E74C3C" style={styles.itemIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>
-                  {language === "en" ? "No-shows, reports & blocks (down to -30)" : "Gelmeme, şikayet & engellenme (-30'a kadar)"}
+                  {t("noshowsReportsBlocksDownTo")}
                 </Text>
                 <Text style={styles.itemSub}>
-                  {language === "en" ? "Unexcused absences and community reports lower your score." : "Sebepsiz katılmama ve topluluk şikayetleri skorunu düşürür."}
+                  {t("unexcusedAbsencesAndCommunityReports")}
                 </Text>
               </View>
             </View>
@@ -99,7 +97,7 @@ export function TrustScoreInfoModal({
 
           <Pressable style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeBtnText}>
-              {language === "en" ? "Got It" : "Anladım"}
+              {t("gotIt")}
             </Text>
           </Pressable>
         </Pressable>

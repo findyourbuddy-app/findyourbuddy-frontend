@@ -23,18 +23,18 @@ export function MatchCelebrationModal({
     <Modal visible={matchedUser !== null} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.eyebrow}>{language === "en" ? "It's a Match!" : "Eşleştin!"}</Text>
+          <Text style={styles.eyebrow}>{t("itsAMatch")}</Text>
           {matchedUser ? (
             <>
               <Avatar name={matchedUser.display_name} photoUrl={matchedUser.photo_url} size={88} />
               <Text style={[typeScale.h1, styles.title]}>
-                {language === "en" ? `You matched with ${matchedUser.display_name}` : `${matchedUser.display_name} ile eşleştin`}
+                {t("youMatchedWithP0", { p0: matchedUser.display_name })}
               </Text>
               <Text style={styles.subtitle}>
-                {language === "en" ? "Send a message and plan a meetup!" : "Hadi bir mesaj atıp buluşmayı planlayın."}
+                {t("sendAMessageAndPlan")}
               </Text>
               <View style={styles.actions}>
-                <PrimaryButton label={language === "en" ? "Send Message" : "Mesaj Gönder"} onPress={onSendMessage} />
+                <PrimaryButton label={t("sendMessage")} onPress={onSendMessage} />
                 <PrimaryButton label={t("close")} variant="outline" onPress={onDismiss} />
               </View>
             </>

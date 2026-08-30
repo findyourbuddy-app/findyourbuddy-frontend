@@ -181,10 +181,8 @@ export function SettingsScreen() {
   function handleToggleGhostMode(val: boolean) {
     if (!isPremium && val) {
       Alert.alert(
-        language === "en" ? "Premium Ghost Mode" : "Premium Gizli Mod",
-        language === "en"
-          ? "Ghost Mode allows you to browse profiles invisibly! Upgrade to Premium to enable."
-          : "Gizli Mod (Ghost Mode) sayesinde profillerde tamamen gizli gezebilirsin! Açmak için Premium'a yükselt.",
+        t("premiumGhostMode"),
+        t("ghostModeAllowsYouTo"),
         [
           { text: t("cancel"), style: "cancel" },
           { text: t("upgradeToPremium"), onPress: handleUpgrade },
@@ -200,10 +198,8 @@ export function SettingsScreen() {
   function handlePassportPress() {
     if (!isPremium) {
       Alert.alert(
-        language === "en" ? "Premium Passport" : "Premium Pasaport",
-        language === "en"
-          ? "Travel Passport lets you teleport to any city in the world to find buddies! Upgrade to Premium."
-          : "Pasaport (Passport) özelliğiyle Türkiye'nin veya dünyanın istediğin şehrine ışınlanıp oradaki kankalarla eşleşebilirsin! Premium'a yükselt.",
+        t("premiumPassport"),
+        t("travelPassportLetsYouTeleport"),
         [
           { text: t("cancel"), style: "cancel" },
           { text: t("upgradeToPremium"), onPress: handleUpgrade },
@@ -222,15 +218,13 @@ export function SettingsScreen() {
       });
       updateUser(updated);
       Alert.alert(
-        language === "en" ? "Location Updated" : "Konum Güncellendi",
-        language === "en"
-          ? "Your location has been updated successfully!"
-          : "Sanal konumunuz / anlık konumunuz başarıyla kaydedildi!"
+        t("locationUpdated"),
+        t("yourLocationHasBeenUpdated")
       );
     } catch {
       Alert.alert(
-        language === "en" ? "Error" : "Hata",
-        language === "en" ? "Failed to update location." : "Konum güncellenemedi."
+        t("error"),
+        t("failedToUpdateLocation")
       );
     } finally {
       setLocationPickerVisible(false);
@@ -248,16 +242,14 @@ export function SettingsScreen() {
         >
           <View style={styles.row}>
             <Text style={styles.premiumEyebrow}>PREMIUM</Text>
-            <Badge label={language === "en" ? "Active" : "Aktif"} variant="yellow" icon="⭐" />
+            <Badge label={t("active")} variant="yellow" icon="⭐" />
           </View>
           <Text style={styles.premiumLabel}>
-            {language === "en"
-              ? "Seeing likes, unlimited swiping, advanced filters, and priority visibility are with you."
-              : "Beğenenleri görme, sınırsız swipe, gelişmiş filtreler ve öncelikli görünürlük seninle."}
+            {t("seeingLikesUnlimitedSwipingAdvanced")}
           </Text>
           {premiumExpiresAt ? (
             <Text style={styles.premiumSubLabel}>
-              {language === "en" ? "Expiry date: " : "Bitiş tarihi: "}{formatExpiryDate(premiumExpiresAt)}
+              {t("expiryDate")}{formatExpiryDate(premiumExpiresAt)}
             </Text>
           ) : null}
         </LinearGradient>
@@ -265,12 +257,10 @@ export function SettingsScreen() {
         <View style={styles.premiumCardFree}>
           <Text style={typeScale.eyebrow}>Premium</Text>
           <Text style={styles.rowLabel}>
-            {language === "en"
-              ? "See who liked you, swipe unlimitedly, use advanced filters and get featured."
-              : "Seni beğenenleri gör, sınırsız swipe yap, gelişmiş filtreler kullan ve öne çık."}
+            {t("seeWhoLikedYouSwipe")}
           </Text>
           <PrimaryButton
-            label={isUpgrading ? (language === "en" ? "Loading..." : "Yükleniyor...") : t("upgradeToPremium")}
+            label={isUpgrading ? (t("loading")) : t("upgradeToPremium")}
             variant="accent"
             onPress={handleUpgrade}
             loading={isUpgrading}
@@ -385,7 +375,7 @@ export function SettingsScreen() {
       {/* Privacy & Special Power-Ups Card */}
       <View style={styles.card}>
         <Text style={typeScale.eyebrow}>
-          {language === "en" ? "Privacy & Power-Ups" : "Gizlilik & Özel Yetenekler"}
+          {t("privacyPowerups")}
         </Text>
 
         <Pressable style={styles.notifModuleBox} onPress={handlePassportPress}>
@@ -395,14 +385,12 @@ export function SettingsScreen() {
           <View style={{ flex: 1, gap: 2 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
               <Text style={styles.notifTitle}>
-                {language === "en" ? "Travel Passport" : "Sanal Konum / Pasaport"}
+                {t("travelPassport")}
               </Text>
               {!isPremium && <Text style={{ fontSize: 10 }}>👑</Text>}
             </View>
             <Text style={styles.notifSubText}>
-              {language === "en"
-                ? "Teleport to any city in the world to meet new buddies!"
-                : "İstediğin şehre ışınlanıp oradaki kankalarla eşleş!"}
+              {t("teleportToAnyCityIn")}
             </Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.textSecondary} />
@@ -415,14 +403,12 @@ export function SettingsScreen() {
           <View style={{ flex: 1, gap: 2 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
               <Text style={styles.notifTitle}>
-                {language === "en" ? "Ghost Mode" : "Gizli Gezinme (Ghost Mode)"}
+                {t("ghostMode")}
               </Text>
               {!isPremium && <Text style={{ fontSize: 10 }}>👑</Text>}
             </View>
             <Text style={styles.notifSubText}>
-              {language === "en"
-                ? "Browse profiles completely invisibly. Tap to see preview!"
-                : "Profilleri tamamen gizli gez. Önizlemek için dokun!"}
+              {t("browseProfilesCompletelyInvisiblyTap")}
             </Text>
           </View>
           <Switch

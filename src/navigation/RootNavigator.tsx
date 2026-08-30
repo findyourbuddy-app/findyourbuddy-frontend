@@ -105,7 +105,7 @@ const MainStack = createNativeStackNavigator<MainStackParamList>();
 const MainTabs = createBottomTabNavigator<MainTabParamList>();
 
 function AuthNavigator() {
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
 
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Welcome">
@@ -125,8 +125,8 @@ function AuthNavigator() {
           headerShown: true,
           title:
             route.params.kind === "terms"
-              ? (language === "en" ? "Terms of Service" : "Kullanım Şartları")
-              : (language === "en" ? "Privacy Policy" : "Gizlilik Politikası"),
+              ? (t("termsOfService"))
+              : (t("privacyPolicy")),
         })}
       />
     </AuthStack.Navigator>
@@ -164,28 +164,28 @@ function MainNavigator() {
         const currentIndex = routes.findIndex((r) => r.key === route.key);
         const prevRoute = currentIndex > 0 ? routes[currentIndex - 1] : null;
 
-        let dynamicBackTitle = language === "en" ? "Back" : "Geri";
+        let dynamicBackTitle = t("back");
         if (prevRoute) {
           if (prevRoute.name === "Tabs") {
             const tabState = prevRoute.state;
             const activeTabName = tabState?.routes?.[tabState.index || 0]?.name;
             if (activeTabName === "Swipe") {
-              dynamicBackTitle = language === "en" ? "Match" : "Eşleş";
+              dynamicBackTitle = t("match");
             } else if (activeTabName === "Messages") {
-              dynamicBackTitle = language === "en" ? "Messages" : "Mesajlar";
+              dynamicBackTitle = t("messages");
             } else {
-              dynamicBackTitle = language === "en" ? "Discover" : "Keşfet";
+              dynamicBackTitle = t("discover");
             }
           } else if (prevRoute.name === "Profile") {
-            dynamicBackTitle = language === "en" ? "Profile" : "Profil";
+            dynamicBackTitle = t("profile");
           } else if (prevRoute.name === "EventDetail") {
-            dynamicBackTitle = language === "en" ? "Event" : "Etkinlik";
+            dynamicBackTitle = t("event");
           } else if (prevRoute.name === "Settings") {
-            dynamicBackTitle = language === "en" ? "Settings" : "Ayarlar";
+            dynamicBackTitle = t("settings");
           } else if (prevRoute.name === "Chat") {
-            dynamicBackTitle = language === "en" ? "Chat" : "Sohbet";
+            dynamicBackTitle = t("chat");
           } else if (prevRoute.name === "CandidateProfile") {
-            dynamicBackTitle = language === "en" ? "Profile" : "Profil";
+            dynamicBackTitle = t("profile");
           }
         }
 
@@ -204,7 +204,7 @@ function MainNavigator() {
       }}
     >
       <MainStack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
-      <MainStack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false, title: language === "en" ? "Home" : "Anasayfa" }} />
+      <MainStack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false, title: t("home") }} />
       <MainStack.Screen
         name="Chat"
         component={ChatScreen}

@@ -38,7 +38,7 @@ export function PhoneVerificationScreen() {
   const route = useRoute<ScreenRouteProp>();
   const { fromSocialSignIn } = route.params;
   const { signInWithFirebase } = useAuth();
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
 
   const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
 
@@ -54,9 +54,7 @@ export function PhoneVerificationScreen() {
     const normalized = phoneNumber.trim().replace(/[\s()-]/g, "");
     if (!PHONE_REGEX.test(normalized)) {
       setError(
-        language === "en"
-          ? "Please enter a valid phone number (e.g. +905XXXXXXXXX)."
-          : "Lütfen geçerli bir telefon numarası girin (örn. +905XXXXXXXXX)."
+        t("pleaseEnterAValidPhone")
       );
       return;
     }
@@ -78,7 +76,7 @@ export function PhoneVerificationScreen() {
     if (!verificationId) return;
     setError(null);
     if (code.trim().length < 6) {
-      setError(language === "en" ? "Enter the 6-digit code." : "6 haneli kodu gir.");
+      setError(t("enterThe6digitCode"));
       return;
     }
 
@@ -115,16 +113,12 @@ export function PhoneVerificationScreen() {
           <View style={styles.headerBox}>
             <BuddyLogo size={72} showText={false} />
             <Text style={styles.title}>
-              {language === "en" ? "Verify Your Phone" : "Telefonunu Doğrula"}
+              {t("verifyYourPhone")}
             </Text>
             <Text style={styles.subtitle}>
               {step === "phone"
-                ? (language === "en"
-                    ? "We need to verify your number before you continue."
-                    : "Devam etmeden önce numaranı doğrulamamız gerekiyor.")
-                : (language === "en"
-                    ? `Enter the code sent to ${phoneNumber}`
-                    : `${phoneNumber} numarasına gönderilen kodu gir`)}
+                ? (t("weNeedToVerifyYour"))
+                : (t("enterTheCodeSentTo", { p0: phoneNumber }))}
             </Text>
           </View>
 
@@ -134,7 +128,7 @@ export function PhoneVerificationScreen() {
                 <Feather name="phone" size={18} color="#94A3B8" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "Phone Number (e.g. +905XXXXXXXXX)" : "Telefon Numarası (örn. +905XXXXXXXXX)"}
+                  placeholder={t("phoneNumberEg905xxxxxxxxx")}
                   placeholderTextColor="#94A3B8"
                   keyboardType="phone-pad"
                   value={phoneNumber}
@@ -146,7 +140,7 @@ export function PhoneVerificationScreen() {
                 <Feather name="lock" size={18} color="#94A3B8" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "6-digit code" : "6 haneli kod"}
+                  placeholder={t("6digitCode")}
                   placeholderTextColor="#94A3B8"
                   keyboardType="number-pad"
                   maxLength={6}
@@ -174,17 +168,17 @@ export function PhoneVerificationScreen() {
             >
               <Text style={styles.buttonText}>
                 {isSubmitting
-                  ? (language === "en" ? "Please wait..." : "Lütfen bekle...")
+                  ? (t("pleaseWait"))
                   : step === "phone"
-                    ? (language === "en" ? "Send Code" : "Kodu Gönder")
-                    : (language === "en" ? "Verify" : "Doğrula")}
+                    ? (t("sendCode"))
+                    : (t("verify"))}
               </Text>
             </Pressable>
 
             {step === "code" ? (
               <Pressable onPress={() => setStep("phone")} style={{ alignItems: "center", marginTop: spacing.sm }}>
                 <Text style={styles.changeNumberText}>
-                  {language === "en" ? "Change phone number" : "Telefon numarasını değiştir"}
+                  {t("changePhoneNumber")}
                 </Text>
               </Pressable>
             ) : null}

@@ -28,7 +28,7 @@ export function EventOrganizerApprovalModal({
   onUpdated,
 }: EventOrganizerApprovalModalProps) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
   const [requests, setRequests] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -120,7 +120,7 @@ export function EventOrganizerApprovalModal({
                 >
                   <Feather name="check-square" size={18} color="#FFFFFF" />
                   <Text style={styles.bulkApproveBtnText}>
-                    {language === "en" ? "Approve All Requests" : "Tüm İstekleri Toplu Onayla"}
+                    {t("approveAllRequests")}
                   </Text>
                 </Pressable>
               </View>
@@ -180,7 +180,7 @@ export function EventOrganizerApprovalModal({
           )}
 
           <View style={styles.footer}>
-            <PrimaryButton label={language === "en" ? "Close" : "Kapat"} onPress={onDismiss} />
+            <PrimaryButton label={t("close")} onPress={onDismiss} />
           </View>
         </Pressable>
       </Pressable>

@@ -25,7 +25,7 @@ type Step = "request" | "confirm" | "done";
 
 export function ForgotPasswordScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
-  const { language, setLanguage } = useAppTheme();
+  const { language, setLanguage, t } = useAppTheme();
   const [step, setStep] = useState<Step>("request");
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
@@ -38,12 +38,12 @@ export function ForgotPasswordScreen() {
     setError(null);
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
-      setError(language === "en" ? "Please enter your email address." : "Lütfen e-posta adresinizi girin.");
+      setError(t("pleaseEnterYourEmailAddress"));
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(cleanEmail)) {
-      setError(language === "en" ? "Please enter a valid email address." : "Geçerli bir e-posta adresi girin.");
+      setError(t("pleaseEnterAValidEmail"));
       return;
     }
 
@@ -61,11 +61,11 @@ export function ForgotPasswordScreen() {
   async function handleConfirm(): Promise<void> {
     setError(null);
     if (!token.trim()) {
-      setError(language === "en" ? "Please enter the verification code." : "Lütfen sıfırlama kodunu girin.");
+      setError(t("pleaseEnterTheVerificationCode"));
       return;
     }
     if (newPassword.length < 6) {
-      setError(language === "en" ? "Password must be at least 6 characters." : "Yeni şifreniz en az 6 karakter olmalıdır.");
+      setError(t("passwordMustBeAtLeast"));
       return;
     }
 
@@ -120,12 +120,10 @@ export function ForgotPasswordScreen() {
                 <Feather name="check-circle" size={48} color="#2ECC71" />
               </View>
               <Text style={styles.titleText}>
-                {language === "en" ? "Password Updated!" : "Şifreniz Güncellendi!"}
+                {t("passwordUpdated2")}
               </Text>
               <Text style={styles.helperText}>
-                {language === "en"
-                  ? "You can now log in to your account using your new password."
-                  : "Artık yeni şifrenizi kullanarak hesabınıza giriş yapabilirsiniz."}
+                {t("youCanNowLogIn")}
               </Text>
 
               <Pressable
@@ -139,7 +137,7 @@ export function ForgotPasswordScreen() {
                   style={styles.buttonGradient}
                 >
                   <Text style={styles.buttonText}>
-                    {language === "en" ? "Back to Login" : "Giriş Ekranına Dön"}
+                    {t("backToLogin")}
                   </Text>
                 </LinearGradient>
               </Pressable>
@@ -149,19 +147,17 @@ export function ForgotPasswordScreen() {
           {step === "confirm" && (
             <View style={styles.formBox}>
               <Text style={styles.titleText}>
-                {language === "en" ? "Enter Reset Code" : "Sıfırlama Kodunu Girin"}
+                {t("enterResetCode")}
               </Text>
               <Text style={styles.helperText}>
-                {language === "en"
-                  ? "A reset code has been sent to your email. Enter the code and your new password."
-                  : "E-posta adresinize bir sıfırlama kodu gönderildi. Kodu ve yeni şifrenizi girin."}
+                {t("aResetCodeHasBeen")}
               </Text>
 
               <View style={styles.inputWrapper}>
                 <Feather name="key" size={18} color="#94A3B8" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "Reset Code" : "Sıfırlama Kodu"}
+                  placeholder={t("resetCode")}
                   placeholderTextColor="#94A3B8"
                   autoCapitalize="none"
                   value={token}
@@ -173,7 +169,7 @@ export function ForgotPasswordScreen() {
                 <Feather name="lock" size={18} color="#94A3B8" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "New Password (min 6 chars)" : "Yeni Şifre (en az 6 karakter)"}
+                  placeholder={t("newPasswordMin6Chars")}
                   placeholderTextColor="#94A3B8"
                   secureTextEntry={!showPassword}
                   value={newPassword}
@@ -218,8 +214,8 @@ export function ForgotPasswordScreen() {
                 >
                   <Text style={styles.buttonText}>
                     {isSubmitting
-                      ? (language === "en" ? "Updating..." : "Güncelleniyor...")
-                      : (language === "en" ? "Update Password" : "Şifreyi Güncelle")}
+                      ? (t("updating"))
+                      : (t("updatePassword"))}
                   </Text>
                 </LinearGradient>
               </Pressable>
@@ -229,19 +225,17 @@ export function ForgotPasswordScreen() {
           {step === "request" && (
             <View style={styles.formBox}>
               <Text style={styles.titleText}>
-                {language === "en" ? "Forgot your password?" : "Şifrenizi mi unuttunuz?"}
+                {t("forgotYourPassword")}
               </Text>
               <Text style={styles.helperText}>
-                {language === "en"
-                  ? "Enter the email associated with your account and we'll send you a reset code."
-                  : "Hesabınıza kayıtlı e-posta adresinizi girin. Size bir sıfırlama kodu gönderelim."}
+                {t("enterTheEmailAssociatedWith")}
               </Text>
 
               <View style={styles.inputWrapper}>
                 <Feather name="mail" size={18} color="#94A3B8" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "Email Address" : "E-posta Adresi"}
+                  placeholder={t("emailAddress")}
                   placeholderTextColor="#94A3B8"
                   autoCapitalize="none"
                   keyboardType="email-address"
@@ -274,8 +268,8 @@ export function ForgotPasswordScreen() {
                 >
                   <Text style={styles.buttonText}>
                     {isSubmitting
-                      ? (language === "en" ? "Sending..." : "Gönderiliyor...")
-                      : (language === "en" ? "Send Reset Code" : "Sıfırlama Kodu Gönder")}
+                      ? (t("sending"))
+                      : (t("sendResetCode"))}
                   </Text>
                 </LinearGradient>
               </Pressable>
@@ -285,9 +279,9 @@ export function ForgotPasswordScreen() {
           <View style={styles.linksBox}>
             <Pressable onPress={() => navigation.navigate("Login")}>
               <Text style={styles.signUpText}>
-                {language === "en" ? "Click here to " : "Giriş ekranına dönmek için "}
+                {t("clickHereTo")}
                 <Text style={styles.signUpHighlight}>
-                  {language === "en" ? "return to login" : "tıklayın"}
+                  {t("returnToLogin")}
                 </Text>
               </Text>
             </Pressable>

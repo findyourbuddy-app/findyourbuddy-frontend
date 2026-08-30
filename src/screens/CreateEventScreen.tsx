@@ -330,16 +330,12 @@ export function CreateEventScreen() {
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {
         setError(
-          language === "en"
-            ? "You reached the weekly event limit. Upgrade to Premium for unlimited events."
-            : "Haftalık etkinlik oluşturma limitine ulaştın. Premium ile sınırsız etkinlik oluşturabilirsin."
+          t("youReachedTheWeeklyEvent")
         );
         refreshQuota();
       } else {
         setError(
-          language === "en"
-            ? "Could not create event. Please check details and try again."
-            : "Etkinlik oluşturulamadı. Bilgileri kontrol edip tekrar dene."
+          t("couldNotCreateEventPlease")
         );
       }
     } finally {
@@ -368,7 +364,7 @@ export function CreateEventScreen() {
           <Pressable style={styles.topQuotaPill} onPress={() => setQuotaModalVisible(true)}>
             <Feather name="zap" size={13} color="#F1C40F" />
             <Text style={styles.topQuotaPillText}>
-              {Math.max(quota.weekly_limit - quota.events_created_this_week, 0)}/{quota.weekly_limit} {language === "en" ? "Left" : "Hak"}
+              {Math.max(quota.weekly_limit - quota.events_created_this_week, 0)}/{quota.weekly_limit} {t("left")}
             </Text>
             <Feather name="info" size={12} color={colors.primary} />
           </Pressable>
@@ -420,7 +416,7 @@ export function CreateEventScreen() {
             contentFit="cover"
           />
           <Text style={styles.stockGalleryTitle}>
-            {language === "en" ? "Select Cover Photo:" : "Görsel Seçenekleri (Seçmek için dokun):"}
+            {t("selectCoverPhoto")}
           </Text>
           <View style={styles.stockGalleryGrid}>
             {currentStockImages.map((imgUrl) => {
@@ -462,16 +458,16 @@ export function CreateEventScreen() {
 
       <View style={styles.field}>
         <Text style={typeScale.eyebrow}>
-          {language === "en" ? "Participation / Entry Cost" : "Katılım Ücreti / Tahmini Harcama"}
+          {t("participationEntryCost")}
         </Text>
         <View style={styles.chipGrid}>
           <Chip
-            label={language === "en" ? "Free / None" : "Ücretsiz / Harcamasız"}
+            label={t("freeNone")}
             active={!isPaid}
             onPress={() => setIsPaid(false)}
           />
           <Chip
-            label={language === "en" ? "Entry Fee / Paid" : "Ücretli / Harcamalı"}
+            label={t("entryFeePaid")}
             active={isPaid}
             onPress={() => setIsPaid(true)}
           />
@@ -482,9 +478,7 @@ export function CreateEventScreen() {
               style={styles.input}
               keyboardType="decimal-pad"
               placeholder={
-                language === "en"
-                  ? "Estimated cost per person ($)"
-                  : "Kişi başı tahmini harcama / bilet bedeli (₺)"
+                t("estimatedCostPerPerson")
               }
               placeholderTextColor={colors.textSecondary}
               value={ticketPrice}
@@ -500,7 +494,7 @@ export function CreateEventScreen() {
           <TextInput
             style={styles.input}
             keyboardType="number-pad"
-            placeholder={language === "en" ? "Max attendees (e.g. 15)" : "Maksimum kişi sayısı örn. 15"}
+            placeholder={t("maxAttendeesEg15")}
             placeholderTextColor={colors.textSecondary}
             value={maxAttendees}
             onChangeText={setMaxAttendees}
@@ -522,7 +516,7 @@ export function CreateEventScreen() {
       <View style={styles.field}>
         <Text style={typeScale.eyebrow}>{t("mapLocationHeader")}</Text>
         <PrimaryButton
-          label={coordinates ? (language === "en" ? "Location Selected" : "Konum Seçildi") : t("selectLocationMap")}
+          label={coordinates ? (t("locationSelected")) : t("selectLocationMap")}
           onPress={() => setIsLocationPickerVisible(true)}
           variant="outline"
         />
@@ -708,7 +702,7 @@ export function CreateEventScreen() {
           <Pressable style={styles.quotaModalCard} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <Text style={styles.quotaModalTitle}>
-                {language === "en" ? "Weekly Event Creation Quota" : "Haftalık Etkinlik Limitiniz"}
+                {t("weeklyEventCreationQuota")}
               </Text>
               <Pressable onPress={() => setQuotaModalVisible(false)}>
                 <Feather name="x" size={20} color={colors.textSecondary} />
@@ -718,15 +712,13 @@ export function CreateEventScreen() {
             {quota ? (
               <View style={{ gap: spacing.sm, marginVertical: spacing.sm }}>
                 <Text style={styles.quotaModalDesc}>
-                  {language === "en"
-                    ? `You have ${Math.max((quota.weekly_limit ?? 3) - quota.events_created_this_week, 0)}/${quota.weekly_limit ?? 3} free event creation limits left this week.`
-                    : `Bu hafta kalan ücretsiz etkinlik oluşturma hakkınız: ${Math.max((quota.weekly_limit ?? 3) - quota.events_created_this_week, 0)}/${quota.weekly_limit ?? 3}.`}
+                  {t("youHaveP0p1FreeEvent", { p0: Math.max((quota.weekly_limit ?? 3) - quota.events_created_this_week, 0), p1: quota.weekly_limit ?? 3 })}
                 </Text>
                 {quota.credits_balance > 0 ? (
                   <View style={styles.creditsBox}>
                     <Feather name="check-circle" size={14} color="#2ECC71" />
                     <Text style={styles.creditsBoxText}>
-                      {language === "en" ? `Extra Credits Balance: ${quota.credits_balance}` : `Ekstra Hak Bakiyeniz: ${quota.credits_balance}`}
+                      {t("extraCreditsBalanceP0", { p0: quota.credits_balance })}
                     </Text>
                   </View>
                 ) : null}
@@ -735,7 +727,7 @@ export function CreateEventScreen() {
 
             <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
               <PrimaryButton
-                label={language === "en" ? "Buy 3 Extra Credits (49 ₺)" : "3 Ekstra Etkinlik Hakkı Al (49 ₺)"}
+                label={t("buy3ExtraCredits49")}
                 onPress={() => {
                   setQuotaModalVisible(false);
                   handleBuyCredits();
@@ -743,7 +735,7 @@ export function CreateEventScreen() {
                 loading={isBuyingCredits}
               />
               <PrimaryButton
-                label={language === "en" ? "Upgrade to Premium (Unlimited)" : "Premium'a Geç (Sınırsız Limit)"}
+                label={t("upgradeToPremiumUnlimited")}
                 onPress={async () => {
                   setQuotaModalVisible(false);
                   try {

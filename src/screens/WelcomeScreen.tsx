@@ -32,7 +32,7 @@ type WelcomeNavigationProp = NativeStackNavigationProp<AuthStackParamList, "Welc
 export function WelcomeScreen() {
   const navigation = useNavigation<WelcomeNavigationProp>();
   const { signInWithFirebase } = useAuth();
-  const { language, setLanguage } = useAppTheme();
+  const { language, setLanguage, t } = useAppTheme();
 
   const [error, setError] = useState<string | null>(null);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
@@ -54,9 +54,7 @@ export function WelcomeScreen() {
     setError(null);
     if (googleAuthConfig.webClientId.startsWith("REPLACE")) {
       setError(
-        language === "en"
-          ? "Google Sign-In is not configured yet. Please set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID."
-          : "Google ile Giriş henüz yapılandırılmadı. Lütfen EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID bilgisini tanımlayın."
+        t("googleSigninIsNotConfigured")
       );
       return;
     }
@@ -67,7 +65,7 @@ export function WelcomeScreen() {
 
       const googleIdToken = result.authentication?.idToken ?? result.params?.id_token;
       if (!googleIdToken) {
-        setError(language === "en" ? "Google sign-in did not return a token." : "Google girişi bir belirteç döndürmedi.");
+        setError(t("googleSigninDidNotReturn"));
         return;
       }
 
@@ -112,7 +110,7 @@ export function WelcomeScreen() {
       });
 
       if (!appleCredential.identityToken) {
-        setError(language === "en" ? "Apple sign-in did not return a token." : "Apple girişi bir belirteç döndürmedi.");
+        setError(t("appleSigninDidNotReturn"));
         return;
       }
 
@@ -169,12 +167,10 @@ export function WelcomeScreen() {
         <View style={styles.headerBox}>
           <BuddyLogo size={95} showText={true} />
           <Text style={styles.headerTitle}>
-            {language === "en" ? "Find Your Activity Buddy" : "Etkinlik Arkadaşını Keşfet"}
+            {t("findYourActivityBuddy")}
           </Text>
           <Text style={styles.headerSubtitle}>
-            {language === "en"
-              ? "Never go alone! Connect with like-minded friends for concerts, coffee & events."
-              : "Konser, kahve ve sohbet kankanı bul, etkinlikleri tek başına kaçırma!"}
+            {t("neverGoAloneConnectWith")}
           </Text>
         </View>
 
@@ -192,13 +188,13 @@ export function WelcomeScreen() {
                 disabled={isAppleSubmitting}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={language === "en" ? "Continue with Apple" : "Apple ile Devam Et"}
+                accessibilityLabel={t("continueWithApple")}
               >
                 <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
                 <Text style={styles.appleButtonText}>
                   {isAppleSubmitting
-                    ? (language === "en" ? "Signing in..." : "Giriş yapılıyor...")
-                    : (language === "en" ? "Continue with Apple" : "Apple ile Devam Et")}
+                    ? (t("signingIn"))
+                    : (t("continueWithApple"))}
                 </Text>
               </Pressable>
             ) : null}
@@ -213,13 +209,13 @@ export function WelcomeScreen() {
               disabled={isGoogleSubmitting || !googleRequest}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel={language === "en" ? "Continue with Google" : "Google ile Devam Et"}
+              accessibilityLabel={t("continueWithGoogle")}
             >
               <GoogleIcon size={20} />
               <Text style={styles.googleButtonText}>
                 {isGoogleSubmitting
-                  ? (language === "en" ? "Signing in..." : "Giriş yapılıyor...")
-                  : (language === "en" ? "Continue with Google" : "Google ile Devam Et")}
+                  ? (t("signingIn"))
+                  : (t("continueWithGoogle"))}
               </Text>
             </Pressable>
 
@@ -227,7 +223,7 @@ export function WelcomeScreen() {
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>
-                {language === "en" ? "or" : "veya"}
+                {t("or")}
               </Text>
               <View style={styles.dividerLine} />
             </View>
@@ -240,7 +236,7 @@ export function WelcomeScreen() {
               onPress={() => navigation.navigate("Login")}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel={language === "en" ? "Continue with Email" : "E-posta ile Devam Et"}
+              accessibilityLabel={t("continueWithEmail")}
             >
               <LinearGradient
                 colors={["#6C4CF1", "#FF6B6B"]}
@@ -250,7 +246,7 @@ export function WelcomeScreen() {
               >
                 <Feather name="mail" size={18} color={colors.surface} style={{ marginRight: 8 }} />
                 <Text style={styles.emailButtonText}>
-                  {language === "en" ? "Continue with Email" : "E-posta ile Devam Et"}
+                  {t("continueWithEmail")}
                 </Text>
               </LinearGradient>
             </Pressable>
@@ -268,9 +264,9 @@ export function WelcomeScreen() {
               onPress={() => navigation.navigate("Register")}
             >
               <Text style={{ fontFamily: fontFamily.body, fontSize: 14, color: colors.textSecondary }}>
-                {language === "en" ? "Don't have an account? " : "Hesabın yok mu? "}
+                {t("dontHaveAnAccount")}
                 <Text style={{ fontFamily: fontFamily.bodySemiBold, color: colors.primary }}>
-                  {language === "en" ? "Sign Up Free" : "Ücretsiz Kayıt Ol"}
+                  {t("signUpFree")}
                 </Text>
               </Text>
             </Pressable>

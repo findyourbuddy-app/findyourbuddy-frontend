@@ -86,8 +86,8 @@ export function EventDetailScreen({ route }: Props) {
       setJoinRequests((current) => current.filter((requester) => requester.id !== requesterId));
     } catch {
       Alert.alert(
-        language === "en" ? "Error" : "Bir sorun oluştu",
-        language === "en" ? "Response to request failed. Please try again." : "İstek yanıtlanamadı. Lütfen tekrar dene."
+        t("error"),
+        t("responseToRequestFailedPlease")
       );
     } finally {
       setRespondingUserId(null);
@@ -112,8 +112,8 @@ export function EventDetailScreen({ route }: Props) {
         .catch(() => {
           if (!cancelled && (!event || event.id !== eventId)) {
             Alert.alert(
-              language === "en" ? "Error" : "Bir sorun oluştu",
-              language === "en" ? "Event could not be loaded. Please try again." : "Etkinlik yüklenemedi. Lütfen tekrar dene."
+              t("error"),
+              t("eventCouldNotBeLoaded")
             );
           }
         })
@@ -194,16 +194,14 @@ export function EventDetailScreen({ route }: Props) {
       setEvent(updated);
       if (updated.is_pending) {
         Alert.alert(
-          language === "en" ? "Request Sent" : "İstek Gönderildi",
-          language === "en"
-            ? "Your request was sent to the organizer. You'll be notified once it's approved."
-            : "İsteğin organizatöre gönderildi. Onaylanınca bilgilendirileceksin."
+          t("requestSent"),
+          t("yourRequestWasSentTo")
         );
       }
     } catch {
       Alert.alert(
-        language === "en" ? "Error" : "Bir sorun oluştu",
-        language === "en" ? "Could not join event. Please try again." : "Etkinliğe katılamadın. Lütfen tekrar dene."
+        t("error"),
+        t("couldNotJoinEventPlease")
       );
     } finally {
       setIsJoining(false);
@@ -222,10 +220,8 @@ export function EventDetailScreen({ route }: Props) {
 
       if (nowMs < oneHourBeforeMs) {
         Alert.alert(
-          language === "en" ? "Not Check-in Time Yet" : "Henüz Etkinlik Saati Gelmedi",
-          language === "en"
-            ? `Check-in opens 1 hour before the event start time.\n\n📅 Event Time: ${formatEventDate(event.starts_at, language)}\n⏰ Check-in Window: Opens 1 hour before event.`
-            : `Katılımını onaylayabilmek için etkinlik saatine en az 1 saat kalmış olmalı.\n\n📅 Etkinlik Saati: ${formatEventDate(event.starts_at, language)}\n⏰ Katılım Onay Penceresi: Etkinlikten 1 saat önce başlar.`
+          t("notCheckinTimeYet"),
+          t("checkinOpens1HourBefore", { p0: formatEventDate(event.starts_at, language) })
         );
         setIsCheckingIn(false);
         return;
@@ -233,10 +229,8 @@ export function EventDetailScreen({ route }: Props) {
 
       if (nowMs > threeHoursAfterMs) {
         Alert.alert(
-          language === "en" ? "Check-in Window Closed" : "Check-in Süresi Doldu",
-          language === "en"
-            ? "The check-in window for this event has expired."
-            : "Bu etkinliğin katılım onaylama süresi tamamlanmıştır."
+          t("checkinWindowClosed"),
+          t("theCheckinWindowForThis")
         );
         setIsCheckingIn(false);
         return;
@@ -246,10 +240,8 @@ export function EventDetailScreen({ route }: Props) {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          language === "en" ? "Location Permission Required" : "Konum İzni Gerekli",
-          language === "en"
-            ? "We need your location permission to verify that you are at the event location."
-            : "Etkinlik alanında olduğunu doğrulamak için konum iznine ihtiyacımız var."
+          t("locationPermissionRequired"),
+          t("weNeedYourLocationPermission")
         );
         setIsCheckingIn(false);
         return;
@@ -278,10 +270,8 @@ export function EventDetailScreen({ route }: Props) {
           const distMeters = Math.round(distKm * 1000);
           const distanceFormatted = distKm >= 1 ? `${distKm.toFixed(1)} km` : `${distMeters} metre`;
           Alert.alert(
-            language === "en" ? "Too Far From Event Location" : "Etkinlik Konumuna Uzaktasın 📍",
-            language === "en"
-              ? `You must be within 500 meters of the event area to check in.\n\n📍 Location: ${event.location_name}\n📏 Your Distance: ${distanceFormatted}`
-              : `Katılımını onaylayabilmek için etkinlik alanına (en fazla 500m) yakın olmalısın.\n\n📍 Etkinlik Adresi: ${event.location_name}\n📏 Şu Anki Mesafen: ${distanceFormatted}`
+            t("tooFarFromEventLocation"),
+            t("youMustBeWithin500", { p0: event.location_name, p1: distanceFormatted })
           );
           setIsCheckingIn(false);
           return;
@@ -294,33 +284,27 @@ export function EventDetailScreen({ route }: Props) {
       });
       setEvent(updated);
       Alert.alert(
-        language === "en" ? "🎉 Attendance Confirmed!" : "🎉 Katılımın Onaylandı!",
-        language === "en"
-          ? "Your location and event time have been verified (+5 Trust Score!)."
-          : "Hem konumun hem de etkinlik saatin doğrulandı! Katılımın başarıyla onaylandı (+5 Güven Puanı!)."
+        t("attendanceConfirmed"),
+        t("yourLocationAndEventTime")
       );
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
         const detail = String(err.response.data?.detail || "").toLowerCase();
         if (detail.includes("far")) {
           Alert.alert(
-            language === "en" ? "Too Far Away" : "Çok Uzaktasın",
-            language === "en"
-              ? "You must be at the event location (max 500m) to confirm attendance."
-              : "Katılımını onaylamak için etkinlik alanında (en fazla 500m) olmalısın."
+            t("tooFarAway"),
+            t("youMustBeAtThe")
           );
         } else {
           Alert.alert(
-            language === "en" ? "Not Check-in Time" : "Check-in Zamanı Değil",
-            language === "en"
-              ? "Check-in is only available around the event's start time."
-              : "Check-in sadece etkinlik saatine yakın zamanlarda yapılabilir."
+            t("notCheckinTime"),
+            t("checkinIsOnlyAvailableAround")
           );
         }
       } else {
         Alert.alert(
-          language === "en" ? "Error" : "Bir sorun oluştu",
-          language === "en" ? "Location could not be verified. Please try again." : "Konum doğrulanamadı. Lütfen tekrar dene."
+          t("error"),
+          t("locationCouldNotBeVerified")
         );
       }
     } finally {
@@ -358,18 +342,14 @@ export function EventDetailScreen({ route }: Props) {
         });
       } else {
         Alert.alert(
-          language === "en" ? "No Attendees Yet" : "Henüz Katılımcı Yok",
-          language === "en"
-            ? "Group chat will be available once at least one attendee is approved."
-            : "Grup sohbetinin açılması için en az 1 katılımcı isteğinin onaylanması gerekmektedir."
+          t("noAttendeesYet"),
+          t("groupChatWillBeAvailable")
         );
       }
     } catch {
       Alert.alert(
-        language === "en" ? "Info" : "Bilgi",
-        language === "en"
-          ? "Group chat will be available once at least one attendee is approved."
-          : "Grup sohbetinin açılması için en az 1 katılımcı isteğinin onaylanması gerekmektedir."
+        t("info"),
+        t("groupChatWillBeAvailable")
       );
     }
   }
@@ -401,7 +381,7 @@ export function EventDetailScreen({ route }: Props) {
         )}
         {event.creator_id ? (
           <View style={styles.badgeSlot}>
-            <Badge label={language === "en" ? "User Event" : "Kullanıcı Etkinliği"} variant="primary" />
+            <Badge label={t("userEvent")} variant="primary" />
           </View>
         ) : null}
         <View style={styles.bannerActions}>
@@ -409,7 +389,7 @@ export function EventDetailScreen({ route }: Props) {
             style={styles.bannerIconButton}
             onPress={() => openAddToCalendar(event)}
             accessibilityRole="button"
-            accessibilityLabel={language === "en" ? "Add to Calendar" : "Takvime Ekle"}
+            accessibilityLabel={t("addToCalendar")}
           >
             <Feather name="calendar" size={18} color={colors.surface} />
           </Pressable>
@@ -419,13 +399,11 @@ export function EventDetailScreen({ route }: Props) {
               Share.share({
                 title: event.title,
                 message:
-                  language === "en"
-                    ? `Check out this FindYourBuddy event: "${event.title}" at ${event.location_name}!`
-                    : `FindYourBuddy'de bu etkinliğe göz at: "${event.title}" - ${event.location_name}!`,
+                  t("checkOutThisFindyourbuddyEvent", { p0: event.title, p1: event.location_name }),
               }).catch(() => {});
             }}
             accessibilityRole="button"
-            accessibilityLabel={language === "en" ? "Share" : "Paylaş"}
+            accessibilityLabel={t("share")}
           >
             <Feather name="share-2" size={18} color={colors.surface} />
           </Pressable>
@@ -537,7 +515,7 @@ export function EventDetailScreen({ route }: Props) {
         {isOwnerOfGroupEvent ? (
           <View style={{ gap: spacing.md }}>
             <PrimaryButton
-              label={language === "en" ? "Chat" : "Sohbet"}
+              label={t("chat")}
               onPress={handleStartGroupChat}
             />
             <View style={styles.joinRequestsSection}>
@@ -596,10 +574,10 @@ export function EventDetailScreen({ route }: Props) {
             <PrimaryButton
               label={
                 event.is_attending
-                  ? (language === "en" ? "Chat" : "Sohbet")
+                  ? (t("chat"))
                   : event.is_pending
-                  ? (language === "en" ? "Awaiting Approval" : "Onay Bekleniyor")
-                  : (language === "en" ? "Join" : "Katıl")
+                  ? (t("awaitingApproval"))
+                  : (t("join"))
               }
               onPress={handleAttendAndSwipe}
               loading={isJoining}
@@ -610,18 +588,16 @@ export function EventDetailScreen({ route }: Props) {
                 style={styles.trustInfoRow}
                 onPress={() =>
                   Alert.alert(
-                    language === "en" ? "How does the trust score work?" : "Güven skoru nasıl işliyor?",
-                    language === "en"
-                      ? "When you say you're going, we check your location at the event. Show up and check in: your trust score goes up. Don't show up: it goes down. If your score stays too low for a while, your account gets flagged as a troll account and may be restricted."
-                      : "Katılıyorum dediğinde etkinlikte GPS ile konumunu kontrol ediyoruz. Gidip check-in yaparsan güven skorun artar; gitmezsen düşer. Skorun bir süre çok düşük kalırsa hesabın troll hesap olarak değerlendirilip kısıtlanabilir."
+                    t("howDoesTheTrustScore"),
+                    t("whenYouSayYoureGoing")
                   )
                 }
                 accessibilityRole="button"
-                accessibilityLabel={language === "en" ? "About trust score" : "Güven skoru hakkında"}
+                accessibilityLabel={t("aboutTrustScore")}
               >
                 <Feather name="info" size={13} color={colors.textSecondary} />
                 <Text style={styles.trustInfoText}>
-                  {language === "en" ? "How does the trust score work?" : "Güven skoru nasıl işliyor?"}
+                  {t("howDoesTheTrustScore")}
                 </Text>
               </Pressable>
             ) : null}
@@ -630,13 +606,11 @@ export function EventDetailScreen({ route }: Props) {
                 style={styles.trustInfoRow}
                 onPress={() => setDoubleBuddyVisible(true)}
                 accessibilityRole="button"
-                accessibilityLabel={language === "en" ? "Join as Double Buddy" : "İkili (Double Buddy) olarak katıl"}
+                accessibilityLabel={t("joinAsDoubleBuddy")}
               >
                 <Feather name="users" size={13} color={colors.textSecondary} />
                 <Text style={styles.trustInfoText}>
-                  {language === "en"
-                    ? "Joining alone, or as a Double Buddy duo?"
-                    : "Tek mi katılıyorsun, yoksa ikili (Double Buddy) mi?"}
+                  {t("joiningAloneOrAsA")}
                 </Text>
               </Pressable>
             ) : null}
@@ -665,12 +639,12 @@ export function EventDetailScreen({ route }: Props) {
                 <View style={styles.alreadyRatedBadge}>
                   <Feather name="check-circle" size={16} color={colors.primary} />
                   <Text style={styles.alreadyRatedText}>
-                    {language === "en" ? "Event & Host Rated ⭐" : "Değerlendirildi ⭐"}
+                    {t("eventHostRated")}
                   </Text>
                 </View>
               ) : (
                 <PrimaryButton
-                  label={language === "en" ? "Rate Host & Event" : "Organizatörü & Etkinliği Değerlendir"}
+                  label={t("rateHostEvent")}
                   onPress={() => setShowRatingModal(true)}
                   variant="outline"
                 />

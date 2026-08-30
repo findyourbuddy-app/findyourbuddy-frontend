@@ -74,12 +74,10 @@ export function AIRecommendationsScreen() {
         >
           <Feather name="cpu" size={60} color="#FFD700" style={styles.promoIcon} />
           <Text style={styles.promoTitle}>
-            {language === "en" ? "AI Buddy Matcher" : "AI Kanka Eşleştirici"}
+            {t("aiBuddyMatcher")}
           </Text>
           <Text style={styles.promoSubtitle}>
-            {language === "en"
-              ? "Advanced AI algorithm analyzes your mutual interests, zodiac compatibility, and location to find your ideal buddies."
-              : "Gelişmiş yapay zeka algoritması ortak ilgi alanlarınızı, burç uyumunuzu ve konumunuzu analiz ederek en ideal kankalarınızı bulur."}
+            {t("advancedAiAlgorithmAnalyzesYour")}
           </Text>
         </LinearGradient>
 
@@ -90,12 +88,10 @@ export function AIRecommendationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureItemTitle}>
-                {language === "en" ? "99% Hobbies & Activity Synergy" : "%99 Hobiler & Aktivite Uyum Analizi"}
+                {t("99HobbiesActivitySynergy")}
               </Text>
               <Text style={styles.featureItemDesc}>
-                {language === "en"
-                  ? "Friendship compatibility is calculated based on intersecting hobbies (Sports, Gaming, Movies, etc.) and shared activities."
-                  : "Ortak hobiler (Spor, Oyun, Sinema vb.) ve birlikte yapılmak istenen aktivitelerin kesişimine göre arkadaşlık denkliği hesaplanır."}
+                {t("friendshipCompatibilityIsCalculatedBased")}
               </Text>
             </View>
           </View>
@@ -106,12 +102,10 @@ export function AIRecommendationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureItemTitle}>
-                {language === "en" ? "Astrological Element Synergy" : "Astrolojik Element Sinerjisi"}
+                {t("astrologicalElementSynergy")}
               </Text>
               <Text style={styles.featureItemDesc}>
-                {language === "en"
-                  ? "Personal temperament and energy compatibility is analyzed based on Zodiac element groups (Fire, Earth, Air, Water)."
-                  : "Zodyak element gruplarına (Ateş, Toprak, Hava, Su) göre kişisel mizaç ve enerji uyumluluğu analiz edilir."}
+                {t("personalTemperamentAndEnergyCompatibility")}
               </Text>
             </View>
           </View>
@@ -122,12 +116,10 @@ export function AIRecommendationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureItemTitle}>
-                {language === "en" ? "School, Occupation & Lifestyle Alignment" : "Okul, Meslek & Yaşam Tarzı Hizalaması"}
+                {t("schoolOccupationLifestyleAlignment")}
               </Text>
               <Text style={styles.featureItemDesc}>
-                {language === "en"
-                  ? "Buddies with matching universities, career goals, and social life paces are prioritized."
-                  : "Ortak üniversite, kariyer hedefleri ve sosyal yaşam temposuna en uygun kankalar önceliklendirilir."}
+                {t("buddiesWithMatchingUniversitiesCareer")}
               </Text>
             </View>
           </View>
@@ -138,12 +130,10 @@ export function AIRecommendationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureItemTitle}>
-                {language === "en" ? "Profile Voice Intros" : "Profil Ses Kayıtları"}
+                {t("profileVoiceIntros")}
               </Text>
               <Text style={styles.featureItemDesc}>
-                {language === "en"
-                  ? "Listen to your potential buddy's voice tone, warmth, and energy before meeting."
-                  : "Potansiyel kankanın ses tonunu, samimiyetini ve enerjisini buluşmadan önce dinleme olanağı sunar."}
+                {t("listenToYourPotentialBuddys")}
               </Text>
             </View>
           </View>
@@ -154,12 +144,10 @@ export function AIRecommendationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.featureItemTitle}>
-                {language === "en" ? "Advanced Gender, Age & Distance Filters" : "Gelişmiş Cinsiyet, Yaş & Konum Filtreleri"}
+                {t("advancedGenderAgeDistanceFilters")}
               </Text>
               <Text style={styles.featureItemDesc}>
-                {language === "en"
-                  ? "Filtering by gender preference (Female / Male / Everyone), specific age range, and distance limit (km) is exclusive to Premium."
-                  : "Cinsiyet tercihi (Kadın / Erkek / Herkes), özel yaş aralığı ve mesafe sınırı (km) ile tam hedefindeki kişileri filtrelemek Premium'a özeldir."}
+                {t("filteringByGenderPreferenceFemale")}
               </Text>
             </View>
           </View>
@@ -182,7 +170,7 @@ export function AIRecommendationsScreen() {
               <>
                 <Feather name="award" size={20} color={colors.surface} />
                 <Text style={styles.upgradeBtnText}>
-                  {language === "en" ? "Become Premium Buddy ($4.99)" : "Premium Buddy Ol (49 TL)"}
+                  {t("becomePremiumBuddy499")}
                 </Text>
               </>
             )}
@@ -198,16 +186,14 @@ export function AIRecommendationsScreen() {
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loaderText}>
-            {language === "en" ? "Calculating your best matched buddies..." : "En uygun kankaların hesaplanıyor..."}
+            {t("calculatingYourBestMatchedBuddies")}
           </Text>
         </View>
       ) : recommendations.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Feather name="users" size={48} color={colors.textSecondary} />
           <Text style={styles.emptyText}>
-            {language === "en"
-              ? "No new recommendations found. Please try again later."
-              : "Henüz yeni bir öneri bulunamadı. Lütfen daha sonra tekrar deneyin."}
+            {t("noNewRecommendationsFoundPlease")}
           </Text>
         </View>
       ) : (
@@ -221,7 +207,7 @@ export function AIRecommendationsScreen() {
                     {user.display_name}, {user.age || "N/A"}
                   </Text>
                   <Text style={styles.uniText}>
-                    {user.university || (language === "en" ? "University Not Specified" : "Üniversite Belirtilmedi")}
+                    {user.university || (t("universityNotSpecified"))}
                   </Text>
                   
                   {/* Zodiac Element Tag */}
@@ -239,7 +225,7 @@ export function AIRecommendationsScreen() {
                   style={styles.scoreBadge}
                 >
                   <Text style={styles.scoreText}>
-                    {language === "en" ? `${match_score}% Match` : `%${match_score} Uyum`}
+                    {t("p0Match", { p0: match_score })}
                   </Text>
                 </LinearGradient>
               </View>

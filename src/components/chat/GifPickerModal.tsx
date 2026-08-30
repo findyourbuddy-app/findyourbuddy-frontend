@@ -15,6 +15,7 @@ import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { colors, fontFamily, radius, shadows, spacing, typeScale } from "../../theme";
 import { fetchTrendingGifs, searchGifs, type GifResult } from "../../api/giphy";
+import { translate } from "../../constants/translations";
 
 interface GifPickerModalProps {
   visible: boolean;
@@ -107,7 +108,7 @@ export function GifPickerModal({
             </Pressable>
 
             <View style={styles.header}>
-              <Text style={typeScale.h2}>{language === "en" ? "Send GIF" : "GIF Gönder"}</Text>
+              <Text style={typeScale.h2}>{translate("sendGif", language)}</Text>
               <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={10} accessibilityRole="button">
                 <Feather name="x" size={20} color={colors.textSecondary} />
               </Pressable>
@@ -117,7 +118,7 @@ export function GifPickerModal({
               <Feather name="search" size={16} color={colors.textSecondary} />
               <TextInput
                 style={styles.searchInput}
-                placeholder={language === "en" ? "Search GIFs..." : "GIF ara..."}
+                placeholder={translate("searchGifs", language)}
                 placeholderTextColor={colors.textSecondary}
                 value={query}
                 onChangeText={handleQueryChange}
@@ -144,7 +145,7 @@ export function GifPickerModal({
                   <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.lg }} />
                 ) : (
                   <Text style={styles.emptyText}>
-                    {language === "en" ? "No GIFs found." : "GIF bulunamadı."}
+                    {translate("noGifsFound", language)}
                   </Text>
                 )
               }

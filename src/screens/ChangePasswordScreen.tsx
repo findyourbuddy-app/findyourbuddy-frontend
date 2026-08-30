@@ -15,7 +15,7 @@ const MIN_PASSWORD_LENGTH = 6;
 
 export function ChangePasswordScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const { bgGradient, language } = useAppTheme();
+  const { bgGradient, language, t } = useAppTheme();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -26,28 +26,28 @@ export function ChangePasswordScreen() {
     setError(null);
 
     if (!currentPassword) {
-      setError(language === "en" ? "Enter your current password." : "Mevcut şifreni gir.");
+      setError(t("enterYourCurrentPassword"));
       return;
     }
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      setError(language === "en" ? `New password must be at least ${MIN_PASSWORD_LENGTH} characters.` : `Yeni şifre en az ${MIN_PASSWORD_LENGTH} karakter olmalı.`);
+      setError(t("newPasswordMustBeAt", { p0: MIN_PASSWORD_LENGTH }));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError(language === "en" ? "New passwords do not match." : "Yeni şifreler eşleşmiyor.");
+      setError(t("newPasswordsDoNotMatch"));
       return;
     }
 
     setIsSaving(true);
     try {
       await changePassword(currentPassword, newPassword);
-      Alert.alert(language === "en" ? "Success" : "Başarılı", language === "en" ? "Password updated." : "Şifren güncellendi.");
+      Alert.alert(t("success"), t("passwordUpdated"));
       navigation.goBack();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
-        setError(language === "en" ? "Current password incorrect." : "Mevcut şifren yanlış.");
+        setError(t("currentPasswordIncorrect"));
       } else {
-        setError(language === "en" ? "Failed to change password. Please try again." : "Şifre değiştirilemedi. Lütfen tekrar dene.");
+        setError(t("failedToChangePasswordPlease"));
       }
     } finally {
       setIsSaving(false);
@@ -57,11 +57,11 @@ export function ChangePasswordScreen() {
   return (
     <View style={[styles.background, { backgroundColor: bgGradient[0] }]}>
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>{language === "en" ? "Current Password" : "Mevcut Şifre"}</Text>
+        <Text style={typeScale.eyebrow}>{t("currentPassword")}</Text>
         <TextInput
           style={styles.input}
           secureTextEntry
-          placeholder={language === "en" ? "Current password" : "Mevcut şifren"}
+          placeholder={t("currentPassword2")}
           placeholderTextColor={colors.textSecondary}
           value={currentPassword}
           onChangeText={setCurrentPassword}
@@ -69,11 +69,11 @@ export function ChangePasswordScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>{language === "en" ? "New Password" : "Yeni Şifre"}</Text>
+        <Text style={typeScale.eyebrow}>{t("newPassword")}</Text>
         <TextInput
           style={styles.input}
           secureTextEntry
-          placeholder={language === "en" ? "New password" : "Yeni şifre"}
+          placeholder={t("newPassword2")}
           placeholderTextColor={colors.textSecondary}
           value={newPassword}
           onChangeText={setNewPassword}
@@ -81,11 +81,11 @@ export function ChangePasswordScreen() {
       </View>
 
       <View style={styles.field}>
-        <Text style={typeScale.eyebrow}>{language === "en" ? "New Password (Repeat)" : "Yeni Şifre (Tekrar)"}</Text>
+        <Text style={typeScale.eyebrow}>{t("newPasswordRepeat")}</Text>
         <TextInput
           style={styles.input}
           secureTextEntry
-          placeholder={language === "en" ? "Re-enter new password" : "Yeni şifreni tekrar gir"}
+          placeholder={t("reenterNewPassword")}
           placeholderTextColor={colors.textSecondary}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
@@ -94,7 +94,7 @@ export function ChangePasswordScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <PrimaryButton label={language === "en" ? "Update Password" : "Şifreyi Güncelle"} onPress={handleSubmit} loading={isSaving} />
+      <PrimaryButton label={t("updatePassword")} onPress={handleSubmit} loading={isSaving} />
     </View>
   );
 }

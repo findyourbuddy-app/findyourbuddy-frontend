@@ -15,6 +15,7 @@ import { Feather } from "@expo/vector-icons";
 import { searchUniversities } from "../../api/universities";
 import type { LanguageKey } from "../../context/ThemeContext";
 import { colors, fontFamily, radius, spacing } from "../../theme";
+import { translate } from "../../constants/translations";
 
 interface UniversityAutocompleteProps {
   value: string;
@@ -107,7 +108,7 @@ export function UniversityAutocomplete({
           style={[styles.input, inputStyle]}
           placeholder={
             placeholder ??
-            (language === "en" ? "Search university..." : "Üniversite ara veya yaz...")
+            (translate("searchUniversity", language))
           }
           placeholderTextColor={colors.textSecondary}
           value={value}

@@ -82,7 +82,7 @@ const CLASS_YEAR_OPTIONS = [
 
 export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved }: Props) {
   const { updateUser } = useAuth();
-  const { language, accentColor } = useAppTheme();
+  const { language, accentColor, t } = useAppTheme();
   const [isSaving, setIsSaving] = useState(false);
 
   // Field values
@@ -123,27 +123,27 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
   function getModalTitle(): string {
     switch (fieldKey) {
       case "height":
-        return language === "en" ? "Enter Height (cm)" : "Boy Bilgisi (cm)";
+        return t("enterHeightCm");
       case "languages":
-        return language === "en" ? "Select Languages Spoken" : "Konuştuğun Diller";
+        return t("selectLanguagesSpoken");
       case "bio":
-        return language === "en" ? "Write Bio" : "Biyografi Yaz";
+        return t("writeBio");
       case "prompt":
-        return language === "en" ? "About Me Prompt" : "Hakkımda Sorusu";
+        return t("aboutMePrompt");
       case "looking_for":
-        return language === "en" ? "What Are You Looking For?" : "Aradığın İletişim / Beklentiler";
+        return t("whatAreYouLookingFor");
       case "occupation":
-        return language === "en" ? "Occupation & University" : "Meslek & Üniversite / Sınıf";
+        return t("occupationUniversity");
       case "zodiac":
-        return language === "en" ? "Select Zodiac Sign" : "Burç Seçimi";
+        return t("selectZodiacSign");
       case "worldview":
-        return language === "en" ? "Worldview & Beliefs" : "Dünya Görüşü & İnanç";
+        return t("worldviewBeliefs");
       case "hobbies":
-        return language === "en" ? "Select Hobbies" : "Hobi Seçimi";
+        return t("selectHobbies");
       case "interests":
-        return language === "en" ? "Select Interests" : "İlgi Alanları";
+        return t("selectInterests");
       default:
-        return language === "en" ? "Edit Profile Field" : "Profil Alanını Düzenle";
+        return t("editProfileField");
     }
   }
 
@@ -156,8 +156,8 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
         const parsed = parseInt(heightText.trim(), 10);
         if (isNaN(parsed) || parsed < 120 || parsed > 230) {
           Alert.alert(
-            language === "en" ? "Invalid Height" : "Geçersiz Boy",
-            language === "en" ? "Please enter a valid height between 120 cm and 230 cm." : "Lütfen 120 cm ile 230 cm arasında geçerli bir değer girin."
+            t("invalidHeight"),
+            t("pleaseEnterAValidHeight")
           );
           setIsSaving(false);
           return;
@@ -192,7 +192,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
       onClose();
     } catch (err) {
       Alert.alert(
-        language === "en" ? "Error" : "Hata",
+        t("error"),
         formatApiError(err, language)
       );
     } finally {
@@ -217,8 +217,8 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
       } else {
         if (next.size >= MAX_HOBBIES_SELECTION) {
           Alert.alert(
-            language === "en" ? "Hobby Limit" : "Hobi Limiti",
-            language === "en" ? `Max ${MAX_HOBBIES_SELECTION} hobbies allowed.` : `En fazla ${MAX_HOBBIES_SELECTION} hobi seçebilirsin.`
+            t("hobbyLimit"),
+            t("maxP0HobbiesAllowed", { p0: MAX_HOBBIES_SELECTION })
           );
           return prev;
         }
@@ -257,7 +257,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
             {fieldKey === "height" && (
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldDesc}>
-                  {language === "en" ? "Enter your height in centimeters:" : "Boyunuzu santimetre (cm) cinsinden girin:"}
+                  {t("enterYourHeightInCentimeters")}
                 </Text>
                 <TextInput
                   style={styles.textInput}
@@ -290,7 +290,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
             {fieldKey === "languages" && (
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldDesc}>
-                  {language === "en" ? "Select the languages you can speak:" : "Akıcı veya günlük konuştuğun dilleri seçin:"}
+                  {t("selectTheLanguagesYouCan")}
                 </Text>
                 <View style={styles.chipGrid}>
                   {LANGUAGES_LIST.map((lang) => {
@@ -315,7 +315,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
             {fieldKey === "bio" && (
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldDesc}>
-                  {language === "en" ? "Tap a quick suggestion or type your bio:" : "Hızlı bir şablona tıklayın veya kendinizi anlatın:"}
+                  {t("tapAQuickSuggestionOr")}
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
                   <View style={{ flexDirection: "row", gap: spacing.xs }}>
@@ -334,7 +334,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                 </ScrollView>
                 <TextInput
                   style={[styles.textInput, { height: 100 }]}
-                  placeholder={language === "en" ? "Tell others about yourself..." : "Kendin hakkında kısa bilgi ver..."}
+                  placeholder={t("tellOthersAboutYourself")}
                   placeholderTextColor={colors.textSecondary}
                   multiline
                   value={bioText}
@@ -347,7 +347,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
             {fieldKey === "prompt" && (
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldDesc}>
-                  {language === "en" ? "Tap a question prompt to complete:" : "Cevaplamak istediğin eğlenceli soruyu seç:"}
+                  {t("tapAQuestionPromptTo")}
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
                   <View style={{ flexDirection: "row", gap: spacing.xs }}>
@@ -369,7 +369,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                 </ScrollView>
                 <TextInput
                   style={[styles.textInput, { height: 90 }]}
-                  placeholder={language === "en" ? "e.g. My perfect Sunday is morning coffee..." : "Örn: Mükemmel bir Pazar günüm sabah kahvesi..."}
+                  placeholder={t("egMyPerfectSundayIs")}
                   placeholderTextColor={colors.textSecondary}
                   multiline
                   value={promptText}
@@ -382,7 +382,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
             {fieldKey === "looking_for" && (
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldDesc}>
-                  {language === "en" ? "Select a quick expectation or type what you're looking for:" : "Hızlı bir beklenti seçin veya ne aradığınızı yazın:"}
+                  {t("selectAQuickExpectationOr")}
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
                   <View style={{ flexDirection: "row", gap: spacing.xs }}>
@@ -407,7 +407,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                 </ScrollView>
                 <TextInput
                   style={[styles.textInput, { height: 80 }]}
-                  placeholder={language === "en" ? "e.g. Looking for a weekend workout buddy..." : "Örn: Hafta sonu koşu ve kahve kankası arıyorum..."}
+                  placeholder={t("egLookingForAWeekend")}
                   placeholderTextColor={colors.textSecondary}
                   multiline
                   value={lookingForText}
@@ -419,23 +419,23 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
             {/* OCCUPATION & UNIVERSITY */}
             {fieldKey === "occupation" && (
               <View style={styles.fieldSection}>
-                <Text style={styles.fieldLabel}>{language === "en" ? "Occupation / Job Title" : "Meslek / İş Unvanı"}</Text>
+                <Text style={styles.fieldLabel}>{t("occupationJobTitle")}</Text>
                 <TextInput
                   style={styles.textInput}
-                  placeholder={language === "en" ? "e.g. Software Engineer" : "Örn: Yazılım Mühendisi"}
+                  placeholder={t("egSoftwareEngineer")}
                   placeholderTextColor={colors.textSecondary}
                   value={occupationText}
                   onChangeText={setOccupationText}
                 />
 
-                <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>{language === "en" ? "University / School" : "Üniversite / Okul"}</Text>
+                <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>{t("universitySchool")}</Text>
                 <UniversityAutocomplete
                   value={universityText}
                   onChangeText={setUniversityText}
                   language={language}
                 />
 
-                <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>{language === "en" ? "Class / Graduation" : "Sınıf / Mezuniyet"}</Text>
+                <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>{t("classGraduation")}</Text>
                 <View style={styles.chipGrid}>
                   {CLASS_YEAR_OPTIONS.map((item) => {
                     const active = classYearVal === item.key;
@@ -480,7 +480,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
             {/* WORLDVIEW */}
             {fieldKey === "worldview" && (
               <View style={styles.fieldSection}>
-                <Text style={styles.fieldLabel}>{language === "en" ? "Political View" : "Siyasi Görüş"}</Text>
+                <Text style={styles.fieldLabel}>{t("politicalView")}</Text>
                 <View style={[styles.chipGrid, { marginBottom: spacing.md }]}>
                   {POLITICAL_OPTIONS.map((item) => {
                     const active = politicalVal === item.key;
@@ -498,7 +498,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
                   })}
                 </View>
 
-                <Text style={styles.fieldLabel}>{language === "en" ? "Belief / Religion" : "İnanç / Din"}</Text>
+                <Text style={styles.fieldLabel}>{t("beliefReligion")}</Text>
                 <View style={styles.chipGrid}>
                   {BELIEF_OPTIONS.map((item) => {
                     const active = beliefVal === item.key;
@@ -568,7 +568,7 @@ export function QuickFieldEditModal({ visible, fieldKey, user, onClose, onSaved 
               <ActivityIndicator color={colors.surface} />
             ) : (
               <Text style={styles.saveBtnText}>
-                {language === "en" ? "Save & Update Profile" : "Kaydet & Profili Güncelle"}
+                {t("saveUpdateProfile")}
               </Text>
             )}
           </Pressable>

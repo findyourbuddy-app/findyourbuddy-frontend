@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { I18nManager } from "react-native";
 import { getToken, setToken } from "../utils/tokenStorage";
-import { translations, type TranslationKey } from "../constants/translations";
+import { translate, type TranslationKey } from "../constants/translations";
 
 export type ThemePresetKey =
   | "purple"
@@ -87,13 +87,6 @@ const STORAGE_LANG_KEY = "findyourbuddy_lang_key";
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-function interpolate(template: string, params?: TranslateParams): string {
-  if (!params) return template;
-  return template.replace(/\{(\w+)\}/g, (match, name) =>
-    name in params ? String(params[name]) : match
-  );
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [themeKey, setThemeState] = useState<ThemePresetKey>("purple");
   const [language, setLanguageState] = useState<LanguageKey>("tr");
@@ -134,12 +127,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const currentPreset = THEME_PRESETS.find((p) => p.key === themeKey) || THEME_PRESETS[0];
 
   function t(key: TranslationKey, params?: TranslateParams): string {
-    const raw =
-      (translations[language] as Record<string, string>)?.[key] ??
-      translations.en[key] ??
-      translations.tr[key] ??
-      key;
-    return interpolate(raw, params);
+    return translate(key, language, params);
   }
 
   return (

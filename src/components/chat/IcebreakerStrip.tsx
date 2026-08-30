@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from
 import { Feather } from "@expo/vector-icons";
 import { colors, fontFamily, radius, spacing, shadows } from "../../theme";
 import type { IcebreakerItem } from "../../api/messages";
+import { translate } from "../../constants/translations";
 
 interface Props {
   icebreakers: IcebreakerItem[];
@@ -23,7 +24,7 @@ export function IcebreakerStrip({ icebreakers, isLoading, onSelect, onRefresh, l
         <View style={styles.badgeRow}>
           <Feather name="zap" size={14} color="#8A2BE2" />
           <Text style={styles.headerTitle}>
-            {language === "en" ? "Icebreaker AI" : "Yapay Zeka Tanışma Önerileri"}
+            {translate("icebreakerAi", language)}
           </Text>
         </View>
         <Pressable onPress={onRefresh} style={styles.refreshBtn} disabled={isLoading}>

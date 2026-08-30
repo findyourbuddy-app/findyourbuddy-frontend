@@ -50,20 +50,16 @@ export function PhotoVerificationModal({
   const handleLaunchCamera = async () => {
     if (!acceptedKvkk) {
       Alert.alert(
-        language === "en" ? "Consent Required" : "Açık Rıza Gerekli",
-        language === "en"
-          ? "Please accept the KVKK biometric data processing consent to proceed."
-          : "Devam edebilmek için lütfen KVKK biyometrik veri işleme açık rıza metnini onaylayın."
+        t("consentRequired"),
+        t("pleaseAcceptTheKvkkBiometric")
       );
       return;
     }
 
     if (!user?.photo_url) {
       Alert.alert(
-        language === "en" ? "Profile Photo Required" : "Profil Fotoğrafı Gerekli",
-        language === "en"
-          ? "Please upload a main profile photo before verifying your identity."
-          : "Doğrulama yapabilmek için lütfen önce ana profil fotoğrafı yükleyin."
+        t("profilePhotoRequired"),
+        t("pleaseUploadAMainProfile")
       );
       return;
     }
@@ -72,10 +68,8 @@ export function PhotoVerificationModal({
       const cameraPerm = await ImagePicker.requestCameraPermissionsAsync();
       if (cameraPerm.status !== "granted") {
         Alert.alert(
-          language === "en" ? "Camera Permission Needed" : "Kamera İzni Gerekli",
-          language === "en"
-            ? "Camera permission is required to take a live verification selfie."
-            : "Mavi Tik doğrulaması için ön kamera ile selfie çekilmesi gerekmektedir."
+          t("cameraPermissionNeeded"),
+          t("cameraPermissionIsRequiredTo")
         );
         return;
       }
@@ -94,8 +88,8 @@ export function PhotoVerificationModal({
       }
     } catch {
       Alert.alert(
-        language === "en" ? "Error" : "Hata",
-        language === "en" ? "Could not open camera." : "Kamera açılırken bir sorun oluştu."
+        t("error"),
+        t("couldNotOpenCamera")
       );
     }
   };
@@ -115,10 +109,8 @@ export function PhotoVerificationModal({
 
     // 2. Alert user and close modal immediately so user isn't blocked waiting
     Alert.alert(
-      language === "en" ? "Verification Submitted!" : "Doğrulama Alındı!",
-      language === "en"
-        ? "Your selfie was received. AI vision verification is processing in the background."
-        : "Selfie fotoğrafınız alındı! Yapay zeka doğrulaması arka planda devam ediyor. Tamamlandığında Mavi Tik rozetiniz aktif edilecektir."
+      t("verificationSubmitted"),
+      t("yourSelfieWasReceivedAi")
     );
     handleClose();
 
@@ -135,10 +127,8 @@ export function PhotoVerificationModal({
           verification_status: "verified",
         });
         Alert.alert(
-          language === "en" ? "Profile Verified!" : "Profiliniz Doğrulandı!",
-          language === "en"
-            ? "Congratulations! Your profile has been verified with a blue checkmark."
-            : "Tebrikler! Profiliniz Yapay Zeka tarafından başarıyla doğrulandı ve Mavi Tik rozeti tanımlandı."
+          t("profileVerified"),
+          t("congratulationsYourProfileHasBeen")
         );
         if (onSuccess) {
           onSuccess();
@@ -169,12 +159,10 @@ export function PhotoVerificationModal({
                 <Feather name="check-circle" size={36} color={accentColor} />
               </View>
               <Text style={typeScale.h1}>
-                {language === "en" ? "Verify Profile" : "Profilini Doğrula"}
+                {t("verifyProfile")}
               </Text>
               <Text style={styles.bodyText}>
-                {language === "en"
-                  ? "Take a live selfie to compare against your profile photos with AI Vision to verify your identity."
-                  : "Yapay Zeka Vision teknolojisi ile anlık çekeceğin selfie, yüklediğin profil fotoğraflarıyla karşılaştırılacak ve hesabın doğrulanacaktır."}
+                {t("takeALiveSelfieTo")}
               </Text>
               <Pressable
                 style={styles.consentRow}
@@ -188,14 +176,12 @@ export function PhotoVerificationModal({
                   color={acceptedKvkk ? colors.primary : colors.textSecondary}
                 />
                 <Text style={styles.consentText}>
-                  {language === "en"
-                    ? "I explicitly consent to the processing of my facial biometric data for identity verification (KVKK)."
-                    : "Biyometrik yüz verimin Mavi Tik doğrulaması amacıyla işlenmesine açık rıza veriyorum (KVKK m.6)."}
+                  {t("iExplicitlyConsentToThe")}
                 </Text>
               </Pressable>
               <View style={styles.actionGroup}>
                 <PrimaryButton
-                  label={language === "en" ? "Take Live Selfie" : "Canlı Selfie Çek"}
+                  label={t("takeLiveSelfie")}
                   variant="accent"
                   onPress={handleLaunchCamera}
                 />
@@ -208,25 +194,23 @@ export function PhotoVerificationModal({
           {step === "preview" && capturedUri && (
             <View style={styles.stepContainer}>
               <Text style={typeScale.h1}>
-                {language === "en" ? "Review Selfie Photo" : "Selfie Fotoğrafı Kontrolü"}
+                {t("reviewSelfiePhoto")}
               </Text>
               <View style={styles.imagePreviewWrapper}>
                 <Image source={{ uri: capturedUri }} style={styles.previewImage} />
               </View>
               <Text style={styles.bodyText}>
-                {language === "en"
-                  ? "Confirm to send this selfie for AI Vision verification in the background."
-                  : "Bu selfie fotoğrafını profil doğrulaması için Yapay Zeka Vision sistemine göndermeyi onaylıyor musunuz?"}
+                {t("confirmToSendThisSelfie")}
               </Text>
 
               <View style={styles.actionGroup}>
                 <PrimaryButton
-                  label={language === "en" ? "Confirm & Submit" : "Onayla ve Gönder"}
+                  label={t("confirmSubmit")}
                   variant="accent"
                   onPress={handleConfirmAndSubmit}
                 />
                 <PrimaryButton
-                  label={language === "en" ? "Retake" : "Yeniden Çek"}
+                  label={t("retake")}
                   variant="outline"
                   onPress={handleLaunchCamera}
                 />

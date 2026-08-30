@@ -44,8 +44,8 @@ export function NotificationsScreen() {
     } catch {
       if (notificationsRef.current.length === 0) {
         Alert.alert(
-          language === "en" ? "Error" : "Bir sorun oluştu",
-          language === "en" ? "Notifications could not be loaded. Please try again." : "Bildirimler yüklenemedi. Lütfen tekrar dene."
+          t("error"),
+          t("notificationsCouldNotBeLoaded")
         );
       }
     } finally {
@@ -293,12 +293,10 @@ export function NotificationsScreen() {
               <Feather name="bell-off" size={32} color={accentColor} />
             </View>
             <Text style={styles.emptyTitle}>
-              {language === "en" ? "No Notifications Yet" : "Henüz Bildirimin Yok"}
+              {t("noNotificationsYet")}
             </Text>
             <Text style={styles.emptySub}>
-              {language === "en"
-                ? "When you receive likes, event updates, or new messages, they will show up right here."
-                : "Yeni bir beğeni, mesaj veya etkinlik güncellemesi aldığında hepsi burada görünecek."}
+              {t("whenYouReceiveLikesEvent")}
             </Text>
           </View>
         }

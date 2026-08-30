@@ -26,7 +26,7 @@ type Props = NativeStackScreenProps<MainStackParamList, "CandidateProfile">;
 export function CandidateProfileScreen({ route }: Props) {
   const { candidate } = route.params;
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const { bgGradient, language } = useAppTheme();
+  const { bgGradient, language, t } = useAppTheme();
   const [profile, setProfile] = useState(candidate);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [trustInfoVisible, setTrustInfoVisible] = useState(false);
@@ -202,7 +202,7 @@ export function CandidateProfileScreen({ route }: Props) {
             <View style={styles.cardHeader}>
               <Feather name="calendar" size={18} color={colors.primary} />
               <Text style={styles.cardTitle}>
-                {language === "en" ? "Going To" : "Katılacağı Etkinlikler"}
+                {t("goingTo")}
               </Text>
             </View>
             {upcomingEvents.map((event) => {
@@ -290,7 +290,7 @@ export function CandidateProfileScreen({ route }: Props) {
             <View style={styles.cardHeader}>
               <Feather name="briefcase" size={18} color={colors.primary} />
               <Text style={styles.cardTitle}>
-                {language === "en" ? "Career, Education & Intention" : "Kariyer, Eğitim & Arkadaşlık İlişkisi"}
+                {t("careerEducationIntention")}
               </Text>
             </View>
 
@@ -319,7 +319,7 @@ export function CandidateProfileScreen({ route }: Props) {
               <View style={styles.infoRow}>
                 <Feather name="target" size={16} color={colors.textSecondary} />
                 <Text style={styles.infoText}>
-                  {language === "en" ? "Looking for: " : "Aradığı Arkadaşlık İlişkisi: "}
+                  {t("lookingFor")}
                   {profile.looking_for}
                 </Text>
               </View>

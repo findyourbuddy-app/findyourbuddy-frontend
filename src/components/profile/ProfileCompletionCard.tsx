@@ -19,7 +19,7 @@ interface Props {
 
 export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
   const [expanded, setExpanded] = useState(true);
 
   const completion = calculateProfileCompletion(user);
@@ -39,7 +39,7 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
           </View>
           <View style={styles.titleTextGroup}>
             <Text style={styles.cardTitle}>
-              {language === "en" ? "Profile Completion" : "Profil Tamamlanma Oranı"}
+              {t("profileCompletion")}
             </Text>
             <Text style={styles.percentageText}>
               %{completion.percentage}
@@ -66,9 +66,7 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
             onPress={() => setExpanded((prev) => !prev)}
           >
             <Text style={styles.missingHint}>
-              {language === "en"
-                ? `${missingItems.length} items left for %100 completion`
-                : `%100 tamamlanma için ${missingItems.length} eksik bilgi`}
+              {t("p0ItemsLeftFor100", { p0: missingItems.length })}
             </Text>
             <Feather
               name={expanded ? "chevron-up" : "chevron-down"}
@@ -101,9 +99,7 @@ export function ProfileCompletionCard({ user, onPressFieldKey }: Props) {
         </View>
       ) : isComplete ? (
         <Text style={styles.perfectText}>
-          {language === "en"
-            ? "Your profile is 100% complete! You get 2x more match suggestions."
-            : "Profilin %100 tamamlandı! 2 kat daha fazla eşleşme önerisi alıyorsun."}
+          {t("yourProfileIs100Complete")}
         </Text>
       ) : null}
     </View>

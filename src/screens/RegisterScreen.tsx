@@ -27,7 +27,7 @@ const PHONE_REGEX = /^\+?\d{10,15}$/;
 export function RegisterScreen() {
   const navigation = useNavigation<RegisterNavigationProp>();
   const { signUp } = useAuth();
-  const { language, setLanguage } = useAppTheme();
+  const { language, setLanguage, t } = useAppTheme();
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -41,25 +41,25 @@ export function RegisterScreen() {
 
   async function handleSubmit(): Promise<void> {
     if (!displayName.trim()) {
-      setError(language === "en" ? "Please enter your full name." : "Lütfen adınızı ve soyadınızı girin.");
+      setError(t("pleaseEnterYourFullName"));
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      setError(language === "en" ? "Please enter a valid email address." : "Lütfen geçerli bir e-posta adresi girin.");
+      setError(t("pleaseEnterAValidEmail"));
       return;
     }
     const normalizedPhone = phoneNumber.trim().replace(/[\s()-]/g, "");
     if (normalizedPhone && !PHONE_REGEX.test(normalizedPhone)) {
-      setError(language === "en" ? "Please enter a valid phone number (e.g. +905XXXXXXXXX)." : "Lütfen geçerli bir telefon numarası girin (örn. 05XXXXXXXXX).");
+      setError(t("pleaseEnterAValidPhone"));
       return;
     }
     if (password.length < 6) {
-      setError(language === "en" ? "Password must be at least 6 characters." : "Şifreniz en az 6 karakter olmalıdır.");
+      setError(t("passwordMustBeAtLeast"));
       return;
     }
     if (!acceptedTerms) {
-      setError(language === "en" ? "You must accept the Terms of Service and Privacy Policy to continue." : "Devam etmek için Kullanım Şartları ve Gizlilik Politikası'nı kabul etmelisin.");
+      setError(t("youMustAcceptTheTerms"));
       return;
     }
 
@@ -126,12 +126,10 @@ export function RegisterScreen() {
           <View style={styles.headerBox}>
             <BuddyLogo size={80} showText={true} />
             <Text style={styles.headerTitle}>
-              {language === "en" ? "Join FindYourBuddy" : "Aramıza Katıl!"}
+              {t("joinFindyourbuddy")}
             </Text>
             <Text style={styles.headerSub}>
-              {language === "en"
-                ? "Create a free account, find new buddies!"
-                : "Ücretsiz hesap oluştur, yeni kankalar bul!"}
+              {t("createAFreeAccountFind")}
             </Text>
           </View>
 
@@ -143,7 +141,7 @@ export function RegisterScreen() {
                 <Feather name="user" size={18} color={focusedInput === "name" ? colors.primary : "#94A3B8"} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "Full Name" : "Ad Soyad"}
+                  placeholder={t("fullName")}
                   placeholderTextColor="#94A3B8"
                   value={displayName}
                   onChangeText={setDisplayName}
@@ -157,7 +155,7 @@ export function RegisterScreen() {
                 <Feather name="mail" size={18} color={focusedInput === "email" ? colors.primary : "#94A3B8"} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "Email Address" : "E-posta Adresi"}
+                  placeholder={t("emailAddress")}
                   placeholderTextColor="#94A3B8"
                   autoCapitalize="none"
                   keyboardType="email-address"
@@ -173,7 +171,7 @@ export function RegisterScreen() {
                 <Feather name="phone" size={18} color={focusedInput === "phone" ? colors.primary : "#94A3B8"} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "Phone Number (e.g. +905XXXXXXXXX)" : "Telefon Numarası (örn. 05XXXXXXXXX)"}
+                  placeholder={t("phoneNumberEg905xxxxxxxxx")}
                   placeholderTextColor="#94A3B8"
                   keyboardType="phone-pad"
                   value={phoneNumber}
@@ -188,7 +186,7 @@ export function RegisterScreen() {
                 <Feather name="lock" size={18} color={focusedInput === "password" ? colors.primary : "#94A3B8"} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "Password (min 6 chars)" : "Şifre (en az 6 karakter)"}
+                  placeholder={t("passwordMin6Chars")}
                   placeholderTextColor="#94A3B8"
                   secureTextEntry={!showPassword}
                   value={password}
@@ -222,21 +220,21 @@ export function RegisterScreen() {
                   color={acceptedTerms ? colors.primary : "#94A3B8"}
                 />
                 <Text style={styles.termsText}>
-                  {language === "en" ? "I have read and accept the " : ""}
+                  {t("iHaveReadAndAccept")}
                   <Text
                     onPress={() => navigation.navigate("Legal", { kind: "terms" })}
                     style={styles.termsLink}
                   >
-                    {language === "en" ? "Terms of Service" : "Kullanım Şartları"}
+                    {t("termsOfService")}
                   </Text>
-                  {language === "en" ? " and " : " ve "}
+                  {t("and")}
                   <Text
                     onPress={() => navigation.navigate("Legal", { kind: "privacy" })}
                     style={styles.termsLink}
                   >
-                    {language === "en" ? "Privacy Policy" : "Gizlilik Politikası"}
+                    {t("privacyPolicy")}
                   </Text>
-                  {language === "en" ? "." : "'nı okudum, kabul ediyorum."}
+                  {t("str2")}
                 </Text>
               </Pressable>
 
@@ -266,8 +264,8 @@ export function RegisterScreen() {
                 >
                   <Text style={styles.buttonText}>
                     {isSubmitting
-                      ? (language === "en" ? "Creating Account..." : "Kayıt Yapılıyor...")
-                      : (language === "en" ? "Create Account" : "Ücretsiz Kayıt Ol")}
+                      ? (t("creatingAccount"))
+                      : (t("createAccount"))}
                   </Text>
                   <Feather name="arrow-right" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
                 </LinearGradient>
@@ -278,9 +276,9 @@ export function RegisterScreen() {
           <View style={styles.linksBox}>
             <Pressable onPress={() => navigation.navigate("Login")}>
               <Text style={styles.loginText}>
-                {language === "en" ? "Already have an account? " : "Zaten hesabın var mı? "}
+                {t("alreadyHaveAnAccount")}
                 <Text style={styles.loginHighlight}>
-                  {language === "en" ? "Log In" : "Giriş Yap"}
+                  {t("logIn")}
                 </Text>
               </Text>
             </Pressable>

@@ -15,7 +15,7 @@ type SavedEventsNavigationProp = NativeStackNavigationProp<MainStackParamList, "
 
 export function SavedEventsScreen() {
   const navigation = useNavigation<SavedEventsNavigationProp>();
-  const { bgGradient, accentColor, language } = useAppTheme();
+  const { bgGradient, accentColor, language, t } = useAppTheme();
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -62,7 +62,7 @@ export function SavedEventsScreen() {
       <View style={[styles.center, { backgroundColor: bgGradient[0] }]}>
         <Feather name="bookmark" size={32} color={colors.textSecondary} />
         <Text style={styles.emptyText}>
-          {language === "en" ? "You haven't saved any events yet." : "Henüz kaydettiğin bir etkinlik yok."}
+          {t("youHaventSavedAnyEvents")}
         </Text>
       </View>
     );

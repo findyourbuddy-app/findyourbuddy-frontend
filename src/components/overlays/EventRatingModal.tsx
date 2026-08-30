@@ -33,7 +33,7 @@ export function EventRatingModal({
   onClose,
   onSuccess,
 }: EventRatingModalProps) {
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,20 +44,16 @@ export function EventRatingModal({
     try {
       await rateEvent(eventId, rating, comment.trim() ? comment.trim() : undefined);
       Alert.alert(
-        language === "en" ? "Thank You!" : "Teşekkürler!",
-        language === "en"
-          ? "Your feedback and rating have been submitted."
-          : "Değerlendirmeniz ve puanınız başarıyla iletildi. Organizatörün güven puanı güncellendi."
+        t("thankYou"),
+        t("yourFeedbackAndRatingHave")
       );
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
       const msg =
         err?.response?.data?.detail ||
-        (language === "en"
-          ? "Could not submit rating. You may have already rated this event."
-          : "Değerlendirme iletilemedi. Bu etkinliği daha önce değerlendirmiş olabilirsiniz.");
-      Alert.alert(language === "en" ? "Notice" : "Bilgi", msg);
+        (t("couldNotSubmitRatingYou"));
+      Alert.alert(t("notice"), msg);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -78,7 +74,7 @@ export function EventRatingModal({
             <View style={styles.badgePill}>
               <Feather name="star" size={14} color={colors.accentYellow} />
               <Text style={styles.badgePillText}>
-                {language === "en" ? "Event Feedback" : "Etkinlik Değerlendirme"}
+                {t("eventFeedback")}
               </Text>
             </View>
             <Pressable onPress={onClose} style={styles.closeBtn}>
@@ -89,12 +85,8 @@ export function EventRatingModal({
           <Text style={styles.eventTitle}>{eventTitle}</Text>
           <Text style={styles.subtitle}>
             {creatorName
-              ? (language === "en"
-                  ? `How was your experience with ${creatorName}'s event?`
-                  : `${creatorName} tarafından düzenlenen bu etkinlik nasıldı?`)
-              : (language === "en"
-                  ? "How was your experience at this event?"
-                  : "Bu etkinlikteki deneyimin nasıldı?")}
+              ? (t("howWasYourExperienceWith", { p0: creatorName }))
+              : (t("howWasYourExperienceAt"))}
           </Text>
 
           {/* Star Rating Control */}
@@ -118,14 +110,14 @@ export function EventRatingModal({
           </View>
           <Text style={styles.ratingTextLabel}>
             {rating === 5
-              ? (language === "en" ? "Mükemmel! (5/5)" : "Harikaydı! (5/5)")
+              ? (t("mkemmel55"))
               : rating === 4
-              ? (language === "en" ? "Çok İyi (4/5)" : "Çok İyi (4/5)")
+              ? (t("okIyi45"))
               : rating === 3
-              ? (language === "en" ? "Ortalama (3/5)" : "Ortalama (3/5)")
+              ? (t("ortalama35"))
               : rating === 2
-              ? (language === "en" ? "Kötüydi (2/5)" : "Kötüydü (2/5)")
-              : (language === "en" ? "Çok Kötü (1/5)" : "Çok Kötü (1/5)")}
+              ? (t("ktydi25"))
+              : (t("okKt15"))}
           </Text>
 
           {/* Comment Input */}
@@ -133,9 +125,7 @@ export function EventRatingModal({
             style={styles.commentInput}
             multiline
             placeholder={
-              language === "en"
-                ? "Write a comment about the host & event (optional)..."
-                : "Organizatör ve etkinlik hakkında yorum ekle (isteğe bağlı)..."
+              t("writeACommentAboutThe")
             }
             placeholderTextColor={colors.textSecondary}
             value={comment}
@@ -152,7 +142,7 @@ export function EventRatingModal({
               <ActivityIndicator color="#FFF" />
             ) : (
               <Text style={styles.submitBtnText}>
-                {language === "en" ? "Submit Feedback" : "Değerlendirmeyi Gönder"}
+                {t("submitFeedback")}
               </Text>
             )}
           </Pressable>

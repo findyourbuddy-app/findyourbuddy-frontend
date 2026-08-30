@@ -24,7 +24,7 @@ import { hasValidCoordinates, resolveCityDistrict } from "../utils/location";
 export function ViewProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { user } = useAuth();
-  const { bgGradient, accentColor, language } = useAppTheme();
+  const { bgGradient, accentColor, language, t } = useAppTheme();
   const [profile, setProfile] = useState<User | null>(user ?? null);
   const [isLoading, setIsLoading] = useState(!user);
   const [locationName, setLocationName] = useState<string | null>(null);
@@ -32,10 +32,8 @@ export function ViewProfileScreen() {
 
   function openTrustInfo() {
     Alert.alert(
-      language === "en" ? "What is Trust Score?" : "Güven Skoru Nedir?",
-      language === "en"
-        ? "• Default Score: 50 points\n• Event Check-in: +5 points for every confirmed GPS event check-in.\n• Blue Badge: +10 points for verifying your profile photo.\n• No-Show: -10 points if you join an event and don't show up.\n\nNote: Keeping a low score for long durations flags the account as a troll account."
-        : "• Başlangıç Skorunuz: 50 Puan\n• Etkinlik Check-In: Katıldığınız her etkinlikte GPS konum doğrulaması ile +5 puan kazanırsınız.\n• Mavi Tık Doğrulaması: Profilinizi doğruladığınızda +10 puan eklenir.\n• Katılmama (No-Show): Katılacağım dediğiniz etkinliğe gitmezseniz -10 puan düşer.\n\nDüşük Skor Uyarısı: Skoru sürekli düşük kalan hesaplar kısıtlanır."
+      t("whatIsTrustScore"),
+      t("defaultScore50PointsEvent")
     );
   }
 
@@ -168,7 +166,7 @@ export function ViewProfileScreen() {
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
               <Text style={styles.promptQuestion}>Ses Tanıtımı</Text>
               <Text style={{ fontSize: 12, color: colors.primary, fontFamily: fontFamily.bodySemiBold }}>
-                {profile.voice_note_url ? (language === "en" ? "Edit" : "Düzenle") : (language === "en" ? "+ Add Voice" : "+ Ses Ekle")}
+                {profile.voice_note_url ? (t("edit")) : (t("addVoice"))}
               </Text>
             </View>
             {profile.voice_note_url ? (
@@ -177,7 +175,7 @@ export function ViewProfileScreen() {
               <View style={styles.emptyVoiceBox}>
                 <Feather name="mic" size={18} color={colors.primary} />
                 <Text style={styles.emptyVoiceText}>
-                  {language === "en" ? "Tap to record your voice introduction" : "Ses tanıtımını kaydetmek için dokun"}
+                  {t("tapToRecordYourVoice")}
                 </Text>
               </View>
             )}

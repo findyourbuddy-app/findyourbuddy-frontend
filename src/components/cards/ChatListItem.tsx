@@ -17,7 +17,7 @@ interface ChatListItemProps {
 }
 
 function ChatListItemBase({ match, currentUserId, onPress, onPressAvatar }: ChatListItemProps) {
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
   const lastMessage = match.last_message;
   const isUnread = Boolean(lastMessage && !lastMessage.is_read && lastMessage.sender_id !== currentUserId);
   const handlePress = () => onPress(match);
@@ -31,7 +31,7 @@ function ChatListItemBase({ match, currentUserId, onPress, onPressAvatar }: Chat
         <View style={[styles.textColumn, { marginRight: spacing.sm }]}>
           <View style={styles.topRow}>
             <Text style={[styles.name, isUnread && styles.unreadText]} numberOfLines={1}>
-              {match.event_title || (language === "en" ? "Group Event Chat" : "Grup Etkinlik Sohbeti")}
+              {match.event_title || (t("groupEventChat"))}
             </Text>
             {lastMessage ? (
               <Text style={[styles.time, isUnread && styles.unreadTime]}>{formatRelativeTimestamp(lastMessage.created_at)}</Text>
@@ -40,11 +40,11 @@ function ChatListItemBase({ match, currentUserId, onPress, onPressAvatar }: Chat
           <View style={styles.eventPill}>
             <Feather name="users" size={10} color={colors.primary} />
             <Text style={styles.eventPillText} numberOfLines={1}>
-              {language === "en" ? "Group Chat Channel" : "Grup Etkinlik Sohbet Kanalı"}
+              {t("groupChatChannel")}
             </Text>
           </View>
           <Text style={[styles.preview, isUnread && styles.unreadText]} numberOfLines={1}>
-            {lastMessage ? formatMessagePreview(lastMessage, language) : (language === "en" ? "Group chat created! Send a message..." : "Grup sohbeti başladı! İlk mesajı sen yaz 📢")}
+            {lastMessage ? formatMessagePreview(lastMessage, language) : (t("groupChatCreatedSendA"))}
           </Text>
         </View>
         {isUnread ? <View style={styles.unreadDot} /> : null}
@@ -91,7 +91,7 @@ function ChatListItemBase({ match, currentUserId, onPress, onPressAvatar }: Chat
         ) : null}
 
         <Text style={[styles.preview, isUnread && styles.unreadText]} numberOfLines={1}>
-          {lastMessage ? formatMessagePreview(lastMessage, language) : (language === "en" ? "No messages yet, send the first one!" : "Henüz mesaj yok, ilk sen yaz!")}
+          {lastMessage ? formatMessagePreview(lastMessage, language) : (t("noMessagesYetSendThe"))}
         </Text>
       </View>
       {isUnread ? <View style={styles.unreadDot} /> : null}

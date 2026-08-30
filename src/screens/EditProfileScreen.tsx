@@ -251,10 +251,8 @@ export function EditProfileScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          language === "en" ? "Location Permission Required" : "Konum İzni Gerekli",
-          language === "en"
-            ? "Please grant location access to update your position automatically."
-            : "Anlık konumunuzu otomatik güncelleyebilmek için konum izni vermeniz gerekmektedir."
+          t("locationPermissionRequired"),
+          t("pleaseGrantLocationAccessTo")
         );
         return;
       }
@@ -268,15 +266,13 @@ export function EditProfileScreen() {
       setCurrentLocationLabel(label);
 
       Alert.alert(
-        language === "en" ? "Location Updated" : "Konum Güncellendi",
-        language === "en"
-          ? `Your position has been automatically updated to ${label}.`
-          : `Konumunuz otomatik olarak ${label} olarak güncellendi!`
+        t("locationUpdated"),
+        t("yourPositionHasBeenAutomatically", { p0: label })
       );
     } catch {
       Alert.alert(
-        language === "en" ? "Error" : "Bir Sorun Oluştu",
-        language === "en" ? "Could not fetch current GPS location." : "Anlık GPS konumunuz alınırken bir sorun oluştu."
+        t("error"),
+        t("couldNotFetchCurrentGps")
       );
     } finally {
       setIsLocatingCurrent(false);
@@ -376,13 +372,11 @@ export function EditProfileScreen() {
     // data -- bundling it into the general ToS acceptance at signup isn't
     // enough for a selfie/face-match flow specifically.
     Alert.alert(
-      language === "en" ? "Biometric Data Consent" : "Biyometrik Veri Onayı",
-      language === "en"
-        ? "To grant a Blue Checkmark, we'll process your live selfie as biometric data (face comparison against your profile photo) under your explicit consent, per KVKK. It is not stored after verification. See Privacy Policy for details."
-        : "Mavi Tik doğrulaması için çekeceğin anlık selfie, KVKK kapsamında açık rızana istinaden biyometrik veri (yüz karşılaştırması) olarak işlenecek. Doğrulama sonrası saklanmaz. Detaylar için Gizlilik Politikası'na bakabilirsin.",
+      t("biometricDataConsent"),
+      t("toGrantABlueCheckmark"),
       [
-        { text: language === "en" ? "Cancel" : "Vazgeç", style: "cancel" },
-        { text: language === "en" ? "I Consent" : "Onaylıyorum, Devam Et", onPress: () => runVerifyPhoto() },
+        { text: t("cancel"), style: "cancel" },
+        { text: t("iConsent"), onPress: () => runVerifyPhoto() },
       ]
     );
   }
@@ -393,10 +387,8 @@ export function EditProfileScreen() {
       const cameraPerm = await ImagePicker.requestCameraPermissionsAsync();
       if (cameraPerm.status !== "granted") {
         Alert.alert(
-          language === "en" ? "Camera Permission Required" : "Kamera İzni Gerekli",
-          language === "en"
-            ? "A live selfie from the front camera is required for Blue Checkmark verification. Please grant camera permission."
-            : "Mavi Tik doğrulaması için ön kamera ile anlık selfie çekilmesi zorunludur. Lütfen kamera iznini onaylayın."
+          t("cameraPermissionRequired"),
+          t("aLiveSelfieFromThe")
         );
         return;
       }
@@ -424,15 +416,13 @@ export function EditProfileScreen() {
       if (res.data?.verified) {
         updateUser({ ...uploadedUser, is_verified: true });
         Alert.alert(
-          language === "en" ? "Verification Successful!" : "Doğrulama Başarılı!",
-          language === "en"
-            ? `${res.data.message || "Your profile has been verified!"}\n\nA confirmation email has been sent to ${user.email}.`
-            : `${res.data.message || "Profiliniz başarıyla doğrulandı!"}\n\nE-posta adresinize (${user.email}) doğrulama onay mesajı gönderilmiştir.`
+          t("verificationSuccessful"),
+          t("p0aConfirmationEmailHasBeen", { p0: res.data.message || "Your profile has been verified!", p1: user.email })
         );
       } else {
         Alert.alert(
-          language === "en" ? "Verification Failed" : "Doğrulama Başarısız",
-          res.data?.message || (language === "en" ? "Selfie did not match your profile photo." : "Selfie profil fotoğrafınızla uyuşmadı.")
+          t("verificationFailed"),
+          res.data?.message || (t("selfieDidNotMatchYour"))
         );
       }
     } catch {
@@ -570,13 +560,13 @@ export function EditProfileScreen() {
       updateUser(updated);
       setVoiceNoteUrl(null);
       Alert.alert(
-        language === "en" ? "Success" : "Başarılı",
-        language === "en" ? "Voice intro removed from profile." : "Ses tanıtımın profilinden kaldırıldı."
+        t("success"),
+        t("voiceIntroRemovedFromProfile")
       );
     } catch {
       Alert.alert(
-        language === "en" ? "Error" : "Hata",
-        language === "en" ? "Failed to delete voice intro." : "Ses tanıtımı silinirken bir sorun oluştu."
+        t("error"),
+        t("failedToDeleteVoiceIntro")
       );
     } finally {
       setIsSaving(false);
@@ -588,7 +578,7 @@ export function EditProfileScreen() {
     setError(null);
 
     if (!displayName.trim()) {
-      setError(language === "en" ? "Name cannot be empty." : "İsmin boş olamaz.");
+      setError(t("nameCannotBeEmpty"));
       return;
     }
 
@@ -599,7 +589,7 @@ export function EditProfileScreen() {
       const month = Number(birthMonth);
       const year = Number(birthYear);
       if (!isValidBirthDate(day, month, year)) {
-        setError(language === "en" ? "Please enter a valid birth date (ages 18-99)." : "Lütfen geçerli bir doğum tarihi gir (18-99 yaş arası).");
+        setError(t("pleaseEnterAValidBirth"));
         return;
       }
       birthDateIso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -631,7 +621,7 @@ export function EditProfileScreen() {
       updateUser(updated);
       leaveScreen();
     } catch {
-      setError(language === "en" ? "Profile could not be saved. Check your details and try again." : "Profil kaydedilemedi, bilgileri kontrol edip tekrar dene.");
+      setError(t("profileCouldNotBeSaved"));
     } finally {
       setIsSaving(false);
     }
@@ -668,12 +658,12 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentBlue]}>
-        <IconSectionHeader icon="user" color="#2E7FC9" label={language === "en" ? "Identity" : "Kimlik Bilgileri"} />
+        <IconSectionHeader icon="user" color="#2E7FC9" label={t("identity")} />
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>{t("name")}</Text>
           <TextInput
             style={styles.input}
-            placeholder={language === "en" ? "Full Name" : "Adın Soyadın"}
+            placeholder={t("fullName")}
             placeholderTextColor={colors.textSecondary}
             value={displayName}
             onChangeText={setDisplayName}
@@ -683,7 +673,7 @@ export function EditProfileScreen() {
           <Text style={styles.fieldLabel}>{t("gender")}</Text>
           <Pressable style={styles.inputPressable} onPress={() => setGenderPickerVisible(true)}>
             <Text style={[styles.inputText, !gender && { color: colors.textSecondary }]}>
-              {gender ? (gender === "Kadın" && language === "en" ? t("female") : gender === "Erkek" && language === "en" ? t("male") : gender) : (language === "en" ? "Select gender..." : "Cinsiyetini seç...")}
+              {gender ? (gender === "Kadın" && language === "en" ? t("female") : gender === "Erkek" && language === "en" ? t("male") : gender) : (t("selectGender"))}
             </Text>
             <Feather name="chevron-down" size={16} color={colors.textSecondary} />
           </Pressable>
@@ -768,7 +758,7 @@ export function EditProfileScreen() {
           <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("occupation")}>
             <Feather name={hiddenFields.has("occupation") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("occupation") ? colors.accentRed : colors.primary} />
             <Text style={[styles.privacyBtnText, hiddenFields.has("occupation") && { color: colors.accentRed }]}>
-              {hiddenFields.has("occupation") ? (language === "en" ? "Hidden" : "Profilde Gizli") : (language === "en" ? "Visible" : "Görünür")}
+              {hiddenFields.has("occupation") ? (t("hidden")) : (t("visible"))}
             </Text>
           </Pressable>
         </View>
@@ -776,7 +766,7 @@ export function EditProfileScreen() {
           <Text style={styles.fieldLabel}>{t("occupation")}</Text>
           <TextInput
             style={styles.input}
-            placeholder={language === "en" ? "e.g. Software Engineer" : "Örn. Yazılım Mühendisi"}
+            placeholder={t("egSoftwareEngineer")}
             placeholderTextColor={colors.textSecondary}
             value={occupation}
             onChangeText={(text) => setOccupation(text.slice(0, MAX_OCCUPATION_LENGTH))}
@@ -789,7 +779,7 @@ export function EditProfileScreen() {
             <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("university")}>
               <Feather name={hiddenFields.has("university") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("university") ? colors.accentRed : colors.primary} />
               <Text style={[styles.privacyBtnText, hiddenFields.has("university") && { color: colors.accentRed }]}>
-                {hiddenFields.has("university") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Görünür" : "Görünür")}
+                {hiddenFields.has("university") ? (t("hidden")) : (t("grnr"))}
               </Text>
             </Pressable>
           </View>
@@ -801,11 +791,11 @@ export function EditProfileScreen() {
         </View>
         <View style={styles.field}>
           <View style={styles.fieldHeaderWithPrivacy}>
-            <Text style={styles.fieldLabel}>{language === "en" ? "Class / Graduation" : "Sınıf / Mezuniyet"}</Text>
+            <Text style={styles.fieldLabel}>{t("classGraduation")}</Text>
             <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("class_year")}>
               <Feather name={hiddenFields.has("class_year") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("class_year") ? colors.accentRed : colors.primary} />
               <Text style={[styles.privacyBtnText, hiddenFields.has("class_year") && { color: colors.accentRed }]}>
-                {hiddenFields.has("class_year") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Visible" : "Görünür")}
+                {hiddenFields.has("class_year") ? (t("hidden")) : (t("visible"))}
               </Text>
             </Pressable>
           </View>
@@ -813,7 +803,7 @@ export function EditProfileScreen() {
             <Text style={[styles.inputText, !classYear && { color: colors.textSecondary }]}>
               {classYear
                 ? (language === "en" ? CLASS_YEAR_OPTIONS.find((item) => item.key === classYear)?.en : CLASS_YEAR_OPTIONS.find((item) => item.key === classYear)?.tr) ?? classYear
-                : (language === "en" ? "Select..." : "Seç...")}
+                : (t("select"))}
             </Text>
             <Feather name="book-open" size={16} color={colors.textSecondary} />
           </Pressable>
@@ -828,7 +818,7 @@ export function EditProfileScreen() {
             <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("zodiac_sign")}>
               <Feather name={hiddenFields.has("zodiac_sign") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("zodiac_sign") ? colors.accentRed : colors.primary} />
               <Text style={[styles.privacyBtnText, hiddenFields.has("zodiac_sign") && { color: colors.accentRed }]}>
-                {hiddenFields.has("zodiac_sign") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Visible" : "Görünür")}
+                {hiddenFields.has("zodiac_sign") ? (t("hidden")) : (t("visible"))}
               </Text>
             </Pressable>
           </View>
@@ -838,24 +828,24 @@ export function EditProfileScreen() {
                 ? (ZODIAC_SIGNS.find((item) => item.key === zodiacSign)
                     ? (language === "en" ? ZODIAC_SIGNS.find((item) => item.key === zodiacSign)?.en : ZODIAC_SIGNS.find((item) => item.key === zodiacSign)?.tr)
                     : zodiacSign)
-                : (language === "en" ? "Select zodiac sign..." : "Burcunu seç...")}
+                : (t("selectZodiacSign2"))}
             </Text>
             <Feather name="compass" size={16} color={colors.textSecondary} />
           </Pressable>
         </View>
         <View style={styles.field}>
           <View style={styles.fieldHeaderWithPrivacy}>
-            <Text style={styles.fieldLabel}>{language === "en" ? "Height (cm)" : "Boy (cm)"}</Text>
+            <Text style={styles.fieldLabel}>{t("heightCm")}</Text>
             <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("height")}>
               <Feather name={hiddenFields.has("height") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("height") ? colors.accentRed : colors.primary} />
               <Text style={[styles.privacyBtnText, hiddenFields.has("height") && { color: colors.accentRed }]}>
-                {hiddenFields.has("height") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Visible" : "Görünür")}
+                {hiddenFields.has("height") ? (t("hidden")) : (t("visible"))}
               </Text>
             </Pressable>
           </View>
           <TextInput
             style={styles.input}
-            placeholder={language === "en" ? "e.g. 178" : "Örn. 178"}
+            placeholder={t("eg178")}
             placeholderTextColor={colors.textSecondary}
             value={height}
             onChangeText={(text) => setHeight(text.replace(/[^0-9]/g, "").slice(0, 3))}
@@ -865,17 +855,17 @@ export function EditProfileScreen() {
         </View>
         <View style={styles.field}>
           <View style={styles.fieldHeaderWithPrivacy}>
-            <Text style={styles.fieldLabel}>{language === "en" ? "Political Views" : "Siyasi Görüş"}</Text>
+            <Text style={styles.fieldLabel}>{t("politicalViews")}</Text>
             <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("political_views")}>
               <Feather name={hiddenFields.has("political_views") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("political_views") ? colors.accentRed : colors.primary} />
               <Text style={[styles.privacyBtnText, hiddenFields.has("political_views") && { color: colors.accentRed }]}>
-                {hiddenFields.has("political_views") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Visible" : "Görünür")}
+                {hiddenFields.has("political_views") ? (t("hidden")) : (t("visible"))}
               </Text>
             </Pressable>
           </View>
           <TextInput
             style={styles.input}
-            placeholder={language === "en" ? "Type or select political view..." : "Siyasi görüşünü yaz veya aşağıdan seç..."}
+            placeholder={t("typeOrSelectPoliticalView")}
             placeholderTextColor={colors.textSecondary}
             value={politicalViews ?? ""}
             onChangeText={setPoliticalViews}
@@ -899,17 +889,17 @@ export function EditProfileScreen() {
 
         <View style={styles.field}>
           <View style={styles.fieldHeaderWithPrivacy}>
-            <Text style={styles.fieldLabel}>{language === "en" ? "Beliefs & Philosophy" : "İnanç & Dünya Görüşü"}</Text>
+            <Text style={styles.fieldLabel}>{t("beliefsPhilosophy")}</Text>
             <Pressable style={styles.privacyBtn} onPress={() => toggleFieldPrivacy("beliefs")}>
               <Feather name={hiddenFields.has("beliefs") ? "eye-off" : "eye"} size={12} color={hiddenFields.has("beliefs") ? colors.accentRed : colors.primary} />
               <Text style={[styles.privacyBtnText, hiddenFields.has("beliefs") && { color: colors.accentRed }]}>
-                {hiddenFields.has("beliefs") ? (language === "en" ? "Hidden" : "Gizli") : (language === "en" ? "Visible" : "Görünür")}
+                {hiddenFields.has("beliefs") ? (t("hidden")) : (t("visible"))}
               </Text>
             </Pressable>
           </View>
           <TextInput
             style={styles.input}
-            placeholder={language === "en" ? "Type or select belief..." : "İnanç/felsefeni yaz veya aşağıdan seç..."}
+            placeholder={t("typeOrSelectBelief")}
             placeholderTextColor={colors.textSecondary}
             value={beliefs ?? ""}
             onChangeText={setBeliefs}
@@ -935,7 +925,7 @@ export function EditProfileScreen() {
           <Text style={styles.fieldLabel}>{t("lookingForIntention")}</Text>
           <TextInput
             style={styles.input}
-            placeholder={language === "en" ? "Type or select what you're looking for..." : "Ne aradığını yaz veya aşağıdan seç..."}
+            placeholder={t("typeOrSelectWhatYoure")}
             placeholderTextColor={colors.textSecondary}
             value={lookingFor ?? ""}
             onChangeText={setLookingFor}
@@ -960,7 +950,7 @@ export function EditProfileScreen() {
 
       {/* Languages Spoken Card */}
       <View style={[styles.groupCard, styles.cardAccentTeal]}>
-        <IconSectionHeader icon="globe" color="#2FA88B" label={language === "en" ? "Languages Spoken" : "Bildiği Diller"} />
+        <IconSectionHeader icon="globe" color="#2FA88B" label={t("languagesSpoken")} />
         <View style={styles.chipGrid}>
           {LANGUAGES_LIST.map((lang) => {
             const active = selectedLanguages.has(lang.code);
@@ -981,7 +971,7 @@ export function EditProfileScreen() {
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>{t("funDetailPrompt")}</Text>
           <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
-            {language === "en" ? "Tap a suggestion to start:" : "Örnek bir başlığa tıklayarak başla:"}
+            {t("tapASuggestionToStart")}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
             <View style={{ flexDirection: "row", gap: spacing.xs }}>
@@ -1010,7 +1000,7 @@ export function EditProfileScreen() {
           </ScrollView>
           <TextInput
             style={[styles.input, styles.bioInput]}
-            placeholder={language === "en" ? "e.g. My perfect Sunday is morning coffee and nature walks..." : "Örn: Mükemmel bir Pazar günüm sabah kahvesi ve doğa yürüyüşü..."}
+            placeholder={t("egMyPerfectSundayIs2")}
             placeholderTextColor={colors.textSecondary}
             value={aboutMePrompt}
             onChangeText={setAboutMePrompt}
@@ -1025,7 +1015,7 @@ export function EditProfileScreen() {
             </Text>
           </View>
           <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4 }}>
-            {language === "en" ? "Tap a suggestion to fill bio:" : "Biyografi örneğine tıklayarak doldur:"}
+            {t("tapASuggestionToFill")}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
             <View style={{ flexDirection: "row", gap: spacing.xs }}>
@@ -1054,7 +1044,7 @@ export function EditProfileScreen() {
           </ScrollView>
           <TextInput
             style={[styles.input, styles.bioInput]}
-            placeholder={language === "en" ? "Tell us briefly about yourself..." : "Kendinden kısaca bahset..."}
+            placeholder={t("tellUsBrieflyAboutYourself")}
             placeholderTextColor={colors.textSecondary}
             value={bio}
             onChangeText={(text) => setBio(text.slice(0, MAX_BIO_LENGTH))}
@@ -1079,7 +1069,7 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentGreen]}>
-        <IconSectionHeader icon="heart" color={colors.accentGreen} label={language === "en" ? "Activities I Want to Do" : "Yapmak İstediğim Aktiviteler"} />
+        <IconSectionHeader icon="heart" color={colors.accentGreen} label={t("activitiesIWantToDo")} />
         <View style={styles.chipGrid}>
           {INTERESTS.map((interest) => (
             <Chip
@@ -1093,33 +1083,33 @@ export function EditProfileScreen() {
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentPink]}>
-        <IconSectionHeader icon="mic" color="#D9427F" label={language === "en" ? "Voice Intro" : "Ses Tanıtımı"} />
+        <IconSectionHeader icon="mic" color="#D9427F" label={t("voiceIntro")} />
         {voiceNoteUrl ? (
           <VoiceNotePlayer audioUrl={resolvePhotoUrl(voiceNoteUrl)} onDelete={handleDeleteVoiceNote} />
         ) : (
           <Pressable style={styles.voiceNotePlaceholder} onPress={() => setShowRecorderModal(true)}>
             <Feather name="mic" size={20} color={colors.primary} />
-            <Text style={styles.voiceNotePlaceholderText}>{language === "en" ? "Record Voice Intro (Max 10s)" : "Ses Tanıtımı Kaydet (Max 10sn)"}</Text>
+            <Text style={styles.voiceNotePlaceholderText}>{t("recordVoiceIntroMax10s")}</Text>
           </Pressable>
         )}
       </View>
 
       <View style={[styles.groupCard, styles.cardAccentBlue]}>
-        <IconSectionHeader icon="map-pin" color="#2E7FC9" label={language === "en" ? "Location & GPS" : "Konum & GPS"} />
+        <IconSectionHeader icon="map-pin" color="#2E7FC9" label={t("locationGps")} />
         <View style={styles.voiceNoteCard}>
           <Feather name="navigation" size={18} color={accentColor} />
           <Text style={{ flex: 1, fontFamily: fontFamily.body, fontSize: 13, color: colors.textPrimary }}>
-            {currentLocationLabel || (location ? (language === "en" ? "GPS Location Active & Saved" : "GPS Konum Aktif & Kaydedildi") : (language === "en" ? "GPS Location Not Set" : "Anlık GPS Konumu Henüz Alınmadı"))}
+            {currentLocationLabel || (location ? (t("gpsLocationActiveSaved")) : (t("gpsLocationNotSet")))}
           </Text>
         </View>
         <PrimaryButton
-          label={isLocatingCurrent ? (language === "en" ? "Updating GPS..." : "GPS Konum Alınıyor...") : (language === "en" ? "Update Current Location (GPS)" : "Anlık Konumumu Otomatik Güncelle (GPS)")}
+          label={isLocatingCurrent ? (t("updatingGps")) : (t("updateCurrentLocationGps"))}
           onPress={handleAutoUpdateCurrentLocation}
           variant="accent"
         />
       </View>
       <View style={[styles.groupCard, styles.cardAccentBlue]}>
-        <IconSectionHeader icon="shield" color="#1DA1F2" label={language === "en" ? "Account Verification" : "Hesap Doğrulama"} />
+        <IconSectionHeader icon="shield" color="#1DA1F2" label={t("accountVerification")} />
         <Pressable
           style={styles.settingsMenuRow}
           onPress={user.is_verified ? undefined : () => setPhotoVerificationVisible(true)}
@@ -1132,17 +1122,17 @@ export function EditProfileScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.settingsMenuTitle}>
                 {user.is_verified
-                  ? (language === "en" ? "Verified Profile" : "Mavi Tik Onaylı Profil")
-                  : (language === "en" ? "Verify Profile" : "Profilini Doğrula")}
+                  ? (t("verifiedProfile"))
+                  : (t("verifyProfile"))}
               </Text>
               <Text style={styles.settingsMenuSub}>
                 {user.is_verified
-                  ? (language === "en" ? "Your account is verified with Blue Checkmark" : "Hesabınız Mavi Tik ile onaylanmıştır")
+                  ? (t("yourAccountIsVerifiedWith"))
                   : user.verification_status === "rejected"
-                  ? (language === "en" ? "Verification rejected. Tap to retake live selfie" : "Doğrulama reddedildi. Yeniden canlı selfie çekmek için tıkla")
+                  ? (t("verificationRejectedTapToRetake"))
                   : user.verification_status === "pending"
-                  ? (language === "en" ? "Verification pending. Tap to retake live selfie" : "Doğrulama bekleniyor. Yeniden canlı selfie çekmek için tıkla")
-                  : (language === "en" ? "Take a live selfie to get a blue checkmark" : "Anlık ön kamera selfie'si çekerek mavi tik al")}
+                  ? (t("verificationPendingTapToRetake"))
+                  : (t("takeALiveSelfieTo2"))}
               </Text>
             </View>
           </View>
@@ -1151,15 +1141,15 @@ export function EditProfileScreen() {
             <ActivityIndicator size="small" color="#1DA1F2" />
           ) : user.is_verified ? (
             <View style={styles.verifiedPill}>
-              <Text style={styles.verifiedPillText}>{language === "en" ? "Verified" : "Onaylı"}</Text>
+              <Text style={styles.verifiedPillText}>{t("verified")}</Text>
             </View>
           ) : user.verification_status === "rejected" ? (
             <View style={[styles.verifiedPill, { backgroundColor: "rgba(235, 87, 87, 0.15)" }]}>
-              <Text style={[styles.verifiedPillText, { color: colors.accentRed }]}>{language === "en" ? "Rejected" : "Reddedildi"}</Text>
+              <Text style={[styles.verifiedPillText, { color: colors.accentRed }]}>{t("rejected")}</Text>
             </View>
           ) : user.verification_status === "pending" ? (
             <View style={[styles.verifiedPill, { backgroundColor: "rgba(241, 196, 15, 0.15)" }]}>
-              <Text style={[styles.verifiedPillText, { color: "#D4AC0D" }]}>{language === "en" ? "Pending" : "Bekliyor"}</Text>
+              <Text style={[styles.verifiedPillText, { color: "#D4AC0D" }]}>{t("pending")}</Text>
             </View>
           ) : (
             <Feather name="chevron-right" size={18} color={colors.textSecondary} />
@@ -1252,7 +1242,7 @@ export function EditProfileScreen() {
 
       <OptionPickerModal
         visible={classYearPickerVisible}
-        title={language === "en" ? "Select Class / Graduation" : "Sınıf / Mezuniyet Seç"}
+        title={t("selectClassGraduation")}
         options={classYearOptions}
         selectedKey={classYear}
         onDismiss={() => setClassYearPickerVisible(false)}
@@ -1274,14 +1264,14 @@ export function EditProfileScreen() {
 
       <OptionPickerModal
         visible={politicalPickerVisible}
-        title={language === "en" ? "Select Political Views" : "Siyasi Görüşünü Seç"}
+        title={t("selectPoliticalViews")}
         options={politicalOptions}
         onDismiss={() => setPoliticalPickerVisible(false)}
       />
 
       <OptionPickerModal
         visible={beliefsPickerVisible}
-        title={language === "en" ? "Select Beliefs / Philosophy" : "İnanç veya Dünya Görüşünü Seç"}
+        title={t("selectBeliefsPhilosophy")}
         options={beliefOptions}
         onDismiss={() => setBeliefsPickerVisible(false)}
       />

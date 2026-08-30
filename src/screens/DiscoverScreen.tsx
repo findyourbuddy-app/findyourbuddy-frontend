@@ -193,10 +193,8 @@ export function DiscoverScreen() {
   function handleLocationSelected(result: GeocodingResult): void {
     if (!isPremium) {
       Alert.alert(
-        language === "en" ? "Premium Feature" : "Premium Özellik",
-        language === "en"
-          ? "Teleporting to custom cities and picking manual locations is exclusive to Premium members!"
-          : "Farklı şehirlerdeki etkinlikleri keşfetmek ve özel sanal konum seçmek Premium üyelere özeldir!",
+        t("premiumFeature"),
+        t("teleportingToCustomCitiesAnd"),
         [
           { text: t("cancel"), style: "cancel" },
           {
@@ -279,13 +277,13 @@ export function DiscoverScreen() {
   const sortOptions = [
     {
       key: "date",
-      label: language === "en" ? "Date and Time" : "Tarih ve Saat",
+      label: t("dateAndTime"),
       icon: "clock" as const,
       onPress: () => setSortBy(sortBy === "date" ? undefined : "date")
     },
     {
       key: "distance",
-      label: language === "en" ? "Closest (By Distance)" : "En Yakın (Konuma Göre)",
+      label: t("closestByDistance"),
       icon: "navigation" as const,
       onPress: () => {
         if (sortBy === "distance") {
@@ -297,7 +295,7 @@ export function DiscoverScreen() {
     },
     {
       key: "popularity",
-      label: language === "en" ? "Popularity (By Attendees)" : "Popülerlik (Katılımcı Sayısı)",
+      label: t("popularityByAttendees"),
       icon: "trending-up" as const,
       onPress: () => setSortBy(sortBy === "popularity" ? undefined : "popularity"),
     },
@@ -362,8 +360,8 @@ export function DiscoverScreen() {
     } catch {
       if (requestId !== loadEventsRequestIdRef.current) return;
       Alert.alert(
-        language === "en" ? "Error" : "Bir sorun oluştu",
-        language === "en" ? "Events could not be loaded. Please try again." : "Etkinlikler yüklenemedi. Lütfen tekrar dene."
+        t("error"),
+        t("eventsCouldNotBeLoaded")
       );
     } finally {
       if (requestId === loadEventsRequestIdRef.current) setIsRefreshing(false);
@@ -483,8 +481,8 @@ export function DiscoverScreen() {
         return next;
       });
       Alert.alert(
-        language === "en" ? "Error" : "Bir sorun oluştu",
-        language === "en" ? "Bookmark action failed. Please try again." : "Kaydetme işlemi tamamlanamadı. Lütfen tekrar dene."
+        t("error"),
+        t("bookmarkActionFailedPleaseTry")
       );
     }
   }
@@ -514,10 +512,8 @@ export function DiscoverScreen() {
       setEvents((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       if (updated.is_pending) {
         Alert.alert(
-          language === "en" ? "Request Sent" : "İstek Gönderildi",
-          language === "en"
-            ? "Your request was sent to the organizer. You'll be notified once it's approved."
-            : "İsteğin organizatöre gönderildi. Onaylanınca bilgilendirileceksin."
+          t("requestSent"),
+          t("yourRequestWasSentTo")
         );
       }
     } catch {
@@ -720,7 +716,7 @@ export function DiscoverScreen() {
                   onPress={() => handleSelectOrigin("user")}
                 />
                 <Chip
-                  label={language === "en" ? "My Hosted Events" : "Başlattıklarım"}
+                  label={t("myHostedEvents")}
                   active={originFilter === "my_created"}
                   onPress={() => handleSelectOrigin("my_created")}
                 />
@@ -809,9 +805,7 @@ export function DiscoverScreen() {
                   {!isLoadingMapEvents && filteredMapEvents.length === 0 && (
                     <View style={styles.mapEmptyState}>
                       <Text style={styles.mapEmptyStateText}>
-                        {language === "en"
-                          ? "You haven't joined any events yet."
-                          : "Henüz katıldığınız bir etkinlik yok."}
+                        {t("youHaventJoinedAnyEvents")}
                       </Text>
                     </View>
                   )}
@@ -842,11 +836,11 @@ export function DiscoverScreen() {
                           {selectedMapEvent.location_name} {getEventDistanceLabel(selectedMapEvent) ? `· ${getEventDistanceLabel(selectedMapEvent)}` : ""}
                         </Text>
                         <Text style={styles.calloutSubText}>
-                          {formatEventDate(selectedMapEvent.starts_at, language)} · {selectedMapEvent.attendee_count} {language === "en" ? "Attendees" : "Katılımcı"}
+                          {formatEventDate(selectedMapEvent.starts_at, language)} · {selectedMapEvent.attendee_count} {t("attendees")}
                         </Text>
                         <View style={[styles.calloutDetailBtnRow, { backgroundColor: accentColor }]}>
                           <Text style={styles.calloutDetailBtnText}>
-                            {language === "en" ? "View Event Details ➔" : "Etkinlik Detayına Git ➔"}
+                            {t("viewEventDetails")}
                           </Text>
                         </View>
                       </View>
@@ -912,7 +906,7 @@ export function DiscoverScreen() {
     />
     <OptionPickerModal
       visible={sortPickerVisible}
-      title={language === "en" ? "Sort By" : "Nasıl sıralansın?"}
+      title={t("sortBy")}
       options={sortOptions}
       onDismiss={() => setSortPickerVisible(false)}
       selectedKey={sortBy || undefined}

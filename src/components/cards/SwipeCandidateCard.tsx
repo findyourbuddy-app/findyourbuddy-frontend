@@ -56,7 +56,7 @@ export function SwipeCandidateCard({
   canLike,
   canSuperLike,
 }: SwipeCandidateCardProps) {
-  const { language } = useAppTheme();
+  const { language, t } = useAppTheme();
   const photoUrls = candidatePhotoUrls(candidate);
   const [activeIndex, setActiveIndex] = useState(0);
   const [cardWidth, setCardWidth] = useState(0);
@@ -333,13 +333,13 @@ export function SwipeCandidateCard({
 
       {/* Rendered last so the swipe feedback always sits above the photo + overlay. */}
       <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]} pointerEvents="none">
-        <Text style={styles.stampText}>{language === "en" ? "LIKE" : "BEĞEN"}</Text>
+        <Text style={styles.stampText}>{t("like")}</Text>
       </Animated.View>
       <Animated.View style={[styles.stamp, styles.stampPass, { opacity: passOpacity }]} pointerEvents="none">
-        <Text style={styles.stampText}>{language === "en" ? "PASS" : "GEÇ"}</Text>
+        <Text style={styles.stampText}>{t("pass")}</Text>
       </Animated.View>
       <Animated.View style={[styles.stamp, styles.stampSuper, { opacity: superOpacity }]} pointerEvents="none">
-        <Text style={styles.stampText}>{language === "en" ? "SUPER" : "SÜPER"}</Text>
+        <Text style={styles.stampText}>{t("super")}</Text>
       </Animated.View>
     </Animated.View>
   );

@@ -93,15 +93,13 @@ export function ProfileScreen() {
         resolveCityDistrict(result.latitude, result.longitude).then(setLocationName);
       }
       Alert.alert(
-        language === "en" ? "Location Updated" : "Konum Güncellendi",
-        language === "en"
-          ? "Your location has been updated successfully!"
-          : "Anlık / sanal konumunuz başarıyla kaydedildi!"
+        t("locationUpdated"),
+        t("yourLocationHasBeenUpdated")
       );
     } catch {
       Alert.alert(
-        language === "en" ? "Error" : "Hata",
-        language === "en" ? "Failed to update location." : "Konum güncellenemedi."
+        t("error"),
+        t("failedToUpdateLocation")
       );
     } finally {
       setLocationPickerVisible(false);
@@ -114,10 +112,8 @@ export function ProfileScreen() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
       Alert.alert(
-        language === "en" ? "Permission Required" : "İzin Gerekli",
-        language === "en"
-          ? "Please grant gallery permission to update your profile photo."
-          : "Profil fotoğrafını değiştirmek için galeri izni vermen gerekiyor."
+        t("permissionRequired"),
+        t("pleaseGrantGalleryPermissionTo")
       );
       return;
     }
@@ -145,16 +141,16 @@ export function ProfileScreen() {
         updateUser(updatedUser);
       }
       Alert.alert(
-        language === "en" ? "Success" : "Başarılı",
-        language === "en" ? "Profile photo updated successfully!" : "Profil fotoğrafın başarıyla güncellendi!"
+        t("success"),
+        t("profilePhotoUpdatedSuccessfully")
       );
     } catch (err: any) {
       if (originalUser) {
         updateUser(originalUser);
       }
-      const msg = err?.message || (language === "en" ? "Failed to update profile photo. Please try again." : "Profil fotoğrafı güncellenemedi. Lütfen tekrar dene.");
+      const msg = err?.message || (t("failedToUpdateProfilePhoto"));
       Alert.alert(
-        language === "en" ? "Upload Failed" : "Yükleme Başarısız",
+        t("uploadFailed"),
         msg
       );
     } finally {
@@ -224,36 +220,32 @@ export function ProfileScreen() {
       const remainingSecs = Math.max(0, Math.floor((new Date(user.boosted_until!).getTime() - Date.now()) / 1000));
       const mins = Math.floor(remainingSecs / 60);
       Alert.alert(
-        language === "en" ? "Spotlight Active!" : "Spotlight Aktif!",
-        language === "en"
-          ? `Your profile is currently featured at top. Remaining time: ${mins} mins.`
-          : `Profilin şu an öne çıkarılmış durumda. Kalan süre: ${mins} dakika.`
+        t("spotlightActive"),
+        t("yourProfileIsCurrentlyFeatured", { p0: mins })
       );
       return;
     }
 
     if (user.boosts_balance && user.boosts_balance > 0) {
       Alert.alert(
-        language === "en" ? "Activate Spotlight?" : "Spotlight Başlatılsın mı?",
-        language === "en"
-          ? `Use 1 Spotlight credit to feature your profile at top for 60 minutes. (Credits left: ${user.boosts_balance})`
-          : `Mevcut Spotlight hakkından 1 adet kullanarak profilini 60 dakikalığına öne çıkar. (Kalan hak: ${user.boosts_balance} adet)`,
+        t("activateSpotlight"),
+        t("use1SpotlightCreditTo", { p0: user.boosts_balance }),
         [
           { text: t("cancel"), style: "cancel" },
           {
-            text: language === "en" ? "Activate" : "Başlat",
+            text: t("activate"),
             onPress: async () => {
               try {
                 const updatedUser = await activateBoost();
                 updateUser(updatedUser);
                 Alert.alert(
-                  language === "en" ? "Spotlight Activated!" : "Spotlight Başlatıldı!",
-                  language === "en" ? "Your profile has been moved to top list!" : "Profilin en üst sıraya taşındı!"
+                  t("spotlightActivated"),
+                  t("yourProfileHasBeenMoved")
                 );
               } catch {
                 Alert.alert(
-                  language === "en" ? "Error" : "Hata",
-                  language === "en" ? "Could not activate Spotlight. Please try again." : "Spotlight başlatılamadı. Lütfen tekrar dene."
+                  t("error"),
+                  t("couldNotActivateSpotlightPlease")
                 );
               }
             }
@@ -312,9 +304,9 @@ export function ProfileScreen() {
         ) : null}
         <Text style={styles.heroEmail}>{user.email}</Text>
         <View style={styles.heroBadgeRow}>
-          {isPremium ? <Badge label={language === "en" ? "Premium Member" : "Premium Üye"} variant="yellow" icon="⭐" /> : null}
+          {isPremium ? <Badge label={t("premiumMember")} variant="yellow" icon="⭐" /> : null}
           {user.is_verified || user.verification_status === "verified" ? (
-            <Badge label={language === "en" ? "Verified Profile" : "Mavi Tik Onaylı"} variant="blue" icon="✓" />
+            <Badge label={t("verifiedProfile")} variant="blue" icon="✓" />
           ) : null}
         </View>
 
@@ -341,13 +333,13 @@ export function ProfileScreen() {
       {hasValidCoordinates(user.latitude, user.longitude) ? (
         <Pressable style={[styles.card, styles.cardAccentBlue]} onPress={() => setLocationPickerVisible(true)}>
           <IconSectionHeader icon="map-pin" color="#2E7FC9" label={t("location")} />
-          <Text style={styles.bio}>{locationName || (language === "en" ? "Location Saved" : "Konum Kaydedildi")}</Text>
+          <Text style={styles.bio}>{locationName || (t("locationSaved"))}</Text>
         </Pressable>
       ) : null}
 
       {user.about_me_prompt ? (
         <Pressable style={[styles.card, styles.cardAccentPurple]} onPress={() => handleOpenQuickEdit("prompt")}>
-          <IconSectionHeader icon="help-circle" color="#9B51E0" label={language === "en" ? "About Me Prompt" : "Soru & Cevap"} />
+          <IconSectionHeader icon="help-circle" color="#9B51E0" label={t("aboutMePrompt")} />
           <Text style={styles.bio}>"{user.about_me_prompt}"</Text>
         </Pressable>
       ) : null}
@@ -359,7 +351,7 @@ export function ProfileScreen() {
             {user.hidden_fields?.includes("occupation") ? (
               <View style={styles.hiddenBadge}>
                 <Feather name="eye-off" size={11} color={colors.textSecondary} />
-                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+                <Text style={styles.hiddenBadgeText}>{t("hidden")}</Text>
               </View>
             ) : null}
           </View>
@@ -372,11 +364,11 @@ export function ProfileScreen() {
       {user.looking_for ? (
         <Pressable style={[styles.card, styles.cardAccentYellow]} onPress={() => handleOpenQuickEdit("looking_for")}>
           <View style={styles.cardHeaderWithHidden}>
-            <IconSectionHeader icon="target" color="#E0A800" label={language === "en" ? "Relationship Goal" : "Aradığı Arkadaşlık İlişkisi"} />
+            <IconSectionHeader icon="target" color="#E0A800" label={t("relationshipGoal")} />
             {user.hidden_fields?.includes("looking_for") ? (
               <View style={styles.hiddenBadge}>
                 <Feather name="eye-off" size={11} color={colors.textSecondary} />
-                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+                <Text style={styles.hiddenBadgeText}>{t("hidden")}</Text>
               </View>
             ) : null}
           </View>
@@ -387,11 +379,11 @@ export function ProfileScreen() {
       {user.height ? (
         <Pressable style={[styles.card, styles.cardAccentBlue]} onPress={() => handleOpenQuickEdit("height")}>
           <View style={styles.cardHeaderWithHidden}>
-            <IconSectionHeader icon="user" color="#2E7FC9" label={language === "en" ? "Height" : "Boy"} />
+            <IconSectionHeader icon="user" color="#2E7FC9" label={t("height")} />
             {user.hidden_fields?.includes("height") ? (
               <View style={styles.hiddenBadge}>
                 <Feather name="eye-off" size={11} color={colors.textSecondary} />
-                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+                <Text style={styles.hiddenBadgeText}>{t("hidden")}</Text>
               </View>
             ) : null}
           </View>
@@ -402,11 +394,11 @@ export function ProfileScreen() {
       {user.zodiac_sign ? (
         <Pressable style={[styles.card, styles.cardAccentPurple]} onPress={() => handleOpenQuickEdit("zodiac")}>
           <View style={styles.cardHeaderWithHidden}>
-            <IconSectionHeader icon="moon" color="#9B51E0" label={language === "en" ? "Zodiac Sign" : "Burç"} />
+            <IconSectionHeader icon="moon" color="#9B51E0" label={t("zodiacSign")} />
             {user.hidden_fields?.includes("zodiac_sign") ? (
               <View style={styles.hiddenBadge}>
                 <Feather name="eye-off" size={11} color={colors.textSecondary} />
-                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+                <Text style={styles.hiddenBadgeText}>{t("hidden")}</Text>
               </View>
             ) : null}
           </View>
@@ -417,11 +409,11 @@ export function ProfileScreen() {
       {user.languages_spoken && user.languages_spoken.length > 0 ? (
         <Pressable style={[styles.card, styles.cardAccentBlue]} onPress={() => handleOpenQuickEdit("languages")}>
           <View style={styles.cardHeaderWithHidden}>
-            <IconSectionHeader icon="globe" color="#2FA88B" label={language === "en" ? "Languages Spoken" : "Bildiği Diller"} />
+            <IconSectionHeader icon="globe" color="#2FA88B" label={t("languagesSpoken")} />
             {user.hidden_fields?.includes("languages_spoken") ? (
               <View style={styles.hiddenBadge}>
                 <Feather name="eye-off" size={11} color={colors.textSecondary} />
-                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+                <Text style={styles.hiddenBadgeText}>{t("hidden")}</Text>
               </View>
             ) : null}
           </View>
@@ -441,11 +433,11 @@ export function ProfileScreen() {
       {user.political_views || user.beliefs ? (
         <Pressable style={[styles.card, styles.cardAccentPurple]} onPress={() => handleOpenQuickEdit("worldview")}>
           <View style={styles.cardHeaderWithHidden}>
-            <IconSectionHeader icon="compass" color="#9B51E0" label={language === "en" ? "Worldview & Beliefs" : "Dünya Görüşü & İnanç"} />
+            <IconSectionHeader icon="compass" color="#9B51E0" label={t("worldviewBeliefs")} />
             {user.hidden_fields?.includes("political_views") || user.hidden_fields?.includes("beliefs") ? (
               <View style={styles.hiddenBadge}>
                 <Feather name="eye-off" size={11} color={colors.textSecondary} />
-                <Text style={styles.hiddenBadgeText}>{language === "en" ? "Hidden" : "Gizli"}</Text>
+                <Text style={styles.hiddenBadgeText}>{t("hidden")}</Text>
               </View>
             ) : null}
           </View>
@@ -520,7 +512,7 @@ export function ProfileScreen() {
 
       {attendingEvents.length > 0 ? (
         <View style={[styles.card, styles.cardAccentGreen]}>
-          <IconSectionHeader icon="calendar" color={colors.accentGreen} label={language === "en" ? `Attending Events (${attendingEvents.length})` : `Katılacağı Etkinlikler (${attendingEvents.length})`} />
+          <IconSectionHeader icon="calendar" color={colors.accentGreen} label={t("attendingEventsP0", { p0: attendingEvents.length })} />
           {(isAttendingExpanded ? attendingEvents : attendingEvents.slice(0, 2)).map((event) => (
             <Pressable
               key={event.id}
@@ -548,8 +540,8 @@ export function ProfileScreen() {
             >
               <Text style={styles.expandPillText}>
                 {isAttendingExpanded
-                  ? (language === "en" ? "Show Less" : "Daha Az Göster")
-                  : (language === "en" ? `Show All (${attendingEvents.length})` : `Tümünü Gör (${attendingEvents.length})`)}
+                  ? (t("showLess"))
+                  : (t("showAllP0", { p0: attendingEvents.length }))}
               </Text>
               <Feather
                 name={isAttendingExpanded ? "chevron-up" : "chevron-down"}
@@ -591,8 +583,8 @@ export function ProfileScreen() {
             >
               <Text style={styles.expandPillText}>
                 {isPastExpanded
-                  ? (language === "en" ? "Show Less" : "Daha Az Göster")
-                  : (language === "en" ? `Show All (${pastEvents.length})` : `Tümünü Gör (${pastEvents.length})`)}
+                  ? (t("showLess"))
+                  : (t("showAllP0", { p0: pastEvents.length }))}
               </Text>
               <Feather
                 name={isPastExpanded ? "chevron-up" : "chevron-down"}
@@ -645,12 +637,12 @@ export function ProfileScreen() {
               <Text style={styles.actionLabel}>Double Buddy</Text>
               <Text style={styles.actionSublabel}>
                 {doubleBuddy?.status === "accepted"
-                  ? (language === "en" ? `Paired with ${doubleBuddy.partner_name}` : `${doubleBuddy.partner_name} ile eşli`)
+                  ? (t("pairedWithP0", { p0: doubleBuddy.partner_name }))
                   : doubleBuddy?.status === "pending" && doubleBuddy.is_incoming
-                  ? (language === "en" ? `${doubleBuddy.partner_name} invited you` : `${doubleBuddy.partner_name} seni davet etti`)
+                  ? (t("p0InvitedYou", { p0: doubleBuddy.partner_name }))
                   : doubleBuddy?.status === "pending"
-                  ? (language === "en" ? "Invite sent" : "Davet gönderildi")
-                  : (language === "en" ? "Pair up with a matched buddy" : "Eşleştiğin bir kankayla ikili ol")}
+                  ? (t("inviteSent2"))
+                  : (t("pairUpWithAMatched"))}
               </Text>
             </View>
           </View>

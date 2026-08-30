@@ -25,7 +25,7 @@ type LoginNavigationProp = NativeStackNavigationProp<AuthStackParamList, "Login"
 export function LoginScreen() {
   const navigation = useNavigation<LoginNavigationProp>();
   const { signIn } = useAuth();
-  const { language, setLanguage } = useAppTheme();
+  const { language, setLanguage, t } = useAppTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,15 +40,15 @@ export function LoginScreen() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!cleanEmail) {
-      setError(language === "en" ? "Please enter your email address." : "Lütfen e-posta adresinizi girin.");
+      setError(t("pleaseEnterYourEmailAddress"));
       return;
     }
     if (!emailRegex.test(cleanEmail)) {
-      setError(language === "en" ? "Please enter a valid email address." : "Lütfen geçerli bir e-posta adresi girin.");
+      setError(t("pleaseEnterAValidEmail"));
       return;
     }
     if (password.length < 6) {
-      setError(language === "en" ? "Password must be at least 6 characters." : "Şifreniz en az 6 karakter olmalıdır.");
+      setError(t("passwordMustBeAtLeast"));
       return;
     }
 
@@ -111,12 +111,10 @@ export function LoginScreen() {
           <View style={styles.headerBox}>
             <BuddyLogo size={85} showText={true} />
             <Text style={styles.headerTitle}>
-              {language === "en" ? "Welcome Back!" : "Tekrar Hoş Geldin!"}
+              {t("welcomeBack")}
             </Text>
             <Text style={styles.headerSubtitle}>
-              {language === "en"
-                ? "Log in to discover new events & buddies around you"
-                : "Etkinlikleri ve kankalarını keşfetmek için giriş yap"}
+              {t("logInToDiscoverNew")}
             </Text>
           </View>
 
@@ -138,7 +136,7 @@ export function LoginScreen() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "Email Address" : "E-posta Adresi"}
+                  placeholder={t("emailAddress")}
                   placeholderTextColor="#94A3B8"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -166,7 +164,7 @@ export function LoginScreen() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder={language === "en" ? "Password" : "Şifre"}
+                  placeholder={t("password")}
                   placeholderTextColor="#94A3B8"
                   secureTextEntry={!showPassword}
                   autoCorrect={false}
@@ -206,7 +204,7 @@ export function LoginScreen() {
                 onPress={() => navigation.navigate("ForgotPassword")}
               >
                 <Text style={styles.linkTextText}>
-                  {language === "en" ? "Forgot Password?" : "Şifremi Unuttum?"}
+                  {t("forgotPassword")}
                 </Text>
               </Pressable>
 
@@ -230,8 +228,8 @@ export function LoginScreen() {
                 >
                   <Text style={styles.buttonText}>
                     {isSubmitting
-                      ? (language === "en" ? "Logging In..." : "Giriş Yapılıyor...")
-                      : (language === "en" ? "Log In" : "Giriş Yap")}
+                      ? (t("loggingIn"))
+                      : (t("logIn"))}
                   </Text>
                   <Feather name="arrow-right" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
                 </LinearGradient>
